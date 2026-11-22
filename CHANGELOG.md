@@ -3,6 +3,52 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.3 — 数据可靠性：内容哈希去重与同步状态（候选，2026-11-22）
+
+> 版本号已同步为 `0.1.3`；release APK 已在本地构建并通过 v1 / v2 签名校验，尚未上传 GitHub Release。真机回归通过后再发布。
+
+**内容哈希去重**
+
+- 新增 `js/services/file-hash.js`：优先 SHA-256，浏览器不支持时回退 FNV-1a 64；结果带算法前缀 `sha256:` / `fnv1a64:`，避免跨算法误判。
+- 新增 `js/services/score-dedup.js`：有哈希时只认哈希；旧记录没有哈希时保留“名称 + 大小”兼容回退。
+- 导入时先显示“正在校验 文件名...”，哈希失败只警告、不阻断导入。
+- 同一批导入的重复文件也会即时加入候选，改名后的同一份 PDF 只入库一次。
+- 旧库同尺寸无哈希记录按需计算并写回 `fileHash`，回填使用 `{ touch: false }`，不会把维护动作算成用户改动。
+
+**云同步状态**
+
+- 新增 `js/services/sync-state.js`，统一读写 `gs_cloud_sync:<path>` 与状态文案。
+- 读谱页云同步弹窗、全局设置云同步卡片共享同一状态摘要。
+- 状态覆盖：未同步、上次同步后有本机改动、本机已是最新、状态读取失败。
+- 打开弹窗、切换云路径、上传成功、下载成功后立即刷新。
+- 同步状态只代表本机记录与云端同步点，不代表云端真实内容。
+
+**数据字段**
+
+- `dbService.addScore()` 写入 `updatedAt`；`updateScore()` 默认刷新 `updatedAt`，可通过 `{ touch: false }` 跳过。
+- 本机改动时间取 `createdAt / updatedAt / lastReadAt` 的最大值。
+- 本地备份、云备份、恢复流程均保留 `fileHash` 与 `updatedAt`。
+
+**验收**
+
+- 真实导入 UI：同一批导入 `练习曲A.pdf` 与改名副本，提示“成功 1 本 / 跳过重复 1 本”；再次导入改名副本仍跳过；导入不同内容正常新增。
+- 单元测试：相同内容同哈希、不同内容不同哈希；哈希相同命中、同名同大小但哈希不同不命中、旧记录同尺寸惰性回填后命中。
+- 浏览器：数据/同步/备份全量测试通过；360×800 与 320×800 下 reader / settings 无横向溢出，云同步状态可见。
+- `node --check` 通过 `file-hash.js` / `score-dedup.js` / `sync-state.js` / `db.js` / `backup.js` / `sheet-reader.js` / `settings.js` / `sw.js`。
+
+**构建与版本**
+
+- `npm run apk:release` BUILD SUCCESSFUL（JDK 21，37s）。
+- `aapt`：包名 `com.guitarshell`，`versionCode 103`，`versionName 0.1.3`。
+- APK `4,136,009` 字节；SHA-256 `43A86823D6ED11B91A527493953FAB48D1D133C13FD9E264E905D910310A5DF1`。
+- v1 / v2 签名校验通过；证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- 本地测试包：`dist/GuitarShell-0.1.3-release.apk`，尚未上传 Release。
+
+**待完成**
+
+- 真机回归：布局、导入去重、云同步状态与备份恢复。
+- 真机通过后再更新 README 下载入口、提交版本号与构建改动、推送并发布 GitHub Release。
+
 ## 0.1.2 — 节拍器界面收尾与设置按钮统一（已发布，2026-11-21）
 
 > 版本已同步为 `0.1.2`；release APK 已构建、校验并上传 GitHub Release。

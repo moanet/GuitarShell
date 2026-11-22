@@ -1,6 +1,6 @@
 # CURRENT TASK — 0.1.3 数据可靠性
 
-> 状态：开发完成，浏览器验收通过；待真机回归
+> 状态：release 候选已构建，浏览器验收通过；待真机回归
 > 更新时间：2026-11-22
 > 版本基线：线上 Release `0.1.2`；开发版本 `0.1.3`
 > 关联：[TASK.md](TASK.md)（项目总账） / [CHANGELOG.md](CHANGELOG.md)（发布历史）
@@ -104,9 +104,20 @@
 ## 6. 发布前检查
 
 - [x] 批次 1–2 验收通过，浏览器 console 无异常。
-- [ ] 360×800、320 宽度浏览器回归通过；真机待回归。
+- [x] 360×800、320 宽度浏览器回归通过；真机待回归。
 - [x] `node --check` 通过新增服务与改动文件。
 - [x] `TASK.md` 的版本时间线与进度已更新。
-- [ ] `CHANGELOG.md` 已记录本版改动、验收证据与风险。
+- [x] `CHANGELOG.md` 已记录本版改动、验收证据与风险。
 - [ ] README 功能说明与下载入口在发布时更新。
-- [ ] 版本号同步为 `0.1.3` 后再构建 release APK。
+- [x] 版本号同步为 `0.1.3`：`package.json` / `package-lock.json`、`version.js`、`sw.js`、Android `versionCode 103` / `versionName 0.1.3`。
+- [x] `npm run apk:release` 构建成功；`aapt` 确认包名 `com.guitarshell`、`versionCode 103` / `versionName 0.1.3`。
+- [x] release APK v1 / v2 签名校验通过。
+- [ ] 真机回归通过后再推送、发布 GitHub Release 并更新 README。
+
+## 7. 构建产物
+
+- 本地测试包：`dist/GuitarShell-0.1.3-release.apk`
+- 大小：`4,136,009` 字节
+- SHA-256：`43A86823D6ED11B91A527493953FAB48D1D133C13FD9E264E905D910310A5DF1`
+- 签名证书 SHA-256：`CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`
+- 该包仅用于真机回归，尚未上传 GitHub Release。
