@@ -1,8 +1,8 @@
 # CURRENT TASK — 0.1.3 数据可靠性
 
-> 状态：真机验收通过，发布收口中
+> 状态：已真机验收并正式发布
 > 更新时间：2026-11-22
-> 版本基线：线上 Release `0.1.2`；开发版本 `0.1.3`
+> 版本基线：线上 Release `0.1.3`
 > 关联：[TASK.md](TASK.md)（项目总账） / [CHANGELOG.md](CHANGELOG.md)（发布历史）
 >
 > 本文件只记录当前版本的“做什么、怎么做、怎么验收”。发布后把结果压缩进 `CHANGELOG.md`，再重写本文件进入下一版。
@@ -112,13 +112,20 @@
 - [x] 版本号同步为 `0.1.3`：`package.json` / `package-lock.json`、`version.js`、`sw.js`、Android `versionCode 103` / `versionName 0.1.3`。
 - [x] `npm run apk:release` 构建成功；`aapt` 确认包名 `com.guitarshell`、`versionCode 103` / `versionName 0.1.3`。
 - [x] release APK v1 / v2 签名校验通过。
-- [ ] 推送 `main`、打 `v0.1.3` tag、发布 GitHub Release 并复核远端资产。
+- [x] 推送 `main`、打 `v0.1.3` tag、发布 GitHub Release 并复核远端资产。
 
 ## 7. 构建产物
 
-- 本地测试包：`dist/GuitarShell-0.1.3-release.apk`
+- 正式包：`dist/GuitarShell-0.1.3-release.apk`
 - 大小：`4,136,009` 字节
 - SHA-256：`43A86823D6ED11B91A527493953FAB48D1D133C13FD9E264E905D910310A5DF1`
 - 签名证书 SHA-256：`CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`
 - 真机回归：覆盖安装、旧数据保留、版本显示 `0.1.3`；导入去重、云同步状态、备份恢复均通过。
-- 该包为 0.1.3 正式发布候选，Release 发布时上传同一文件。
+
+## 8. 发布结果
+
+- 代码提交：`77e6554`，已推送 `main`。
+- Tag：annotated `v0.1.3`，指向 `77e6554`；tag 对象 `4a2f27c4a453f660d8e454637899db3d3bb4cc34`。
+- Release：`https://github.com/moanet/GuitarShell/releases/tag/v0.1.3`（Release ID `454545434`，公开、非草稿、非预发布）。
+- 资产：`GuitarShell-0.1.3-release.apk`，`4,136,009` 字节，远端下载 SHA-256 与本地一致。
+- `releases/latest` 已指向 `v0.1.3`。
