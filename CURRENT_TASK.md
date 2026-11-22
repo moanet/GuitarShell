@@ -1,8 +1,8 @@
 # CURRENT TASK — 0.1.4 书架管理收口
 
-> 状态：开发完成，浏览器与真机验收通过，准备发布
+> 状态：已发布，真机验收通过
 > 更新时间：2026-11-23
-> 版本基线：线上 Release `0.1.3`；开发版本 `0.1.4`
+> 版本基线：线上 Release `0.1.4`；开发版本 `0.1.4`
 > 关联：[TASK.md](TASK.md)（项目总账） / [CHANGELOG.md](CHANGELOG.md)（发布历史）
 >
 > 本文件只记录当前版本的“做什么、怎么做、怎么验收”。发布后把结果压缩进 `CHANGELOG.md`，再重写本文件进入下一版。
@@ -221,7 +221,10 @@
   - `dist/GuitarShell-0.1.4-release.apk`：`4,145,781` 字节，SHA-256 `56CF329C0F9EC0873D47BC179C4FA94D14A937F7167732A608B20BA4C3BD32D7`。
   - 包名 `com.guitarshell`，`versionCode 104` / `versionName 0.1.4`；v1 / v2 签名通过，证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
 - [x] 真机回归通过。
-- [ ] 推送 `main`、打 `v0.1.4` tag、发布 GitHub Release 并复核远端资产。
+- [x] 推送 `main`、打 `v0.1.4` tag、发布 GitHub Release 并复核远端资产。
+  - Release：[v0.1.4](https://github.com/moanet/GuitarShell/releases/tag/v0.1.4)，Release ID `454620001`，标题 `v0.1.4`。
+  - 远端资产：`GuitarShell-0.1.4-release.apk`，`4,145,781` 字节；下载复核 SHA-256 `56CF329C0F9EC0873D47BC179C4FA94D14A937F7167732A608B20BA4C3BD32D7`。
+  - 网页版：`https://moanet.github.io/GuitarShell/` 已部署 `0.1.4`，线上 `sw.js` 读取版本为 `0.1.4`。
 
 ## 7. 浏览器验收记录
 

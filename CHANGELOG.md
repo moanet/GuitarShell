@@ -3,9 +3,9 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
-## 0.1.4 — 书架管理收口（真机验收通过，准备发布，2026-11-23）
+## 0.1.4 — 书架管理收口（已发布，2026-11-23）
 
-> 版本号已同步为 `0.1.4`；三项追加调整已完成，浏览器与真机验收通过，最终 APK 已构建并复核签名与哈希。
+> 版本号已同步为 `0.1.4`；浏览器与真机验收通过，最终 APK 已构建、上传 GitHub Release 并复核远端 SHA-256。
 
 **统一确认弹窗**
 
@@ -58,11 +58,12 @@
 **构建与发布**
 
 - 版本：`versionCode 104` / `versionName 0.1.4`；包名 `com.guitarshell`。
-- `npm run apk:release` BUILD SUCCESSFUL（1m19s）。
+- `npm run apk:release` BUILD SUCCESSFUL（1m20s）。
 - 最终 APK：`4,145,781` 字节；SHA-256 `56CF329C0F9EC0873D47BC179C4FA94D14A937F7167732A608B20BA4C3BD32D7`。
 - v1 / v2 签名通过；证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
 - 本地正式包：`dist/GuitarShell-0.1.4-release.apk`。
-- 待办：推送 `main`、打 `v0.1.4` tag、发布 GitHub Release。
+- GitHub Release：[v0.1.4](https://github.com/moanet/GuitarShell/releases/tag/v0.1.4)，Release ID `454620001`，标题 `v0.1.4`；远端资产下载复核 SHA-256 与本地一致。
+- GitHub Pages 已部署 `0.1.4`，线上 `sw.js` 读取版本为 `0.1.4`。
 
 ## 0.1.3 — 数据可靠性：内容哈希去重与同步状态（已发布，2026-11-22）
 
