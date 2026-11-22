@@ -28,6 +28,7 @@ export const dbService = {
       const store = tx.objectStore(STORE_NAME);
       const record = { 
         name, fileBlob, createdAt: Date.now(),
+        updatedAt: extraData.updatedAt || Date.now(),
         tags: extraData.tags || [],
         lastReadPage: extraData.lastReadPage || 0,
         lastReadPageRatio: extraData.lastReadPageRatio || 0,
@@ -78,7 +79,8 @@ export const dbService = {
   },
 
   // 🌟 新增：更新单个乐谱的信息（重命名、改标签等）
-  async updateScore(id, updateData) {
+  // options.touch=false 用于内部回填（如 fileHash），不把维护动作算成用户改动
+  async updateScore(id, updateData, options = {}) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -88,6 +90,7 @@ export const dbService = {
         const data = getReq.result;
         if (!data) return reject(new Error('找不到该乐谱'));
         Object.assign(data, updateData);
+        if (options.touch !== false) data.updatedAt = Date.now();
         const putReq = store.put(data);
         putReq.onsuccess = () => resolve();
         putReq.onerror = () => reject(putReq.error);
@@ -160,7 +163,7 @@ export const dbService = {
         if (!cursor) return finish();
         const v = cursor.value || {};
         scoreCount += 1;
-        at = Math.max(at, v.createdAt || 0, v.lastReadAt || 0);
+        at = Math.max(at, v.createdAt || 0, v.updatedAt || 0, v.lastReadAt || 0);
         cursor.continue();
       };
       scoreReq.onerror = () => reject(scoreReq.error);

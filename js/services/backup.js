@@ -46,6 +46,7 @@ export async function buildBackupPayload() {
     exportScores.push({
       name: item.name,
       createdAt: item.createdAt,
+      updatedAt: item.updatedAt || 0,
       data: await readAsDataURL(item.fileBlob),
       tags: item.tags || [],
       lastReadPage: item.lastReadPage || 0,
@@ -144,6 +145,7 @@ export async function restoreBackup(payload) {
       name: item.name,
       fileBlob: blob,
       createdAt: item.createdAt || Date.now(),
+      updatedAt: item.updatedAt || item.createdAt || Date.now(),
       tags: item.tags || [],
       fileHash: item.fileHash || '',
       lastReadPage: item.lastReadPage || 0,

@@ -18,6 +18,9 @@ const ASSETS_TO_CACHE = [
   './js/services/theme.js',
   './js/services/wakelock.js',
   './js/services/backup.js',
+  './js/services/file-hash.js',
+  './js/services/score-dedup.js',
+  './js/services/sync-state.js',
   // 自定义调准音效：音频放进 assets/ 后取消下一行注释，并同步 audio.js 的 CUSTOM_CHIME_URL
   // './assets/tuner-ding.mp3',
   './js/components/metronome.js',

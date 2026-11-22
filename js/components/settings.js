@@ -8,6 +8,7 @@ import { APP_VERSION } from '../services/version.js';
 import { showToast } from '../services/toast.js';
 import { dbService } from '../services/db.js';
 import { getTheme, setTheme, onThemeChange } from '../services/theme.js';
+import { getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
 import {
   buildBackupPayload, getDataStats, parseBackupFile, restoreBackup, saveBackupFile
 } from '../services/backup.js';
@@ -78,6 +79,7 @@ const settingsCSS = `
   .status { min-height: 16px; margin-top: 8px; font-size: 11px; color: var(--accent-text); line-height: 1.5; word-break: break-all; }
   .cloud-note { margin: 0 2px 10px; font-size: 11px; line-height: 1.65; color: var(--muted); }
   .cloud-note b { color: var(--txt-soft); font-weight: 600; }
+  .cloud-status { margin: 0 2px 10px; font-size: 11px; line-height: 1.6; color: var(--accent-text); }
 
   /* 主题选择：两张可点按的色板卡，不依赖弹窗 */
   .theme-choice {
@@ -172,6 +174,7 @@ const settingsHTML = `
         <section class="card">
           <div class="card-head"><span class="ico">☁</span><h3>云同步</h3></div>
           <p class="cloud-note">坚果云 WebDAV · 手动上传 / 下载。账号与应用密码由读谱页的云同步弹窗管理，密码只在本机加密保存。</p>
+          <p class="cloud-status" id="cloudStatus">正在读取同步状态…</p>
           <button class="act" id="btnCloudEntry" type="button">☁ 打开云同步</button>
         </section>
 
@@ -283,6 +286,7 @@ class GuitarSettings extends HTMLElement {
   open() {
     this.$('mask').classList.add('show');
     this.refreshStats();
+    this.refreshCloudStatus();
   }
 
   close() {
@@ -303,6 +307,20 @@ class GuitarSettings extends HTMLElement {
     } catch (err) {
       this.$('scoreCount').textContent = '—';
       this.$('logCount').textContent = '—';
+    }
+  }
+
+  async refreshCloudStatus() {
+    const el = this.$('cloudStatus');
+    if (!el) return;
+    el.textContent = '正在读取同步状态…';
+    const path = localStorage.getItem('gs_cloud_path') || 'GuitarShell/backup.json';
+    try {
+      const summary = await getCloudSyncSummary(path);
+      el.textContent = describeCloudSync(summary);
+    } catch (err) {
+      console.warn('[云同步] 读取设置页状态失败:', err.message);
+      el.textContent = '同步状态读取失败 · 仍可手动上传 / 下载';
     }
   }
 

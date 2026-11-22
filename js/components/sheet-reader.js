@@ -5,6 +5,9 @@ import { APP_VERSION, BACKUP_SCHEMA } from '../services/version.js';
 import { audioEngine } from '../services/audio.js';
 import { wakeLock } from '../services/wakelock.js';
 import { matchPinyin } from '../lib/pinyin.js';
+import { hashBlob } from '../services/file-hash.js';
+import { findDuplicateScore } from '../services/score-dedup.js';
+import { readSyncState, writeSyncState, formatSyncTime as fmtTime, getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
 import { themeColor, onThemeChange } from '../services/theme.js';
 
 let pdfjsLib = null;
@@ -367,6 +370,7 @@ const readerHTML = `
       <div class="modal-field"><label>路径</label><input type="text" class="modal-inp" id="cloudPath" value="GuitarShell/backup.json"></div>
       <div class="modal-field"><label>同步通道（留空自动选）</label><input type="text" class="modal-inp" id="cloudBase" placeholder="https://你的域名/dav/"></div>
       <button class="modal-btn cancel" id="cloudTest" style="background:var(--line);color: var(--accent-text);font-size:13px;font-weight:normal;">测试连接</button>
+      <div id="cloudSyncState" style="font-size:12px;color:var(--muted);line-height:1.6;margin:-2px 2px 10px;">正在读取同步状态…</div>
       <div class="modal-footer">
         <button class="modal-btn cancel" id="cloudCancel">取消</button>
         <button class="modal-btn confirm" id="cloudDownload">📥 覆盖本地</button>
@@ -1330,17 +1334,24 @@ class SheetReader extends HTMLElement {
           const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf');
 
           if (isImage || isPdf) {
-            const isDuplicate = existingScores.some(existing => 
-              existing.name === file.name && existing.fileBlob && existing.fileBlob.size === file.size
-            );
-            
-            if (isDuplicate) {
+            let fileHash = '';
+            try {
+              loading.textContent = `正在校验 ${file.name}...`;
+              fileHash = await hashBlob(file);
+            } catch (hashErr) {
+              // 哈希失败不阻断导入，退回名称 + 大小判重
+              console.warn('[导入] 计算文件哈希失败:', file.name, hashErr.message);
+            }
+
+            const duplicate = await findDuplicateScore(existingScores, file, fileHash);
+            if (duplicate) {
               dupCount++;
               continue;
             }
             
             try {
-              await dbService.addScore(file.name, file); 
+              const id = await dbService.addScore(file.name, file, { fileHash });
+              existingScores.push({ id, name: file.name, fileBlob: file, fileHash });
               addedCount++;
             } catch (err) {
               console.error('保存文件失败:', file.name, err);
@@ -1407,6 +1418,7 @@ class SheetReader extends HTMLElement {
           });
           exportScores.push({
             name: item.name, createdAt: item.createdAt, data: base64Data, tags: item.tags || [],
+            updatedAt: item.updatedAt || 0,
             lastReadPage: item.lastReadPage || 0,
             lastReadPageRatio: item.lastReadPageRatio || 0,
             lastReadScrollY: item.lastReadScrollY || 0,
@@ -1446,6 +1458,7 @@ class SheetReader extends HTMLElement {
           const blob = await (await fetch(item.data)).blob();
           scoreRecords.push({
             name: item.name, fileBlob: blob, createdAt: item.createdAt || Date.now(),
+            updatedAt: item.updatedAt || item.createdAt || Date.now(),
             tags: item.tags || [], fileHash: item.fileHash || '',
             lastReadPage: item.lastReadPage || 0,
             lastReadPageRatio: item.lastReadPageRatio || 0,
@@ -1510,6 +1523,7 @@ class SheetReader extends HTMLElement {
       }
       cloudModalMask.classList.add('show');
       cloudModalMask.scrollTop = 0;
+      refreshCloudStatus();
     };
     this.handleOpenCloudSync = () => openCloudModal();
     window.addEventListener('open-cloud-sync', this.handleOpenCloudSync);
@@ -1535,21 +1549,24 @@ class SheetReader extends HTMLElement {
     };
 
     // ==================== 🌟 A2 冲突检测 ====================
-    // 记录「上次成功同步的时点 + 云端 etag」，用来判断云端/本地在上次同步后有没有被动过
-    // 同步点按「云端路径」分开存：换账号 / 换备份路径时不会拿旧的同步点误判
-    const SYNC_STATE_PREFIX = 'gs_cloud_sync:';
-    const readSyncState = (path) => {
-      try { return JSON.parse(localStorage.getItem(SYNC_STATE_PREFIX + path) || '{}') || {}; }
-      catch (err) { return {}; }
-    };
-    const writeSyncState = (path, patch) => {
-      const prev = readSyncState(path);
-      localStorage.setItem(SYNC_STATE_PREFIX + path, JSON.stringify({ ...prev, ...patch }));
-    };
-    const fmtTime = (ms) => {
-      const d = new Date(ms);
-      return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    };
+    // 同步点读写统一走 sync-state.js，读谱页弹窗与全局设置共用同一份状态
+
+    // 打开弹窗 / 切换路径 / 同步成功后刷新本机状态摘要
+    async function refreshCloudStatus() {
+      const el = $('cloudSyncState');
+      if (!el) return;
+      el.textContent = '正在读取同步状态…';
+      const path = $('cloudPath').value.trim() || 'GuitarShell/backup.json';
+      try {
+        const summary = await getCloudSyncSummary(path);
+        el.textContent = describeCloudSync(summary);
+      } catch (err) {
+        console.warn('[云同步] 刷新状态失败:', err.message);
+        el.textContent = '同步状态读取失败 · 仍可手动上传 / 下载';
+      }
+    }
+    const cloudPathInput = $('cloudPath');
+    if (cloudPathInput) cloudPathInput.addEventListener('change', refreshCloudStatus);
 
     // 云端在本机上次同步后是否被改过：优先比 etag（不受两机时钟差影响），缺失再退化到时间戳
     const cloudChangeState = (remote, path) => {
@@ -1601,6 +1618,7 @@ class SheetReader extends HTMLElement {
         loading.textContent = '正在上传到云端...'; loading.classList.add('show');
         await webdavService.upload(form.user, form.pass, form.path, JSON.stringify(payload));
         await markSynced(form);
+        await refreshCloudStatus();
         showToast(`已上传到云端 · ${webdavService.getEndpointLabel()}`);
       } catch (err) {
         console.error(err);
@@ -1639,6 +1657,7 @@ class SheetReader extends HTMLElement {
         const restored = await restoreFromPayload(payload, false);
         if (restored === false) return;
         await markSynced(form);
+        await refreshCloudStatus();
         showToast(`已用云端备份覆盖本地 · ${webdavService.getEndpointLabel()}`);
       } catch (err) {
         console.error(err);
