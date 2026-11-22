@@ -4,6 +4,7 @@
 import { audioEngine } from '../services/audio.js';
 import { analyzeAudioBuffer, decodeAudioBuffer } from '../services/audio-analysis.js';
 import { wakeLock } from '../services/wakelock.js';
+import { showConfirm } from './app-dialog.js';
 import { themeColor, onThemeChange } from '../services/theme.js';
 import { dbService } from '../services/db.js';
 
@@ -1604,9 +1605,16 @@ class GuitarMetronome extends HTMLElement {
         del.type = 'button';
         del.title = '删除节奏型';
         del.textContent = '×';
-        del.onclick = (e) => {
+        del.onclick = async (e) => {
           e.stopPropagation();
-          if (!window.confirm(`删除节奏型「${pat.name}」？`)) return;
+          const ok = await showConfirm({
+            title: '删除节奏型',
+            message: '这个自定义节奏型会从本机删除。',
+            details: [{ label: '节奏型', value: pat.name }],
+            confirmText: '删除',
+            danger: true
+          });
+          if (!ok) return;
           this.patterns = this.patterns.filter(p => p.id !== pat.id);
           saveSettings();
           renderPatterns();

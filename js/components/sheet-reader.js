@@ -9,6 +9,9 @@ import { hashBlob } from '../services/file-hash.js';
 import { findDuplicateScore } from '../services/score-dedup.js';
 import { readSyncState, writeSyncState, formatSyncTime as fmtTime, getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
 import { themeColor, onThemeChange } from '../services/theme.js';
+import { showConfirm, showAlert } from './app-dialog.js';
+import { parseTagInput, uniqueTags, toggleTag, hasTag, applyTagChanges, collectTagStats } from '../services/tag-utils.js';
+import { saveBackupFile } from '../services/backup.js';
 
 let pdfjsLib = null;
 
@@ -58,25 +61,81 @@ const readerCSS = `
   .search-inp { flex: 1; min-width: 0; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 14px; }
   .search-inp:focus { border-color: var(--primary); }
   .sort-sel { flex: 0 0 auto; min-width: 104px; max-width: 42vw; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 13px; }
-  .tag-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .tag-row { display: flex; gap: 8px; align-items: center; }
+  .tag-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; flex: 1; min-width: 0; }
   .tag-bar::-webkit-scrollbar { display: none; }
   .tag-chip { padding: 4px 10px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-raised); font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--muted); }
   .tag-chip.active { background: rgba(var(--primary-rgb), 0.20); border-color: var(--primary); color: var(--heading); }
+  .tag-bar.disabled { opacity: .4; pointer-events: none; }
+  .manage-btn {
+    flex: none; padding: 5px 11px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--muted); font-family: inherit; font-size: 12px;
+    font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .manage-btn.active { background: rgba(var(--primary-rgb), .18); border-color: var(--primary); color: var(--accent-text); }
+  .search-inp:disabled, .sort-sel:disabled { opacity: .45; cursor: not-allowed; }
 
   .shelf-view { flex: 1; overflow-y: auto; padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; align-content: start; }
-  .score-card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; padding: 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; position: relative; transition: 0.2s; overflow: hidden; }
+  .shelf-view.managing { padding-bottom: 118px; }
+  .score-card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; padding: 32px 12px 32px; cursor: pointer; display: flex; flex-direction: column; align-items: center; position: relative; transition: 0.2s; overflow: hidden; }
   .score-card:hover { background: var(--surface-hover); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(var(--shadow-rgb),.24); }
+  .score-card.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), 0 0 0 3px rgba(var(--primary-rgb), .12); }
   .score-icon { font-size: 36px; margin-bottom: 8px; }
   .score-name { font-size: 13px; text-align: center; display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
-  
+
+  .tag-badge {
+    position: absolute; left: 6px; bottom: 6px; z-index: 2; max-width: calc(100% - 12px);
+    padding: 3px 7px; border-radius: 8px; border: 1px solid rgba(var(--primary-rgb), .32);
+    background: rgba(var(--primary-rgb), .13); color: var(--accent-text);
+    font-size: 9px; line-height: 1.4; font-weight: 700; pointer-events: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;
+  }
+
+  .select-mark {
+    position: absolute; top: 7px; left: 7px; z-index: 4; width: 20px; height: 20px;
+    border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface-raised);
+    color: var(--on-primary); font-size: 12px; font-weight: 800; display: none;
+    align-items: center; justify-content: center;
+  }
+  .shelf-view.managing .tag-badge, .shelf-view.managing .card-edit-btn, .shelf-view.managing .card-actions { display: none; }
+  .shelf-view.managing .select-mark { display: flex; }
+  .score-card.selected .select-mark { background: var(--primary); border-color: var(--primary); }
+
   .card-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 8px; }
   .card-tag { font-size: 9px; padding: 2px 6px; border-radius: 6px; background: rgba(var(--primary-rgb), 0.14); color: var(--accent-text); border: 1px solid rgba(var(--primary-rgb), 0.3); }
-  
-  .card-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: 0.2s; }
+
+  .card-edit-btn {
+    position: absolute; top: 6px; left: 6px; z-index: 3; width: 22px; height: 22px;
+    border-radius: 50%; border: 1px solid rgba(var(--primary-rgb), .32);
+    background: rgba(var(--primary-rgb), .16); color: var(--primary);
+    font-family: inherit; font-size: 12px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .card-edit-btn:hover { background: rgba(var(--primary-rgb), .26); }
+
+  .card-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: 0.2s; z-index: 3; }
   .score-card:hover .card-actions { opacity: 1; }
   .card-actions .action-btn { width: 22px; height: 22px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; }
-  .btn-edit { background: rgba(var(--primary-rgb), 0.2); color: var(--primary); }
   .btn-delete { background: rgba(var(--danger-rgb), 0.2); color: var(--danger); }
+
+  .batch-bar {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 160; display: none;
+    flex-direction: column; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface-raised); border-top: 1px solid var(--line-warm);
+    box-shadow: 0 -8px 24px rgba(var(--shadow-rgb), .28);
+  }
+  .batch-bar.show { display: flex; }
+  .batch-line { display: flex; align-items: center; gap: 8px; }
+  .batch-count { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--accent-text); }
+  .batch-btn {
+    padding: 9px 12px; border-radius: 9px; border: 1px solid var(--line-strong);
+    background: var(--surface-deep); color: var(--txt); font-family: inherit; font-size: 13px;
+    font-weight: 700; cursor: pointer;
+  }
+  .batch-btn.ghost { border-color: transparent; background: transparent; color: var(--muted); padding: 9px 6px; }
+  .batch-btn.tag { border-color: var(--primary); color: var(--accent-text); background: rgba(var(--primary-rgb), .12); }
+  .batch-btn.delete { border-color: rgba(var(--danger-rgb), .5); color: var(--danger); background: rgba(var(--danger-rgb), .10); }
+  .batch-btn:disabled { opacity: .4; cursor: not-allowed; }
 
   .viewer { flex: 1; overflow: auto; position: relative; background: var(--viewer); cursor: grab; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; display: none; }
   .viewer:active { cursor: grabbing; }
@@ -137,6 +196,22 @@ const readerCSS = `
   .toast { position: absolute; left: 50%; bottom: 100px; transform: translate(-50%, 10px); background: rgba(var(--accent-rgb), 0.92); color: var(--on-accent); padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 400; opacity: 0; pointer-events: none; transition: 0.3s; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+  .cloud-task {
+    position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 190;
+    display: none; align-items: center; gap: 8px; max-width: calc(100% - 32px);
+    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line-warm);
+    background: var(--surface-raised); color: var(--accent-text);
+    font-size: 12px; font-weight: 600; box-shadow: 0 8px 22px rgba(var(--shadow-rgb), .35);
+    white-space: nowrap; pointer-events: none; backdrop-filter: blur(4px);
+  }
+  .cloud-task.show { display: flex; }
+  .cloud-task::before {
+    content: ''; width: 12px; height: 12px; flex: none; border-radius: 50%;
+    border: 2px solid var(--line-strong); border-top-color: var(--primary);
+    animation: cloudSpin .8s linear infinite;
+  }
+  @keyframes cloudSpin { to { transform: rotate(360deg); } }
+
   .action-sheet-mask, .modal-mask { position: absolute; inset: 0; background: rgba(var(--shadow-rgb),0.6); display: none; align-items: flex-end; z-index: 200; }
   .action-sheet-mask.show, .modal-mask.show { display: flex; }
   .action-sheet { width: 100%; max-height: 80vh; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--surface-raised); border-radius: 16px 16px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; transform: translateY(100%); transition: transform 0.2s; }
@@ -155,6 +230,30 @@ const readerCSS = `
   .modal-btn.cancel { background: var(--line-strong); color: var(--txt); }
   .modal-btn.confirm { background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); }
   .modal-btn.danger { background: var(--danger); color: var(--on-danger); }
+
+  .tag-box { max-width: 380px; gap: 12px; }
+  .tag-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .quick-tags-label { font-size: 11px; color: var(--muted); margin-bottom: -4px; }
+  .quick-tags { display: flex; flex-wrap: wrap; gap: 6px; max-height: 116px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 2px; }
+  .quick-tag {
+    padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line-strong);
+    background: var(--surface-deep); color: var(--txt-soft); font-family: inherit; font-size: 11px;
+    cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .quick-tag small { color: var(--muted); font-size: 9px; margin-left: 3px; }
+  .quick-tag.active { border-color: var(--primary); background: rgba(var(--primary-rgb), .18); color: var(--accent-text); }
+  .quick-tag.empty-hint { border-style: dashed; color: var(--muted); cursor: default; }
+  .tag-mode-row { display: flex; gap: 8px; }
+  .tag-mode-btn {
+    flex: 1; padding: 9px; border-radius: 9px; border: 1px solid var(--line-strong);
+    background: var(--surface-deep); color: var(--muted); font-family: inherit; font-size: 13px;
+    font-weight: 700; cursor: pointer;
+  }
+  .tag-mode-btn.active { border-color: var(--primary); color: var(--accent-text); background: rgba(var(--primary-rgb), .16); }
+  @media (max-width: 360px) {
+    .tag-box { padding: 16px; gap: 10px; }
+    .quick-tags { max-height: 88px; }
+  }
   
   /* 🌟 沉浸式虚化：只降透明度，不禁用指针事件，否则鼠标永远移不上去、无法实体化 */
   .mini-metronome { transition: opacity 0.25s ease; }
@@ -259,10 +358,25 @@ const readerHTML = `
         <option value="name">按名称 A-Z</option>
       </select>
     </div>
-    <div class="tag-bar" id="tagBar"></div>
+    <div class="tag-row">
+      <div class="tag-bar" id="tagBar"></div>
+      <button class="manage-btn" id="btnManage" type="button">管理</button>
+    </div>
   </div>
 
   <div class="shelf-view" id="shelfView"></div>
+
+  <div class="batch-bar" id="batchBar">
+    <div class="batch-line">
+      <span class="batch-count" id="batchCount">已选 0 份</span>
+      <button class="batch-btn ghost" id="batchSelectAll" type="button">全选</button>
+      <button class="batch-btn ghost" id="batchExit" type="button">退出管理</button>
+    </div>
+    <div class="batch-line">
+      <button class="batch-btn tag" id="batchTag" type="button" disabled>打标签</button>
+      <button class="batch-btn delete" id="batchDelete" type="button" disabled>删除</button>
+    </div>
+  </div>
 
   <div class="viewer" id="viewer">
     <div class="content-container" id="contentContainer"></div>
@@ -301,6 +415,7 @@ const readerHTML = `
   </div>
 
   <div class="loading" id="loading">处理中...</div>
+  <div class="cloud-task" id="cloudTask"></div>
   <div class="toast" id="toast"></div>
 
   <div id="bookmarkMask">
@@ -345,11 +460,33 @@ const readerHTML = `
     <div class="modal-box">
       <h3>编辑乐谱信息</h3>
       <div class="modal-field"><label>名称</label><input type="text" class="modal-inp" id="editName"></div>
-      <div class="modal-field"><label>标签 (用逗号分隔)</label><input type="text" class="modal-inp" id="editTags" placeholder="如: 流行, 练习曲, 待练"></div>
+      <div class="modal-field"><label>标签（逗号分隔，点已有标签快捷填入）</label><input type="text" class="modal-inp" id="editTags" placeholder="如: 流行, 练习曲, 待练"></div>
+      <div class="quick-tags-label">已有标签（点击即填入 / 再点取消）</div>
+      <div class="quick-tags" id="editQuickList"></div>
       <div class="modal-footer">
         <button class="modal-btn danger" id="editDeleteBtn" style="flex:0 0 60px;">删除</button>
         <button class="modal-btn cancel" id="editCancel">取消</button>
         <button class="modal-btn confirm" id="editConfirm">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="tagModalMask">
+    <div class="modal-box tag-box">
+      <h3 id="tagModalTitle">设置标签</h3>
+      <div class="modal-field">
+        <label id="tagModalHint">输入标签，用逗号分隔</label>
+        <input type="text" class="modal-inp" id="tagModalInput" placeholder="如: 流行, 练习曲, 待练">
+      </div>
+      <div class="tag-mode-row" id="tagModeRow" style="display:none;">
+        <button class="tag-mode-btn active" id="tagModeAdd" type="button">追加标签</button>
+        <button class="tag-mode-btn" id="tagModeRemove" type="button">移除标签</button>
+      </div>
+      <div class="quick-tags-label">已有标签（点击即填入 / 再点取消）</div>
+      <div class="quick-tags" id="tagQuickList"></div>
+      <div class="modal-footer">
+        <button class="modal-btn cancel" id="tagModalCancel">取消</button>
+        <button class="modal-btn confirm" id="tagModalSave">保存</button>
       </div>
     </div>
   </div>
@@ -372,7 +509,7 @@ const readerHTML = `
       <button class="modal-btn cancel" id="cloudTest" style="background:var(--line);color: var(--accent-text);font-size:13px;font-weight:normal;">测试连接</button>
       <div id="cloudSyncState" style="font-size:12px;color:var(--muted);line-height:1.6;margin:-2px 2px 10px;">正在读取同步状态…</div>
       <div class="modal-footer">
-        <button class="modal-btn cancel" id="cloudCancel">取消</button>
+        <button class="modal-btn cancel" id="cloudCancel">返回</button>
         <button class="modal-btn confirm" id="cloudDownload">📥 覆盖本地</button>
         <button class="modal-btn confirm" id="cloudUpload" style="background:var(--primary);">📤 上传备份</button>
       </div>
@@ -404,6 +541,9 @@ class SheetReader extends HTMLElement {
     this.searchKeyword = '';
     this.activeTags = [];
     this.sortMode = 'newest';
+    this.manageMode = false;
+    this.selectedIds = new Set();
+    this.tagModalState = null;
     
     this.mmBpm = 120;
     this.mmPlaying = false;
@@ -514,13 +654,31 @@ class SheetReader extends HTMLElement {
     const miniMetronome = $('miniMetronome');
     const loading = $('loading');
     const toastEl = $('toast');
+    const cloudTask = $('cloudTask');
     
     const searchInp = $('searchInp');
     const sortSel = $('sortSel');
     const tagBar = $('tagBar');
+    const btnManage = $('btnManage');
+    const batchBar = $('batchBar');
+    const batchCount = $('batchCount');
+    const batchTag = $('batchTag');
+    const batchDelete = $('batchDelete');
+    const batchSelectAll = $('batchSelectAll');
+    const batchExit = $('batchExit');
 
     const logModalMask = $('logModalMask');
     const editModalMask = $('editModalMask');
+    const editTags = $('editTags');
+    const editQuickList = $('editQuickList');
+    const tagModalMask = $('tagModalMask');
+    const tagModalInput = $('tagModalInput');
+    const tagQuickList = $('tagQuickList');
+    const tagModalTitle = $('tagModalTitle');
+    const tagModalHint = $('tagModalHint');
+    const tagModeRow = $('tagModeRow');
+    const tagModeAdd = $('tagModeAdd');
+    const tagModeRemove = $('tagModeRemove');
     const cloudModalMask = $('cloudModalMask');
     
     const showToast = (msg) => {
@@ -528,6 +686,23 @@ class SheetReader extends HTMLElement {
       toastEl.classList.add('show');
       clearTimeout(this.toastTimer);
       this.toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
+    };
+
+    const setCloudBusy = (text) => {
+      this.cloudBusy = !!text;
+      cloudTask.textContent = text || '';
+      cloudTask.classList.toggle('show', !!text);
+      const syncStateEl = $('cloudSyncState');
+      if (text) {
+        syncStateEl.textContent = text;
+        syncStateEl.style.color = 'var(--accent-text)';
+      } else if (cloudModalMask.classList.contains('show')) {
+        refreshCloudStatus();
+      }
+      ['cloudUpload', 'cloudDownload', 'cloudTest'].forEach((id) => {
+        const btn = $(id);
+        if (btn) btn.disabled = !!text;
+      });
     };
 
     if (this.isMobile) {
@@ -550,6 +725,151 @@ class SheetReader extends HTMLElement {
       return tags.some(t => matchPinyin(t, q));
     };
 
+    const sameTags = (a, b) => {
+      const left = uniqueTags(a).map(t => t.toLowerCase()).sort();
+      const right = uniqueTags(b).map(t => t.toLowerCase()).sort();
+      return left.length === right.length && left.every((t, i) => t === right[i]);
+    };
+
+    const updateBatchBar = () => {
+      const count = this.selectedIds.size;
+      batchBar.classList.toggle('show', this.manageMode);
+      btnManage.classList.toggle('active', this.manageMode);
+      btnManage.textContent = this.manageMode ? '完成' : '管理';
+      batchCount.textContent = `已选 ${count} 份`;
+      batchTag.disabled = count === 0;
+      batchDelete.disabled = count === 0;
+
+      const visible = this.filteredScores || [];
+      const allSelected = visible.length > 0 && visible.every(score => this.selectedIds.has(score.id));
+      batchSelectAll.textContent = allSelected ? '取消全选' : '全选';
+      batchSelectAll.disabled = visible.length === 0;
+    };
+    this.updateBatchBar = updateBatchBar;
+
+    const setManageMode = (enabled) => {
+      this.manageMode = !!enabled;
+      if (!this.manageMode) this.selectedIds.clear();
+      searchInp.disabled = this.manageMode;
+      sortSel.disabled = this.manageMode;
+      tagBar.classList.toggle('disabled', this.manageMode);
+      this.renderList();
+    };
+    this.setManageMode = setManageMode;
+
+    const toggleSelected = (id) => {
+      if (this.selectedIds.has(id)) this.selectedIds.delete(id);
+      else this.selectedIds.add(id);
+      const card = Array.from(shelfView.querySelectorAll('.score-card'))
+        .find(el => el.dataset.scoreId === String(id));
+      if (card) card.classList.toggle('selected', this.selectedIds.has(id));
+      updateBatchBar();
+    };
+    this.toggleSelected = toggleSelected;
+
+    const closeTagModal = () => {
+      tagModalMask.classList.remove('show');
+      this.tagModalState = null;
+    };
+
+    const renderTagQuick = () => {
+      const state = this.tagModalState;
+      if (!state) return;
+      const stats = state.mode === 'batch' && state.tagMode === 'remove'
+        ? collectTagStats(state.scores)
+        : collectTagStats(this.allScores);
+
+      if (stats.length === 0) {
+        tagQuickList.innerHTML = '<span class="quick-tag empty-hint">还没有已有标签</span>';
+        return;
+      }
+
+      tagQuickList.innerHTML = stats.map(({ tag, count }) => {
+        const active = hasTag(state.draft || [], tag);
+        return `<button class="quick-tag ${active ? 'active' : ''}" type="button" data-tag="${escapeHtml(tag)}">#${escapeHtml(tag)}<small>${count}</small></button>`;
+      }).join('');
+
+      tagQuickList.querySelectorAll('.quick-tag[data-tag]').forEach(btn => {
+        btn.onclick = () => {
+          const tag = btn.dataset.tag || '';
+          state.draft = toggleTag(state.draft || [], tag);
+          tagModalInput.value = state.draft.join(', ');
+          renderTagQuick();
+          tagModalInput.focus({ preventScroll: true });
+        };
+      });
+    };
+
+    const renderEditQuick = () => {
+      const state = this.editModalState;
+      if (!state) return;
+      const stats = collectTagStats(this.allScores);
+      if (stats.length === 0) {
+        editQuickList.innerHTML = '<span class="quick-tag empty-hint">还没有已有标签</span>';
+        return;
+      }
+      editQuickList.innerHTML = stats.map(({ tag, count }) => {
+        const active = hasTag(state.draft || [], tag);
+        return `<button class="quick-tag ${active ? 'active' : ''}" type="button" data-tag="${escapeHtml(tag)}">#${escapeHtml(tag)}<small>${count}</small></button>`;
+      }).join('');
+      editQuickList.querySelectorAll('.quick-tag[data-tag]').forEach(btn => {
+        btn.onclick = () => {
+          // 点快捷标签只做选择，不把焦点塞回输入框；否则移动端键盘会重新弹出并挡住标签区
+          $('editName').blur();
+          editTags.blur();
+          const tag = btn.dataset.tag || '';
+          state.draft = toggleTag(state.draft || [], tag);
+          editTags.value = state.draft.join(', ');
+          renderEditQuick();
+        };
+      });
+    };
+
+    const openEditModal = (score) => {
+      // 打开时只回填内容，不自动聚焦；键盘等用户真正点输入框时再出
+      $('editName').blur();
+      editTags.blur();
+      const tags = uniqueTags(score.tags || []);
+      this.editModalState = { scoreId: score.id, draft: tags };
+      $('editName').value = score.name;
+      editTags.value = tags.join(', ');
+      renderEditQuick();
+      editModalMask.classList.add('show');
+    };
+
+    const openBatchTagModal = () => {
+      const scores = this.allScores.filter(score => this.selectedIds.has(score.id));
+      if (scores.length === 0) return;
+      this.tagModalState = {
+        mode: 'batch',
+        tagMode: 'add',
+        draft: [],
+        scores
+      };
+      tagModalTitle.textContent = `给 ${scores.length} 份乐谱打标签`;
+      tagModalHint.textContent = '选择追加或移除，可一次填多个标签';
+      tagModeRow.style.display = 'flex';
+      tagModeAdd.classList.add('active');
+      tagModeRemove.classList.remove('active');
+      tagModalInput.value = '';
+      renderTagQuick();
+      tagModalMask.classList.add('show');
+      setTimeout(() => tagModalInput.focus({ preventScroll: true }), 0);
+    };
+
+    const confirmDeleteScore = async (score) => {
+      const ok = await showConfirm({
+        title: '从书架删除',
+        message: '删除后乐谱文件将从本机移除，练习记录会保留。',
+        details: [{ label: '乐谱', value: score.name }],
+        confirmText: '删除',
+        danger: true
+      });
+      if (!ok) return false;
+      await dbService.deleteScore(score.id);
+      return true;
+    };
+
     this.renderList = () => {
       const keyword = (this.searchKeyword || '').trim();
       this.filteredScores = this.allScores.filter(score => {
@@ -565,6 +885,9 @@ class SheetReader extends HTMLElement {
         if (this.sortMode === 'name') return a.name.localeCompare(b.name);
         return 0;
       });
+
+      shelfView.classList.toggle('managing', this.manageMode);
+      updateBatchBar();
 
       shelfView.innerHTML = '';
       if (this.allScores.length === 0) {
@@ -594,52 +917,45 @@ class SheetReader extends HTMLElement {
 
       this.filteredScores.forEach(score => {
         const card = document.createElement('div');
-        card.className = 'score-card';
+        const selected = this.selectedIds.has(score.id);
+        card.className = 'score-card' + (selected ? ' selected' : '');
+        card.dataset.scoreId = String(score.id);
         const isPdf = score.name.toLowerCase().endsWith('.pdf');
-        const tagsHtml = (score.tags || []).map(t => `<span class="card-tag">${escapeHtml(t)}</span>`).join('');
+        const tags = uniqueTags(score.tags || []);
+        const badgeText = tags.length === 0
+          ? ''
+          : (tags.length === 1 ? `#${tags[0]}` : `#${tags[0]} +${tags.length - 1}`);
 
         card.innerHTML = `
+          ${tags.length ? `<span class="tag-badge" title="${escapeHtml(tags.join('，'))}">${escapeHtml(badgeText)}</span>` : ''}
+          <button class="card-edit-btn" type="button" title="编辑乐谱信息">✎</button>
+          <span class="select-mark" aria-hidden="true">✓</span>
           <div class="score-icon">${isPdf ? '📄' : '🖼️'}</div>
           <div class="score-name" title="${escapeHtml(score.name)}">${escapeHtml(score.name)}</div>
-          <div class="card-tags">${tagsHtml}</div>
           <div class="card-actions">
-            <button class="action-btn btn-edit" title="编辑">✎</button>
             <button class="action-btn btn-delete" title="删除">×</button>
           </div>
         `;
-        
-        card.onclick = () => this.openScore(score.fileBlob, score.name, score.id, score.tags, score);
 
-        card.querySelector('.btn-edit').onclick = (e) => {
+        card.onclick = () => {
+          if (this.manageMode) {
+            toggleSelected(score.id);
+            return;
+          }
+          this.openScore(score.fileBlob, score.name, score.id, score.tags, score);
+        };
+
+        card.querySelector('.card-edit-btn').onclick = (e) => {
           e.stopPropagation();
-          $('editName').value = score.name;
-          $('editTags').value = (score.tags || []).join(', ');
-          $('editConfirm').onclick = async () => {
-            const newName = $('editName').value.trim();
-            const newTagsStr = $('editTags').value.trim();
-            if (!newName) return showToast('名称不能为空');
-            
-            const newTags = newTagsStr ? newTagsStr.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
-            
-            await dbService.updateScore(score.id, { name: newName, tags: newTags });
-            showToast('修改成功');
-            editModalMask.classList.remove('show');
-            this.loadShelf(); 
-          };
-          $('editDeleteBtn').onclick = async () => {
-            if (confirm(`确定删除《${score.name}》吗？`)) {
-              await dbService.deleteScore(score.id);
-              editModalMask.classList.remove('show');
-              this.loadShelf();
-            }
-          };
-          editModalMask.classList.add('show');
+          if (this.manageMode) return;
+          openEditModal(score);
         };
 
         card.querySelector('.btn-delete').onclick = async (e) => {
           e.stopPropagation();
-          if (confirm(`确定要从书架删除《${score.name}》吗？`)) {
-            await dbService.deleteScore(score.id);
+          const deleted = await confirmDeleteScore(score);
+          if (deleted) {
+            showToast('已删除');
             this.loadShelf();
           }
         };
@@ -650,17 +966,20 @@ class SheetReader extends HTMLElement {
 
     this.loadShelf = async () => {
       this.allScores = await dbService.getAllScores();
-      
-      const allTags = new Set();
-      this.allScores.forEach(s => { (s.tags || []).forEach(t => allTags.add(t)); });
-      
+      const existingIds = new Set(this.allScores.map(s => s.id));
+      Array.from(this.selectedIds).forEach(id => {
+        if (!existingIds.has(id)) this.selectedIds.delete(id);
+      });
+
+      const tagStats = collectTagStats(this.allScores);
       tagBar.innerHTML = `<div class="tag-chip ${this.activeTags.length === 0 ? 'active' : ''}" data-tag="全部">全部</div>`;
-      allTags.forEach(tag => {
+      tagStats.forEach(({ tag }) => {
         tagBar.innerHTML += `<div class="tag-chip ${this.activeTags.includes(tag) ? 'active' : ''}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</div>`;
       });
-      
+
       tagBar.querySelectorAll('.tag-chip').forEach(chip => {
         chip.onclick = () => {
+          if (this.manageMode) return;
           const tag = chip.dataset.tag;
           if (tag === '全部') this.activeTags = [];
           else if (this.activeTags.includes(tag)) this.activeTags = this.activeTags.filter(t => t !== tag);
@@ -677,8 +996,109 @@ class SheetReader extends HTMLElement {
       this.renderList();
     };
 
-    searchInp.oninput = (e) => { this.searchKeyword = e.target.value; this.renderList(); };
-    sortSel.onchange = (e) => { this.sortMode = e.target.value; this.renderList(); };
+    btnManage.onclick = () => setManageMode(!this.manageMode);
+    batchExit.onclick = () => setManageMode(false);
+    batchSelectAll.onclick = () => {
+      const visible = this.filteredScores || [];
+      const allSelected = visible.length > 0 && visible.every(score => this.selectedIds.has(score.id));
+      if (allSelected) visible.forEach(score => this.selectedIds.delete(score.id));
+      else visible.forEach(score => this.selectedIds.add(score.id));
+      this.renderList();
+    };
+    batchTag.onclick = () => openBatchTagModal();
+    batchDelete.onclick = async () => {
+      const scores = this.allScores.filter(score => this.selectedIds.has(score.id));
+      if (scores.length === 0) return;
+      const preview = scores.slice(0, 3).map(score => `《${score.name}》`).join('、');
+      const more = scores.length > 3 ? ` 等 ${scores.length} 份` : '';
+      const ok = await showConfirm({
+        title: '批量删除乐谱',
+        message: '删除后这些乐谱文件将从本机移除，练习记录会保留。',
+        details: [
+          { label: '乐谱', value: `${scores.length} 份` },
+          { label: '包含', value: preview + more },
+          { label: '练习记录', value: '保留' }
+        ],
+        confirmText: '删除',
+        danger: true
+      });
+      if (!ok) return;
+      for (const score of scores) await dbService.deleteScore(score.id);
+      this.selectedIds.clear();
+      setManageMode(false);
+      await this.loadShelf();
+      showToast(`已删除 ${scores.length} 份乐谱`);
+    };
+
+    tagModalInput.addEventListener('input', () => {
+      if (!this.tagModalState) return;
+      this.tagModalState.draft = parseTagInput(tagModalInput.value);
+      renderTagQuick();
+    });
+    tagModeAdd.onclick = () => {
+      if (!this.tagModalState) return;
+      this.tagModalState.tagMode = 'add';
+      this.tagModalState.draft = [];
+      tagModalInput.value = '';
+      tagModeAdd.classList.add('active');
+      tagModeRemove.classList.remove('active');
+      renderTagQuick();
+    };
+    tagModeRemove.onclick = () => {
+      if (!this.tagModalState) return;
+      this.tagModalState.tagMode = 'remove';
+      this.tagModalState.draft = [];
+      tagModalInput.value = '';
+      tagModeRemove.classList.add('active');
+      tagModeAdd.classList.remove('active');
+      renderTagQuick();
+    };
+    $('tagModalCancel').onclick = closeTagModal;
+    tagModalMask.onclick = (e) => {
+      if (e.target === tagModalMask) closeTagModal();
+    };
+    $('tagModalSave').onclick = async () => {
+      const state = this.tagModalState;
+      if (!state) return;
+      const tags = parseTagInput(tagModalInput.value);
+
+      if (state.mode === 'single') {
+        await dbService.updateScore(state.scoreId, { tags });
+        closeTagModal();
+        await this.loadShelf();
+        showToast('标签已更新');
+        return;
+      }
+
+      if (tags.length === 0) {
+        showToast(state.tagMode === 'remove' ? '请先选择要移除的标签' : '请先填写要追加的标签');
+        return;
+      }
+
+      let changed = 0;
+      for (const score of state.scores) {
+        const before = uniqueTags(score.tags || []);
+        const after = applyTagChanges(before, tags, state.tagMode);
+        if (sameTags(before, after)) continue;
+        await dbService.updateScore(score.id, { tags: after });
+        changed += 1;
+      }
+
+      closeTagModal();
+      await this.loadShelf();
+      showToast(changed > 0 ? `已更新 ${changed} 份乐谱的标签` : '没有需要变更的标签');
+    };
+
+    searchInp.oninput = (e) => {
+      if (this.manageMode) return;
+      this.searchKeyword = e.target.value;
+      this.renderList();
+    };
+    sortSel.onchange = (e) => {
+      if (this.manageMode) return;
+      this.sortMode = e.target.value;
+      this.renderList();
+    };
 
     const applyScale = () => {
       container.style.width = `${this.scale * 100}%`;
@@ -1175,7 +1595,7 @@ class SheetReader extends HTMLElement {
       container.style.padding = '20px 0'; container.style.height = ''; container.style.position = 'static';
 
       if (fileName.toLowerCase().endsWith('.pdf')) {
-        try { await renderPDFLazy(fileBlob); } catch (err) { alert(err.message); }
+        try { await renderPDFLazy(fileBlob); } catch (err) { await showAlert(err.message, { title: '无法打开乐谱' }); }
       } else {
         this.currentObjectUrl = URL.createObjectURL(fileBlob);
         const img = document.createElement('img'); img.src = this.currentObjectUrl; img.draggable = false;
@@ -1313,7 +1733,44 @@ class SheetReader extends HTMLElement {
       }
     };
 
-    $('editCancel').onclick = () => editModalMask.classList.remove('show');
+    $('editConfirm').onclick = async () => {
+      const state = this.editModalState;
+      if (!state) return;
+      const newName = $('editName').value.trim();
+      if (!newName) return showToast('名称不能为空');
+      const newTags = uniqueTags(state.draft || []);
+      await dbService.updateScore(state.scoreId, { name: newName, tags: newTags });
+      this.editModalState = null;
+      showToast('修改成功');
+      editModalMask.classList.remove('show');
+      this.loadShelf();
+    };
+
+    $('editDeleteBtn').onclick = async () => {
+      const state = this.editModalState;
+      if (!state) return;
+      const score = this.allScores.find(s => s.id === state.scoreId);
+      if (!score) return;
+      const deleted = await confirmDeleteScore(score);
+      if (deleted) {
+        this.editModalState = null;
+        editModalMask.classList.remove('show');
+        showToast('已删除');
+        this.loadShelf();
+      }
+    };
+
+    editTags.oninput = () => {
+      const state = this.editModalState;
+      if (!state) return;
+      state.draft = uniqueTags(parseTagInput(editTags.value));
+      renderEditQuick();
+    };
+
+    $('editCancel').onclick = () => {
+      this.editModalState = null;
+      editModalMask.classList.remove('show');
+    };
     $('cloudCancel').onclick = () => cloudModalMask.classList.remove('show');
 
     // 🌟 核心修复：极其宽容的文件过滤逻辑
@@ -1402,11 +1859,11 @@ class SheetReader extends HTMLElement {
     $('btnCancel').onclick = () => $('actionSheetMask').classList.remove('show');
 
     // 🌟 打包：本地导出与云端上传共用同一份数据（含阅读进度与打卡记录）
-    const buildBackupPayload = async () => {
+    const buildBackupPayload = async ({ showLoading = true } = {}) => {
       const scores = await dbService.getAllScores();
       const logs = await dbService.getAllLogs();
       if (scores.length === 0 && logs.length === 0) { showToast('没有可备份的数据'); return null; }
-      loading.textContent = '正在打包...'; loading.classList.add('show');
+      if (showLoading) { loading.textContent = '正在打包...'; loading.classList.add('show'); }
       try {
         const exportScores = [];
         for (const item of scores) {
@@ -1428,11 +1885,11 @@ class SheetReader extends HTMLElement {
           });
         }
         return { version: APP_VERSION, schema: BACKUP_SCHEMA, exportedAt: Date.now(), scores: exportScores, logs: logs };
-      } finally { loading.classList.remove('show'); }
+      } finally { if (showLoading) loading.classList.remove('show'); }
     };
 
     // 🌟 恢复：先完整校验并转好 Blob，再清空写入，保证「要么全成功，要么不动本地」
-    const restoreFromPayload = async (payload, confirmOverwrite = true) => {
+    const restoreFromPayload = async (payload, confirmOverwrite = true, confirmEmpty = true) => {
       if (!payload || !Array.isArray(payload.scores)) throw new Error('备份文件格式不正确');
       if (payload.logs && !Array.isArray(payload.logs)) throw new Error('备份文件的打卡记录格式不正确');
       const badScore = payload.scores.find((item) => !item || typeof item.name !== 'string' || typeof item.data !== 'string' || !item.data.startsWith('data:'));
@@ -1441,13 +1898,35 @@ class SheetReader extends HTMLElement {
       // 🌟 空备份保护：云端失联时可能拿到空载荷，绝不能用一句普通 confirm 就把本地清空
       const scoreCount = payload.scores.length;
       const logCount = (payload.logs || []).length;
-      if (scoreCount === 0 && logCount === 0) {
+      if (scoreCount === 0 && logCount === 0 && confirmEmpty) {
         const localScores = await dbService.getAllScores();
         const localLogs = await dbService.getAllLogs();
-        const ok = confirm(`这份备份是空的（0 份乐谱 / 0 条记录）。\n继续会清空本地 ${localScores.length} 份乐谱、${localLogs.length} 条打卡记录，且无法撤销。\n确定继续吗？`);
+        const ok = await showConfirm({
+          title: '备份是空的',
+          message: '继续会把本地乐谱和练习记录清空，且无法撤销。',
+          details: [
+            { label: '备份', value: '0 份乐谱 / 0 条记录' },
+            { label: '本地', value: `${localScores.length} 份乐谱 / ${localLogs.length} 条记录` }
+          ],
+          confirmText: '仍然恢复',
+          danger: true
+        });
         if (!ok) { showToast('已取消：空备份未写入'); return false; }
-      } else if (confirmOverwrite && !confirm(`将用备份覆盖本地数据（${scoreCount} 份乐谱 / ${logCount} 条记录），确定吗？`)) {
-        return false;
+      } else if (confirmOverwrite) {
+        const ok = await showConfirm({
+          title: '覆盖本地数据',
+          message: '备份会替换本机现有的乐谱与练习记录。',
+          details: [
+            { label: '备份', value: `${scoreCount} 份乐谱 / ${logCount} 条记录` },
+            {
+              label: '备份时间',
+              value: payload.exportedAt ? new Date(payload.exportedAt).toLocaleString('zh-CN', { hour12: false }) : '未知'
+            }
+          ],
+          confirmText: '覆盖',
+          danger: true
+        });
+        if (!ok) return false;
       }
 
       loading.textContent = '正在恢复...'; loading.classList.add('show');
@@ -1555,6 +2034,12 @@ class SheetReader extends HTMLElement {
     async function refreshCloudStatus() {
       const el = $('cloudSyncState');
       if (!el) return;
+      el.style.color = 'var(--muted)';
+      if (cloudTask.classList.contains('show')) {
+        el.textContent = cloudTask.textContent;
+        el.style.color = 'var(--accent-text)';
+        return;
+      }
       el.textContent = '正在读取同步状态…';
       const path = $('cloudPath').value.trim() || 'GuitarShell/backup.json';
       try {
@@ -1589,10 +2074,11 @@ class SheetReader extends HTMLElement {
     };
 
     $('cloudUpload').onclick = async () => {
+      if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
-      const btn = $('cloudUpload'); btn.disabled = true;
+      cloudModalMask.classList.remove('show');
       try {
-        loading.textContent = '正在检查云端状态...'; loading.classList.add('show');
+        setCloudBusy('正在检查云端状态...');
         // 老代理可能不放开 PROPFIND，读不到就当「未知」继续，不因检查失败挡住同步
         const remote = await webdavService.stat(form.user, form.pass, form.path).catch((err) => {
           console.warn('[云同步] 读取云端状态失败:', err.message);
@@ -1603,19 +2089,38 @@ class SheetReader extends HTMLElement {
           const state = cloudChangeState(remote, form.path);
           const when = remote.lastModified ? fmtTime(remote.lastModified) : '时间未知';
           if (state === 'changed') {
-            if (!confirm(`云端自本机上次同步后又被改过（${when}，可能来自另一台设备）。\n继续上传会用本机数据覆盖它，确定吗？`)) {
-              showToast('已取消上传'); return;
-            }
+            setCloudBusy(null);
+            const ok = await showConfirm({
+              title: '云端备份已被改动',
+              message: '云端自本机上次同步后又被改过，可能来自另一台设备。继续上传会用本机数据覆盖它。',
+              details: [
+                { label: '云端备份时间', value: when },
+                { label: '本次操作', value: '用本机数据覆盖云端' }
+              ],
+              confirmText: '继续上传',
+              danger: true
+            });
+            if (!ok) { showToast('已取消上传'); return; }
           } else if (state === 'first') {
-            if (!confirm(`云端已有一份备份（${when}）。\n本机从未同步过，继续上传会覆盖云端数据，确定吗？`)) {
-              showToast('已取消上传'); return;
-            }
+            setCloudBusy(null);
+            const ok = await showConfirm({
+              title: '覆盖云端备份',
+              message: '云端已有一份备份，而本机从未同步过。继续上传会覆盖云端数据。',
+              details: [
+                { label: '云端备份时间', value: when },
+                { label: '本次操作', value: '用本机数据覆盖云端' }
+              ],
+              confirmText: '继续上传',
+              danger: true
+            });
+            if (!ok) { showToast('已取消上传'); return; }
           }
         }
 
-        const payload = await buildBackupPayload();
+        setCloudBusy('正在打包备份...');
+        const payload = await buildBackupPayload({ showLoading: false });
         if (!payload) return;
-        loading.textContent = '正在上传到云端...'; loading.classList.add('show');
+        setCloudBusy('正在上传到云端...');
         await webdavService.upload(form.user, form.pass, form.path, JSON.stringify(payload));
         await markSynced(form);
         await refreshCloudStatus();
@@ -1623,38 +2128,77 @@ class SheetReader extends HTMLElement {
       } catch (err) {
         console.error(err);
         showToast(`上传失败：${err.message}`);
-      } finally { loading.classList.remove('show'); btn.disabled = false; }
+      } finally { setCloudBusy(null); }
     };
 
     $('cloudDownload').onclick = async () => {
+      if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
-      const btn = $('cloudDownload'); btn.disabled = true;
+      cloudModalMask.classList.remove('show');
       try {
-        loading.textContent = '正在检查云端状态...'; loading.classList.add('show');
+        setCloudBusy('正在检查云端状态...');
         const remote = await webdavService.stat(form.user, form.pass, form.path).catch((err) => {
           console.warn('[云同步] 读取云端状态失败:', err.message);
           return null;
         });
         if (remote && remote.exists === false) throw new Error('云端没有找到备份文件');
 
-        // 本地在上次同步后有改动（含阅读进度）时，覆盖等于丢数据
-        const local = await dbService.getLocalChangeStamp();
-        const syncedAt = Number(readSyncState(form.path).at) || 0;
-        if (syncedAt && local.at > syncedAt) {
-          if (!confirm(`本机自上次同步后又有改动（${fmtTime(local.at)}，含阅读进度）。\n用云端备份覆盖会丢失这些改动，确定吗？`)) {
-            showToast('已取消覆盖本地'); return;
-          }
-        } else if (!syncedAt && (local.scoreCount || local.logCount)) {
-          if (!confirm(`本机有 ${local.scoreCount} 份乐谱 / ${local.logCount} 条打卡记录，还没有同步记录。\n用云端备份覆盖会清空它们，确定吗？`)) {
-            showToast('已取消覆盖本地'); return;
-          }
-        }
-
-        loading.textContent = '正在下载云端备份...';
+        setCloudBusy('正在下载云端备份...');
         const text = await webdavService.download(form.user, form.pass, form.path);
         const payload = JSON.parse(text);
-        // 覆盖确认已在上方按「云端/本地谁更新」做过，这里不再重复弹窗；空载荷保护仍在 restoreFromPayload 内部
-        const restored = await restoreFromPayload(payload, false);
+        if (!payload || !Array.isArray(payload.scores)) throw new Error('云端备份格式不正确');
+        if (payload.logs && !Array.isArray(payload.logs)) throw new Error('云端备份的练习记录格式不正确');
+
+        const local = await dbService.getLocalChangeStamp();
+        const syncedAt = Number(readSyncState(form.path).at) || 0;
+        const cloudLogs = payload.logs || [];
+        const backupTime = payload.exportedAt
+          ? fmtTime(payload.exportedAt)
+          : (remote && remote.lastModified ? fmtTime(remote.lastModified) : '时间未知');
+
+        // 下载已完成，先把「本地 vs 云端」摆给用户看，再决定是否覆盖
+        const localTouched = syncedAt && local.at > syncedAt;
+        const neverSyncedWithData = !syncedAt && (local.scoreCount || local.logCount);
+        const emptyBackup = payload.scores.length === 0 && cloudLogs.length === 0;
+        let message = '用云端备份覆盖本机数据？';
+        if (emptyBackup) {
+          message = '云端备份是空的，继续会清空本机乐谱和练习记录，且无法撤销。';
+        } else if (localTouched) {
+          message = `本机自上次同步后又有改动（${fmtTime(local.at)}，含阅读进度），覆盖会丢失这些改动。`;
+        } else if (neverSyncedWithData) {
+          message = '本机已有数据但还没有同步记录，覆盖会清空本机现有内容。';
+        }
+
+        setCloudBusy(null);
+        const ok = await showConfirm({
+          title: emptyBackup ? '云端备份是空的' : '用云端备份覆盖本地',
+          message,
+          details: [
+            { label: '本地', value: `${local.scoreCount || 0} 份乐谱 / ${local.logCount || 0} 条记录` },
+            { label: '云端', value: `${payload.scores.length} 份乐谱 / ${cloudLogs.length} 条记录` },
+            { label: '云端备份时间', value: backupTime }
+          ],
+          extra: {
+            label: '先导出本地备份',
+            onClick: async () => {
+              try {
+                const backup = await buildBackupPayload({ showLoading: false });
+                if (!backup) return;
+                const saved = await saveBackupFile(backup);
+                showToast(saved.native ? `本地备份已保存到 ${saved.path}` : `本地备份已导出到${saved.path}`);
+              } catch (err) {
+                console.error('[云同步] 导出本地备份失败:', err);
+                showToast(`导出失败：${err.message}`);
+              }
+            }
+          },
+          confirmText: '覆盖本地',
+          danger: true
+        });
+        if (!ok) { showToast('已取消覆盖本地'); return; }
+
+        // 覆盖确认已在上面完成，空备份也在同一弹窗提示过；这里只做写入
+        const restored = await restoreFromPayload(payload, false, false);
         if (restored === false) return;
         await markSynced(form);
         await refreshCloudStatus();
@@ -1662,14 +2206,16 @@ class SheetReader extends HTMLElement {
       } catch (err) {
         console.error(err);
         showToast(`下载失败：${err.message}`);
-      } finally { loading.classList.remove('show'); btn.disabled = false; }
+      } finally { setCloudBusy(null); }
     };
 
     // 🌟 连通性探测：国内访问 Worker 偶发失联，上传前先试一手，别把备份扔进断网
     $('cloudTest').onclick = async () => {
+      if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
       const btn = $('cloudTest');
-      btn.disabled = true; btn.textContent = '测试中...';
+      setCloudBusy('正在测试连接...');
+      btn.textContent = '测试中...';
       try {
         const r = await webdavService.probe(form.user, form.pass, form.path);
         if (r.exists === null) showToast(`端点可达 · ${r.endpoint}`);
@@ -1679,7 +2225,8 @@ class SheetReader extends HTMLElement {
         console.error(err);
         showToast(`连接失败：${err.message}`);
       } finally {
-        btn.disabled = false; btn.textContent = '测试连接';
+        setCloudBusy(null);
+        btn.textContent = '测试连接';
       }
     };
 

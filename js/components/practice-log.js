@@ -1,4 +1,5 @@
 import { dbService } from '../services/db.js';
+import { showConfirm } from './app-dialog.js';
 
 // 练习内容名称可能来自备份恢复（他人数据），进 innerHTML 前必须转义
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
@@ -294,7 +295,14 @@ class GuitarPracticeLog extends HTMLElement {
         `;
         card.querySelector('.btn-del').onclick = async (e) => {
           e.stopPropagation();
-          if(confirm('确定删除这条记录吗？')) { await dbService.deleteLog(log.id); this.loadLogs(); }
+          const ok = await showConfirm({
+            title: '删除练习记录',
+            message: '这条记录会从本机删除，且无法撤销。',
+            details: [{ label: '记录', value: log.name || '未命名练习' }],
+            confirmText: '删除',
+            danger: true
+          });
+          if (ok) { await dbService.deleteLog(log.id); this.loadLogs(); }
         };
         logList.appendChild(card);
       });

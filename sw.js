@@ -1,5 +1,5 @@
 // 改版本时两处同步：这里 + js/services/version.js（SW 是 classic script，无法 import）
-const APP_VERSION = '0.1.3';
+const APP_VERSION = '0.1.4';
 const CACHE_NAME = 'guitar-shell-v' + APP_VERSION;
 
 const ASSETS_TO_CACHE = [
@@ -21,8 +21,10 @@ const ASSETS_TO_CACHE = [
   './js/services/file-hash.js',
   './js/services/score-dedup.js',
   './js/services/sync-state.js',
+  './js/services/tag-utils.js',
   // 自定义调准音效：音频放进 assets/ 后取消下一行注释，并同步 audio.js 的 CUSTOM_CHIME_URL
   // './assets/tuner-ding.mp3',
+  './js/components/app-dialog.js',
   './js/components/metronome.js',
   './js/components/sheet-reader.js',
   './js/components/practice-log.js',

@@ -9,6 +9,7 @@ import { showToast } from '../services/toast.js';
 import { dbService } from '../services/db.js';
 import { getTheme, setTheme, onThemeChange } from '../services/theme.js';
 import { getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
+import { showConfirm } from './app-dialog.js';
 import {
   buildBackupPayload, getDataStats, parseBackupFile, restoreBackup, saveBackupFile
 } from '../services/backup.js';
@@ -362,15 +363,41 @@ class GuitarSettings extends HTMLElement {
       const payload = await parseBackupFile(file);
       const scoreCount = payload.scores.length;
       const logCount = (payload.logs || []).length;
+      const local = await getDataStats();
       if (!scoreCount && !logCount) {
-        const local = await getDataStats();
-        if (!confirm(`这份备份是空的。\n继续会清空本地 ${local.scores} 份乐谱、${local.logs} 条练习记录，且无法撤销。\n确定继续吗？`)) {
+        const ok = await showConfirm({
+          title: '备份是空的',
+          message: '继续会把本地乐谱和练习记录清空，且无法撤销。',
+          details: [
+            { label: '备份', value: '0 份乐谱 / 0 条记录' },
+            { label: '本地', value: `${local.scores} 份乐谱 / ${local.logs} 条记录` }
+          ],
+          confirmText: '仍然恢复',
+          danger: true
+        });
+        if (!ok) {
           this.setBusy(false, '已取消');
           return;
         }
-      } else if (!confirm(`将用备份覆盖本地数据（${scoreCount} 份乐谱 / ${logCount} 条练习记录），确定吗？`)) {
-        this.setBusy(false, '已取消');
-        return;
+      } else {
+        const ok = await showConfirm({
+          title: '覆盖本地数据',
+          message: '备份会替换本机现有的乐谱与练习记录。',
+          details: [
+            { label: '备份', value: `${scoreCount} 份乐谱 / ${logCount} 条记录` },
+            { label: '本地', value: `${local.scores} 份乐谱 / ${local.logs} 条记录` },
+            {
+              label: '备份时间',
+              value: payload.exportedAt ? new Date(payload.exportedAt).toLocaleString('zh-CN', { hour12: false }) : '未知'
+            }
+          ],
+          confirmText: '覆盖',
+          danger: true
+        });
+        if (!ok) {
+          this.setBusy(false, '已取消');
+          return;
+        }
       }
 
       this.$('statusLine').textContent = '正在恢复…';
@@ -389,7 +416,17 @@ class GuitarSettings extends HTMLElement {
   async clear() {
     if (this.busy) return;
     const s = await getDataStats().catch(() => ({ scores: 0, logs: 0 }));
-    if (!confirm(`将清空本机 ${s.scores} 份乐谱与 ${s.logs} 条练习记录，阅读进度和书签也会一起删除。\n此操作无法撤销，确定吗？`)) return;
+    const ok = await showConfirm({
+      title: '清空本机数据',
+      message: '乐谱、练习记录、阅读进度和书签都会删除，且无法撤销。',
+      details: [
+        { label: '乐谱', value: `${s.scores} 份` },
+        { label: '练习记录', value: `${s.logs} 条` }
+      ],
+      confirmText: '清空',
+      danger: true
+    });
+    if (!ok) return;
     this.setBusy(true, '正在清空…');
     try {
       await dbService.clearAllData();

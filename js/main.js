@@ -2,6 +2,7 @@ import { APP_VERSION } from './services/version.js';
 import { showToast } from './services/toast.js';
 import { initTheme } from './services/theme.js';
 import { dbService } from './services/db.js';
+import { showConfirm } from './components/app-dialog.js';
 
 // 主题只认 html[data-theme]；冷启动时再同步一次浏览器与原生系统栏
 initTheme();
@@ -153,7 +154,15 @@ if (badge) {
       paintBadge(live);
 
       if (live && live !== APP_VERSION) {
-        const go = confirm(`本机运行 v${APP_VERSION}，线上已是 v${live}。\n现在重新加载拉取新版本？（离线缓存会一起换掉）`);
+        const go = await showConfirm({
+          title: '发现新版本',
+          message: `本机运行 v${APP_VERSION}，线上已是 v${live}。重新加载会一起更新离线缓存。`,
+          details: [
+            { label: '本机', value: `v${APP_VERSION}` },
+            { label: '线上', value: `v${live}` }
+          ],
+          confirmText: '重新加载'
+        });
         if (go) {
           const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
           if (reg) await reg.update().catch(() => {});
