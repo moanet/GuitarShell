@@ -198,13 +198,28 @@ const readerCSS = `
 
   .cloud-task {
     position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 190;
-    display: none; align-items: center; gap: 8px; max-width: calc(100% - 32px);
-    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line-warm);
+    display: none; align-items: center; gap: 8px; max-width: calc(100% - 32px); box-sizing: border-box;
+    padding: 8px 10px 8px 14px; border-radius: 999px; border: 1px solid var(--line-warm);
     background: var(--surface-raised); color: var(--accent-text);
     font-size: 12px; font-weight: 600; box-shadow: 0 8px 22px rgba(var(--shadow-rgb), .35);
     white-space: nowrap; pointer-events: none; backdrop-filter: blur(4px);
   }
   .cloud-task.show { display: flex; }
+  .cloud-task-text { flex: 0 1 auto; min-width: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cloud-task-btn {
+    pointer-events: auto; display: none; align-items: center; justify-content: center; flex: none;
+    border: 1px solid var(--line-strong); background: var(--surface-hover); color: var(--accent-text);
+    border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 11px; line-height: 1.4; cursor: pointer;
+  }
+  .cloud-task-btn:disabled { opacity: .55; cursor: default; }
+  .cloud-task.busy .cloud-task-cancel { display: inline-flex; }
+  .cloud-task.failed { color: var(--danger-text); border-color: rgba(var(--danger-rgb), .45); }
+  .cloud-task.failed::before {
+    content: '!'; width: 12px; height: 12px; flex: none; border-radius: 50%;
+    border: 0; background: var(--danger); color: #fff; animation: none;
+    display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700;
+  }
+  .cloud-task.failed .cloud-task-retry, .cloud-task.failed .cloud-task-dismiss { display: inline-flex; }
   .cloud-task::before {
     content: ''; width: 12px; height: 12px; flex: none; border-radius: 50%;
     border: 2px solid var(--line-strong); border-top-color: var(--primary);
@@ -415,7 +430,12 @@ const readerHTML = `
   </div>
 
   <div class="loading" id="loading">处理中...</div>
-  <div class="cloud-task" id="cloudTask"></div>
+  <div class="cloud-task" id="cloudTask">
+    <span class="cloud-task-text" id="cloudTaskText"></span>
+    <button class="cloud-task-btn cloud-task-cancel" id="cloudTaskCancel" type="button">取消</button>
+    <button class="cloud-task-btn cloud-task-retry" id="cloudTaskRetry" type="button">重试</button>
+    <button class="cloud-task-btn cloud-task-dismiss" id="cloudTaskDismiss" type="button" aria-label="关闭任务提示">×</button>
+  </div>
   <div class="toast" id="toast"></div>
 
   <div id="bookmarkMask">
@@ -655,6 +675,12 @@ class SheetReader extends HTMLElement {
     const loading = $('loading');
     const toastEl = $('toast');
     const cloudTask = $('cloudTask');
+    const cloudTaskText = $('cloudTaskText');
+    const cloudTaskCancel = $('cloudTaskCancel');
+    const cloudTaskRetry = $('cloudTaskRetry');
+    const cloudTaskDismiss = $('cloudTaskDismiss');
+    this.cloudFailure = null;
+    this.cloudRetry = null;
     
     const searchInp = $('searchInp');
     const sortSel = $('sortSel');
@@ -688,22 +714,79 @@ class SheetReader extends HTMLElement {
       this.toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
     };
 
-    const setCloudBusy = (text) => {
-      this.cloudBusy = !!text;
-      cloudTask.textContent = text || '';
-      cloudTask.classList.toggle('show', !!text);
-      const syncStateEl = $('cloudSyncState');
-      if (text) {
-        syncStateEl.textContent = text;
-        syncStateEl.style.color = 'var(--accent-text)';
-      } else if (cloudModalMask.classList.contains('show')) {
-        refreshCloudStatus();
-      }
+    const isCloudCancel = (err) => !!(err && err.code === 'CLOUD_CANCELLED');
+
+    const setCloudButtonsDisabled = (disabled) => {
       ['cloudUpload', 'cloudDownload', 'cloudTest'].forEach((id) => {
         const btn = $(id);
-        if (btn) btn.disabled = !!text;
+        if (btn) btn.disabled = !!disabled;
       });
     };
+
+    const setCloudBusy = (text) => {
+      this.cloudBusy = !!text;
+      if (text) {
+        // 新任务开始：清掉上一次的失败 / 重试状态
+        this.cloudFailure = null;
+        this.cloudRetry = null;
+        cloudTask.classList.remove('failed');
+        cloudTask.classList.add('busy', 'show');
+        cloudTaskText.textContent = text;
+        cloudTask.title = '';
+        cloudTaskCancel.disabled = false;
+        const syncStateEl = $('cloudSyncState');
+        syncStateEl.textContent = text;
+        syncStateEl.style.color = 'var(--accent-text)';
+      } else if (!this.cloudFailure) {
+        cloudTask.classList.remove('busy', 'failed', 'show');
+        cloudTaskText.textContent = '';
+        cloudTask.title = '';
+        if (cloudModalMask.classList.contains('show')) refreshCloudStatus();
+      }
+      setCloudButtonsDisabled(!!text);
+    };
+
+    const setCloudFailure = (text, retry) => {
+      this.cloudBusy = false;
+      this.cloudFailure = text;
+      this.cloudRetry = retry || null;
+      cloudTask.classList.remove('busy');
+      cloudTask.classList.add('failed', 'show');
+      cloudTaskText.textContent = text;
+      cloudTask.title = text;
+      cloudTaskCancel.disabled = false;
+      setCloudButtonsDisabled(false);
+      const syncStateEl = $('cloudSyncState');
+      if (cloudModalMask.classList.contains('show')) {
+        syncStateEl.textContent = text;
+        syncStateEl.style.color = 'var(--danger-text)';
+      }
+    };
+
+    const dismissCloudFailure = () => {
+      this.cloudFailure = null;
+      this.cloudRetry = null;
+      cloudTask.classList.remove('busy', 'failed', 'show');
+      cloudTaskText.textContent = '';
+      cloudTask.title = '';
+      if (cloudModalMask.classList.contains('show')) refreshCloudStatus();
+    };
+
+    cloudTaskCancel.onclick = () => {
+      if (!this.cloudBusy) return;
+      if (webdavService.cancelTask()) {
+        cloudTaskText.textContent = '正在取消...';
+        cloudTaskCancel.disabled = true;
+      }
+    };
+    cloudTaskRetry.onclick = () => {
+      const retry = this.cloudRetry;
+      if (!retry || this.cloudBusy) return;
+      // 不在点击时清失败态：任务真正启动后由 setCloudBusy 清；
+      // 若表单校验没过，失败胶囊和错误仍在，避免提示凭空消失。
+      retry();
+    };
+    cloudTaskDismiss.onclick = () => dismissCloudFailure();
 
     if (this.isMobile) {
       $('btnFolderMain').style.display = 'none';
@@ -791,11 +874,12 @@ class SheetReader extends HTMLElement {
 
       tagQuickList.querySelectorAll('.quick-tag[data-tag]').forEach(btn => {
         btn.onclick = () => {
+          // 与编辑乐谱弹窗一致：快捷标签只做选择，不把焦点塞回输入框
+          tagModalInput.blur();
           const tag = btn.dataset.tag || '';
           state.draft = toggleTag(state.draft || [], tag);
           tagModalInput.value = state.draft.join(', ');
           renderTagQuick();
-          tagModalInput.focus({ preventScroll: true });
         };
       });
     };
@@ -838,6 +922,7 @@ class SheetReader extends HTMLElement {
     };
 
     const openBatchTagModal = () => {
+      tagModalInput.blur();
       const scores = this.allScores.filter(score => this.selectedIds.has(score.id));
       if (scores.length === 0) return;
       this.tagModalState = {
@@ -854,7 +939,6 @@ class SheetReader extends HTMLElement {
       tagModalInput.value = '';
       renderTagQuick();
       tagModalMask.classList.add('show');
-      setTimeout(() => tagModalInput.focus({ preventScroll: true }), 0);
     };
 
     const confirmDeleteScore = async (score) => {
@@ -2031,12 +2115,17 @@ class SheetReader extends HTMLElement {
     // 同步点读写统一走 sync-state.js，读谱页弹窗与全局设置共用同一份状态
 
     // 打开弹窗 / 切换路径 / 同步成功后刷新本机状态摘要
-    async function refreshCloudStatus() {
+    const refreshCloudStatus = async () => {
       const el = $('cloudSyncState');
       if (!el) return;
       el.style.color = 'var(--muted)';
+      if (this.cloudFailure) {
+        el.textContent = this.cloudFailure;
+        el.style.color = 'var(--danger-text)';
+        return;
+      }
       if (cloudTask.classList.contains('show')) {
-        el.textContent = cloudTask.textContent;
+        el.textContent = cloudTaskText.textContent;
         el.style.color = 'var(--accent-text)';
         return;
       }
@@ -2049,7 +2138,7 @@ class SheetReader extends HTMLElement {
         console.warn('[云同步] 刷新状态失败:', err.message);
         el.textContent = '同步状态读取失败 · 仍可手动上传 / 下载';
       }
-    }
+    };
     const cloudPathInput = $('cloudPath');
     if (cloudPathInput) cloudPathInput.addEventListener('change', refreshCloudStatus);
 
@@ -2077,10 +2166,12 @@ class SheetReader extends HTMLElement {
       if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
       cloudModalMask.classList.remove('show');
+      webdavService.beginTask();
       try {
         setCloudBusy('正在检查云端状态...');
         // 老代理可能不放开 PROPFIND，读不到就当「未知」继续，不因检查失败挡住同步
         const remote = await webdavService.stat(form.user, form.pass, form.path).catch((err) => {
+          if (isCloudCancel(err)) throw err;
           console.warn('[云同步] 读取云端状态失败:', err.message);
           return null;
         });
@@ -2120,24 +2211,35 @@ class SheetReader extends HTMLElement {
         setCloudBusy('正在打包备份...');
         const payload = await buildBackupPayload({ showLoading: false });
         if (!payload) return;
+        if (webdavService.isCancelled()) throw Object.assign(new Error('已取消云同步任务'), { code: 'CLOUD_CANCELLED' });
         setCloudBusy('正在上传到云端...');
         await webdavService.upload(form.user, form.pass, form.path, JSON.stringify(payload));
         await markSynced(form);
         await refreshCloudStatus();
         showToast(`已上传到云端 · ${webdavService.getEndpointLabel()}`);
       } catch (err) {
+        if (isCloudCancel(err)) {
+          showToast('已取消云同步任务');
+          return;
+        }
         console.error(err);
-        showToast(`上传失败：${err.message}`);
-      } finally { setCloudBusy(null); }
+        showToast('上传失败，可点状态条重试');
+        setCloudFailure(`上传失败：${err.message}`, () => $('cloudUpload').onclick());
+      } finally {
+        webdavService.endTask();
+        if (!this.cloudFailure) setCloudBusy(null);
+      }
     };
 
     $('cloudDownload').onclick = async () => {
       if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
       cloudModalMask.classList.remove('show');
+      webdavService.beginTask();
       try {
         setCloudBusy('正在检查云端状态...');
         const remote = await webdavService.stat(form.user, form.pass, form.path).catch((err) => {
+          if (isCloudCancel(err)) throw err;
           console.warn('[云同步] 读取云端状态失败:', err.message);
           return null;
         });
@@ -2204,9 +2306,17 @@ class SheetReader extends HTMLElement {
         await refreshCloudStatus();
         showToast(`已用云端备份覆盖本地 · ${webdavService.getEndpointLabel()}`);
       } catch (err) {
+        if (isCloudCancel(err)) {
+          showToast('已取消云同步任务');
+          return;
+        }
         console.error(err);
-        showToast(`下载失败：${err.message}`);
-      } finally { setCloudBusy(null); }
+        showToast('下载失败，可点状态条重试');
+        setCloudFailure(`下载失败：${err.message}`, () => $('cloudDownload').onclick());
+      } finally {
+        webdavService.endTask();
+        if (!this.cloudFailure) setCloudBusy(null);
+      }
     };
 
     // 🌟 连通性探测：国内访问 Worker 偶发失联，上传前先试一手，别把备份扔进断网
@@ -2214,6 +2324,7 @@ class SheetReader extends HTMLElement {
       if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
       const btn = $('cloudTest');
+      webdavService.beginTask();
       setCloudBusy('正在测试连接...');
       btn.textContent = '测试中...';
       try {
@@ -2222,10 +2333,16 @@ class SheetReader extends HTMLElement {
         else if (r.exists) showToast(`连接正常 · ${r.endpoint} · 云端已有备份`);
         else showToast(`连接正常 · ${r.endpoint} · 云端暂无该文件`);
       } catch (err) {
+        if (isCloudCancel(err)) {
+          showToast('已取消云同步任务');
+          return;
+        }
         console.error(err);
-        showToast(`连接失败：${err.message}`);
+        showToast('连接失败，可点状态条重试');
+        setCloudFailure(`连接失败：${err.message}`, () => $('cloudTest').onclick());
       } finally {
-        setCloudBusy(null);
+        webdavService.endTask();
+        if (!this.cloudFailure) setCloudBusy(null);
         btn.textContent = '测试连接';
       }
     };

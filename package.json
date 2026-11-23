@@ -1,9 +1,10 @@
 {
   "name": "guitarshell",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Guitar Shell Android shell",
   "scripts": {
+    "check": "node scripts/check.mjs",
     "www": "node scripts/build-www.mjs",
     "cap:add": "npm run www && cap add android",
     "cap:sync": "npm run www && cap sync android",

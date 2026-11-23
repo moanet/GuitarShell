@@ -18,10 +18,19 @@ const ENDPOINTS = {
   local: { label: '本地代理', base: 'http://192.168.0.200:8081/dav/', cap: 10000 }
 };
 
-// 备份文件可能几十 MB（乐谱转 Base64），上传给足时间；下载与探测可以短一些
-const TIMEOUT = { upload: 90000, download: 45000, meta: 20000 };
+// 备份文件可能几十 MB（乐谱转 Base64），上传给足时间；下载与探测可以短一些。
+// 0.1.5 起整体下调，并允许用户从浮动状态胶囊取消长任务。
+const TIMEOUT = { upload: 60000, download: 30000, meta: 12000 };
 
 let lastEndpoint = null;
+// 一次云同步任务共享一个 AbortController，取消时连同端点回退一起中止
+let activeTask = null;
+
+function cancelledError() {
+  const err = new Error('已取消云同步任务');
+  err.code = 'CLOUD_CANCELLED';
+  return err;
+}
 
 // 当前页面能安全使用的端点顺序：本地代理（仅 http 调试页）→ 自建域名 → Worker
 function customEndpoint() {
@@ -59,30 +68,44 @@ function basicAuth(username, password) {
   return { 'Authorization': `Basic ${btoa(`${username}:${password}`)}` };
 }
 
-async function fetchWithTimeout(url, init, timeoutMs, label) {
+async function fetchWithTimeout(url, init, timeoutMs, label, taskSignal) {
+  if (taskSignal && taskSignal.aborted) throw cancelledError();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  let onTaskAbort = null;
+  if (taskSignal) {
+    onTaskAbort = () => controller.abort();
+    taskSignal.addEventListener('abort', onTaskAbort, { once: true });
+  }
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (err) {
-    if (err.name === 'AbortError') throw new Error(`${label} 响应超时（${Math.round(timeoutMs / 1000)} 秒）`);
+    if (taskSignal && taskSignal.aborted) throw cancelledError();
+    if (timedOut) throw new Error(`${label} 响应超时（${Math.round(timeoutMs / 1000)} 秒）`);
     // TypeError: Failed to fetch —— 断网 / DNS / CORS / 混合内容都会落到这里
     throw new Error(`${label} 网络不可达`);
   } finally {
     clearTimeout(timer);
+    if (taskSignal && onTaskAbort) taskSignal.removeEventListener('abort', onTaskAbort);
   }
 }
 
 // 统一请求入口：失败自动换端点；5xx 视为端点异常，同样换
 async function request(remotePath, init, { timeoutMs = TIMEOUT.meta } = {}) {
   const list = candidates();
+  const taskSignal = activeTask ? activeTask.controller.signal : null;
   let lastErr = null;
 
   for (let i = 0; i < list.length; i++) {
+    if (taskSignal && taskSignal.aborted) throw cancelledError();
     const ep = list[i];
     const effectiveTimeout = Math.min(timeoutMs, ep.cap || timeoutMs);
     try {
-      const res = await fetchWithTimeout(buildUrl(ep, remotePath), init, effectiveTimeout, ep.label);
+      const res = await fetchWithTimeout(buildUrl(ep, remotePath), init, effectiveTimeout, ep.label, taskSignal);
       if (res.status >= 500 && i < list.length - 1) {
         lastErr = new Error(`${ep.label} 服务异常（HTTP ${res.status}）`);
         console.warn('[WebDAV]', lastErr.message, '→ 换下一个端点');
@@ -91,6 +114,7 @@ async function request(remotePath, init, { timeoutMs = TIMEOUT.meta } = {}) {
       lastEndpoint = ep;
       return res;
     } catch (err) {
+      if (err.code === 'CLOUD_CANCELLED') throw err;
       lastErr = err;
       console.warn('[WebDAV]', `${ep.label} 不可用：${err.message}`, i < list.length - 1 ? '→ 换下一个端点' : '');
     }
@@ -116,6 +140,32 @@ async function ensureFolder(username, password, remotePath) {
 }
 
 export const webdavService = {
+  // 一次云同步任务的生命周期：开始 / 取消 / 结束。UI 层保证同一时间只有一个任务。
+  beginTask() {
+    if (activeTask) throw new Error('已有云同步任务进行中');
+    activeTask = { controller: new AbortController(), cancelled: false };
+    return activeTask.controller.signal;
+  },
+
+  cancelTask() {
+    if (!activeTask) return false;
+    activeTask.cancelled = true;
+    activeTask.controller.abort();
+    return true;
+  },
+
+  isCancelled() {
+    return !!(activeTask && activeTask.cancelled);
+  },
+
+  endTask() {
+    activeTask = null;
+  },
+
+  getTimeouts() {
+    return { ...TIMEOUT };
+  },
+
   getHeaders(username, password) {
     return basicAuth(username, password);
   },
