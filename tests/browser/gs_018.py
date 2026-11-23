@@ -140,6 +140,7 @@ def main():
         cdp.cmd("Emulation.setDeviceMetricsOverride", {
             "width": WIDTH, "height": 800, "deviceScaleFactor": 1, "mobile": True,
         })
+        cdp.cmd("Emulation.setTouchEmulationEnabled", {"enabled": True, "maxTouchPoints": 5})
         for _ in range(80):
             if cdp.ev("!!document.querySelector('guitar-sheet-reader')?.shadowRoot"):
                 break
@@ -233,6 +234,7 @@ def main():
   const tapMask = (mask) => {
     mask.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     mask.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    mask.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   };
   tapMask(logMask);
   await sleep(80);
@@ -292,6 +294,18 @@ def main():
   await sleep(90);
   out.splitBack.splitClosed = !sr.querySelector('#splitModalMask').classList.contains('show');
 
+  // 四页导航：阅读页不算模态，可以切走并保留状态；返回层级只统计当前 tab
+  document.querySelector('.tab-btn[data-target="view-metronome"]').click();
+  await sleep(80);
+  out.tabScope = {
+    activeTab: document.querySelector('.tab-btn.active')?.getAttribute('data-target') || '',
+    depth: window.__depths[window.__depths.length - 1],
+    readerReading: r.classList.contains('reading')
+  };
+  document.querySelector('.tab-btn[data-target="view-reader"]').click();
+  await sleep(80);
+  out.tabScope.depthBack = window.__depths[window.__depths.length - 1];
+
   // 阅读页返回书架
   window.dispatchEvent(new CustomEvent('gs-back-request'));
   await sleep(260);
@@ -312,10 +326,61 @@ def main():
     depthAfter: window.__depths[window.__depths.length - 1]
   };
 
+  // 导入面板：模态期间四页导航应被锁住；外点不能穿透到搜索框
+  r.isMobile = true;
+  const sheetMask = sr.querySelector('#actionSheetMask');
+  sr.querySelector('#btnImportMain').click();
+  await sleep(60);
+  out.importGuard = {
+    open: sheetMask.classList.contains('show'),
+    activeBefore: document.querySelector('.tab-btn.active')?.getAttribute('data-target') || ''
+  };
+  document.querySelector('.tab-btn[data-target="view-metronome"]').click();
+  await sleep(60);
+  out.importGuard.activeAfter = document.querySelector('.tab-btn.active')?.getAttribute('data-target') || '';
+  out.importGuard.sheetStillOpen = sheetMask.classList.contains('show');
+  tapMask(sheetMask);
+  await sleep(80);
+  out.importGuard.closed = !sheetMask.classList.contains('show');
+
+  sr.querySelector('#btnImportMain').click();
+  await sleep(60);
+  window.__searchClicks = 0;
+  const searchInp = sr.querySelector('#searchInp');
+  searchInp.addEventListener('click', () => { window.__searchClicks += 1; });
+  const searchRect = searchInp.getBoundingClientRect();
+  out.importTap = {
+    open: sheetMask.classList.contains('show'),
+    x: Math.round(searchRect.left + searchRect.width / 2),
+    y: Math.round(searchRect.top + searchRect.height / 2)
+  };
+
   out.depths = window.__depths.slice();
   return out;
 })()
 """.replace("__PDF_B64__", pdf_b64))
+
+        if out.get("importTap", {}).get("open"):
+            point = {"x": out["importTap"]["x"], "y": out["importTap"]["y"]}
+            cdp.cmd("Input.dispatchTouchEvent", {
+                "type": "touchStart", "touchPoints": [point]
+            })
+            cdp.cmd("Input.dispatchTouchEvent", {
+                "type": "touchEnd", "touchPoints": []
+            })
+            time.sleep(0.25)
+            out["importTap"].update(cdp.ev(r"""
+(() => {
+  const r = document.querySelector('guitar-sheet-reader');
+  const sr = r.shadowRoot;
+  return {
+    sheetClosed: !sr.querySelector('#actionSheetMask').classList.contains('show'),
+    searchClicks: window.__searchClicks,
+    searchFocused: sr.querySelector('#searchInp').matches(':focus'),
+    activeTab: document.querySelector('.tab-btn.active')?.getAttribute('data-target') || ''
+  };
+})()
+"""))
 
         assert out["toolbar"]["visible"] is True, out
         assert out["toolbar"]["oneRow"] is True, out
@@ -338,11 +403,25 @@ def main():
         assert out["splitBack"]["pickerClosed"] is True, out
         assert out["splitBack"]["splitStillOpen"] is True, out
         assert out["splitBack"]["splitClosed"] is True, out
+        assert out["tabScope"]["activeTab"] == "view-metronome", out
+        assert out["tabScope"]["depth"] == 0, out
+        assert out["tabScope"]["readerReading"] is True, out
+        assert out["tabScope"]["depthBack"] == 1, out
         assert out["readerBack"]["reading"] is False, out
         assert out["readerBack"]["depthAfter"] == 0, out
         assert out["manageBack"]["manageMode"] is False, out
         assert out["manageBack"]["batchVisible"] is False, out
         assert out["manageBack"]["depthAfter"] == 0, out
+        assert out["importGuard"]["open"] is True, out
+        assert out["importGuard"]["activeBefore"] == "view-reader", out
+        assert out["importGuard"]["activeAfter"] == "view-reader", out
+        assert out["importGuard"]["sheetStillOpen"] is True, out
+        assert out["importGuard"]["closed"] is True, out
+        assert out["importTap"]["open"] is True, out
+        assert out["importTap"]["sheetClosed"] is True, out
+        assert out["importTap"]["searchClicks"] == 0, out
+        assert out["importTap"]["searchFocused"] is False, out
+        assert out["importTap"]["activeTab"] == "view-reader", out
 
         # 重新打开阅读页，截一张带工具栏的图给人工复核
         cdp.ev(r"""

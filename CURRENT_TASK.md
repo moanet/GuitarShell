@@ -1,6 +1,6 @@
 # CURRENT TASK — 0.1.8 阅读工具栏、双指缩放与统一返回层级
 
-> 状态：开发完成；浏览器 320 / 360 回归通过；release APK 已安装到测试设备，返回层级与弹窗行为已实机验证；双指缩放的真机手感待用户手动确认；已提交 `main`，按用户要求不发布 Release
+> 状态：开发完成；浏览器 320 / 360 回归通过；release APK 已安装到测试设备，返回层级、弹窗行为、导入面板外点与四页导航锁已实机验证；双指缩放的真机手感待用户手动确认；已提交 `main`，按用户要求不发布 Release
 > 更新时间：2026-11-23
 > 版本基线：线上 Release 为 0.1.6；0.1.7 已提交 main，未发布
 > 关联：[TASK.md](TASK.md)（项目总账） / [CHANGELOG.md](CHANGELOG.md)（发布历史）
@@ -154,11 +154,12 @@
 
 - `npm run check`：`检查通过：v0.1.8，28 个 JS 文件，SW 缓存与版本一致`。
 - `python -m compileall -q tests/browser` 通过；`gs_015.py`、`gs_016.py` 复跑通过。
-- `gs_018.py` 在 320 / 360 宽通过：工具栏 5 项同排、高 46、宽 54 / 62；双指合成事件缩放 `1.83`，滚动锚点生效；无改动外点关闭、脏确认与取消保留、详情空白框修复、书签/拆分 picker/阅读页/管理模式返回层级全部符合。
-- release APK：`4,364,875` 字节，`versionCode 108` / `versionName 0.1.8`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名通过，证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
-- SHA-256 `5A1538181F9B90A7C2B0F2F66752C287958C5C40D4C27A8E5A6C9C924F0699A4`；本地路径 `dist/GuitarShell-0.1.8-release.apk`；APK 内 `assets/public/sw.js` 为 `APP_VERSION = '0.1.8'`。
+- `gs_018.py` 在 320 / 360 宽通过：工具栏 5 项同排、高 46、宽 54 / 62；双指合成事件缩放 `1.83`，滚动锚点生效；无改动外点关闭、脏确认与取消保留、详情空白框修复、书签/拆分 picker/阅读页/管理模式返回层级全部符合；导入面板打开时点四页 Tab 不切页，真实触摸落在搜索框坐标只关面板且 `searchClicks=0`；阅读页切到节拍器时层级归 0，切回恢复 1。
+- release APK：`4,365,515` 字节，`versionCode 108` / `versionName 0.1.8`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名通过，证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- SHA-256 `89086CAFC05D5402E04ED94F0AABF59AB455A5F3EF817498F4734DC95FD5C7E3`；本地路径 `dist/GuitarShell-0.1.8-release.apk`；APK 内 `assets/public/sw.js` 为 `APP_VERSION = '0.1.8'`。
 - 设备 `ca14b16` 覆盖安装成功，系统显示 `versionCode=108` / `versionName=0.1.8`，书架徽标 `v0.1.8`。
 - 实机返回：阅读页 → 书架、书架 → 桌面均正确；打卡弹窗无改动时返回只关弹窗，填写时长后返回弹「放弃本次记录？」，放弃后回阅读页。
+- 实机导入面板：打开后点节拍器页签，仍停留乐谱并提示「先关闭当前窗口」；点搜索框区域只关面板，搜索框未聚焦；再打开点管理按钮区域只关面板，未进入管理模式。
 - 实机截图复核：五段式工具栏单行等宽；修复后的放弃确认框不再出现空白详情横框。
 - 双指缩放真机手势未脚本化（`sendevent` 被系统权限拒绝），以浏览器合成双指事件 + 代码审查作为本轮证据，保留用户手动捏合复核。
 

@@ -210,7 +210,7 @@ flowchart LR
 
 * `0.1.7` 真机验收通过，已推送 `main`，按要求未发布 Release：云同步进行中按返回键 / 关闭网页先确认，确认后取消任务再退出；拆分弹窗增加起止页缩略图、页码选择器与起止顺序自动纠正。`gs_015.py` 与 320 / 360 宽 `gs_016.py` 已通过；版本 `0.1.7` / `versionCode 107`。release APK `4,361,030` 字节，SHA-256 `0C9F698950F06B5B364B1C1784E1F03300324F89DD913D745AE9F934DEBE4953`，已安装到测试设备。详见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
-* `0.1.8` 开发完成并安装真机，待用户复核双指缩放手感后提交 `main`，按要求不发布 Release：阅读页工具栏改五段式单行，手机阅读页补双指缩放锚点；弹窗统一外点关闭，记录练习 / 编辑信息 / 拆分建卡有改动才弹放弃确认；新增 `ui-layer` 层级栈与 `BackGuard.setLayerDepth`，系统返回逐层关闭阅读页、管理、抽屉、弹窗与 picker。`npm run check` 通过 `v0.1.8 / 28 个 JS`；`gs_018.py` 在 320 / 360 通过；`gs_015.py` / `gs_016.py` 无回归。release APK `4,364,875` 字节，SHA-256 `5A1538181F9B90A7C2B0F2F66752C287958C5C40D4C27A8E5A6C9C924F0699A4`，`versionCode 108`，已覆盖安装 `ca14b16`。详见 [CURRENT_TASK.md](CURRENT_TASK.md)。
+* `0.1.8` 真机验收基本通过，已推送 `main` 并按用户要求不发布 Release；导入面板与导航锁修订也已提交：阅读页工具栏改五段式单行，手机阅读页补双指缩放锚点；弹窗统一外点关闭，记录练习 / 编辑信息 / 拆分建卡有改动才弹放弃确认；新增 `ui-layer` 层级栈与 `BackGuard.setLayerDepth`，系统返回逐层关闭阅读页、管理、抽屉、弹窗与 picker；外点关闭改到 `click` 阶段，避免点击穿透到搜索 / 管理 / 页签；模态层锁住四页导航，阅读页本身仍可切页并保留状态，原生层数按当前 Tab 统计。`npm run check` 通过 `v0.1.8 / 28 个 JS`；`gs_018.py` 在 320 / 360 通过；`gs_015.py` / `gs_016.py` 无回归。修订 release APK `4,365,515` 字节，SHA-256 `89086CAFC05D5402E04ED94F0AABF59AB455A5F3EF817498F4734DC95FD5C7E3`，`versionCode 108`，已覆盖安装 `ca14b16`。详见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
 ## 6. 任务队列
 

@@ -846,10 +846,10 @@ class SheetReader extends HTMLElement {
 
     // 浮层层级：同一 id 只保留一个注册；关闭时必须调用对应 untrack
     const layerOffs = new Map();
-    const trackLayer = (id, close) => {
+    const trackLayer = (id, close, options = {}) => {
       const old = layerOffs.get(id);
       if (old) old();
-      const off = registerLayer({ id, close });
+      const off = registerLayer({ id, close, ...options });
       layerOffs.set(id, off);
     };
     const untrackLayer = (id) => {
@@ -1016,7 +1016,7 @@ class SheetReader extends HTMLElement {
       tagBar.classList.toggle('disabled', this.manageMode);
       this.renderList();
       if (this.manageMode) {
-        trackLayer('reader-manage', () => setManageMode(false));
+        trackLayer('reader-manage', () => setManageMode(false), { blocksNavigation: false });
       } else {
         untrackLayer('reader-manage');
       }
@@ -2209,7 +2209,7 @@ class SheetReader extends HTMLElement {
       shelfView.style.display = 'none';
       filterBar.style.display = 'none';
       this.classList.add('reading');
-      trackLayer('reader', () => this.closeReader());
+      trackLayer('reader', () => this.closeReader(), { blocksNavigation: false });
       
       btnBack.style.display = 'flex'; btnLog.style.display = 'flex'; viewer.style.display = 'block'; miniMetronome.style.display = 'flex'; 
       $('btnSavePos').style.display = 'flex';

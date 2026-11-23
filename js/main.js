@@ -3,7 +3,7 @@ import { showToast } from './services/toast.js';
 import { initTheme } from './services/theme.js';
 import { dbService } from './services/db.js';
 import { showConfirm } from './components/app-dialog.js';
-import { closeTopLayer, syncNativeLayerDepth } from './services/ui-layer.js';
+import { closeTopLayer, syncNativeLayerDepth, setLayerScope, isNavigationBlocked } from './services/ui-layer.js';
 
 // 主题只认 html[data-theme]；冷启动时再同步一次浏览器与原生系统栏
 initTheme();
@@ -18,6 +18,10 @@ function setActiveTab(targetId, { announce = true, userInitiated = false } = {})
   const btn = tabBtns.find(item => item.getAttribute('data-target') === targetId);
   const section = document.getElementById(targetId);
   if (!btn || !section) return false;
+  if (userInitiated && isNavigationBlocked()) {
+    showToast('先关闭当前窗口');
+    return false;
+  }
 
   if (userInitiated) tabSelectedByUser = true;
 
@@ -26,6 +30,7 @@ function setActiveTab(targetId, { announce = true, userInitiated = false } = {})
   btn.classList.add('active');
   section.classList.add('active');
   currentTab = targetId;
+  setLayerScope(targetId);
 
   if (announce) {
     window.dispatchEvent(new CustomEvent('app-tab-changed', { detail: { target: targetId } }));
@@ -102,6 +107,10 @@ boot();
 const settingsBtn = document.getElementById('btnGlobalSettings');
 if (settingsBtn) {
   settingsBtn.addEventListener('click', () => {
+    if (isNavigationBlocked()) {
+      showToast('先关闭当前窗口');
+      return;
+    }
     const panel = document.querySelector('guitar-settings');
     if (panel) panel.open();
     else showToast('全局设置正在加载…');

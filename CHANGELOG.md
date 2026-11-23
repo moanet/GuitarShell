@@ -9,9 +9,11 @@
 
 **统一层级栈**
 
-- 新增 `js/services/ui-layer.js`：`registerLayer({ id, close })`、`closeTopLayer()`、`getLayerDepth()`、`syncNativeLayerDepth(force)`、`bindBackdrop(mask, close)`。
+- 新增 `js/services/ui-layer.js`：`registerLayer({ id, close, scope, blocksNavigation })`、`setLayerScope(scope)`、`closeTopLayer()`、`getLayerDepth()`、`isNavigationBlocked()`、`syncNativeLayerDepth(force)`、`bindBackdrop(mask, close)`。
 - 同 id 再次注册会替换旧层并返回取消函数；层数变化时同步原生 `BackGuard.setLayerDepth({ depth })`。
-- `bindBackdrop` 在 `pointerdown` 记录起点是否落在遮罩，`pointerup` 仍在遮罩才关闭，避免从弹窗内部拖到遮罩误关。
+- 原生层数按当前四页 Tab 的作用域统计：切到节拍器时阅读页层数归 0，返回键不会误关后台阅读页；切回乐谱恢复为 1。
+- 阅读页与书架管理模式标记 `blocksNavigation:false`，属于页面状态，允许四页切换并保留滚动 / 阅读状态；导入面板、弹窗、设置抽屉等模态层则锁住四页 Tab 与右上角设置入口。
+- `bindBackdrop` 在 `pointerdown` / `pointerup` 记录起点与终点都在遮罩，最后在 `click` 阶段关闭。不能直接在 `pointerup` 移除遮罩，否则浏览器随后补发的 `click` 会落到下层搜索框、管理按钮或页签，形成点击穿透。
 - `BackGuardPlugin.java` 新增 `layerDepth`、`setLayerDepth`、`getLayerDepth`；`MainActivity.onBackPressed()` 在 `layerDepth > 0` 时通过 `evaluateJavascript` 派发 `gs-back-request`，层数为 0 且云同步 busy 时保留 `gs-cloud-exit-request`，其余才退出。
 - `js/main.js` 初始化同步一次层级深度，监听 `gs-back-request` 调 `closeTopLayer()`；未消费时把原生深度归零。
 
@@ -31,6 +33,7 @@
 **弹窗外点与表单脏确认**
 
 - 应用确认框、设置抽屉、节拍器设置、导入动作面板、记录练习、编辑信息、云同步、标签、书签、拆分弹窗、拆分页码选择器全部注册层级并接 `bindBackdrop`。
+- 导入面板打开时点四页 Tab 不切页，只提示「先关闭当前窗口」；点面板外只关面板，不聚焦搜索框、不进入管理、不切换页面。
 - 记录练习、编辑信息、拆分建卡记录表单初始值，只有实际改动时才在关闭前弹「放弃本次…？」；未改动直接关闭；取消确认保留弹窗和输入。
 - `splitBusy` 时关闭被拒绝；云同步外点只隐藏弹窗，不取消后台任务。
 - 修复 `guitar-app-dialog` 无详情时仍显示空白横框：`.details` 的 `display:flex` 覆盖了 `hidden`，新增 `.details[hidden], .extra[hidden], .message[hidden] { display:none !important; }`。
@@ -40,12 +43,14 @@
 - `npm run check` 通过 `v0.1.8 / 28 个 JS`；`python -m compileall -q tests/browser` 通过。
 - `gs_015.py`、`gs_016.py` 复跑通过，云同步退出确认、拆分缩略图 / picker / 自动纠正无回归。
 - 新增 `gs_018.py`，320 / 360 宽通过：五个按钮同排、高 46、宽 54 / 62；双指 120→220 得 `scale 1.83`、`scrollLeft 133` / `scrollTop 122`；无改动外点关闭、脏确认与取消保留、详情空白框隐藏；书签、picker、阅读页、管理模式的层级深度序列与预期一致。
+- 新增导入面板回归：模态时点节拍器 Tab 仍停留乐谱；真实触摸点落在搜索框坐标时面板关闭、`searchClicks == 0`、搜索框未聚焦；阅读页切到节拍器时原生深度归 0，切回恢复 1。
 
 **APK 与真机**
 
-- release APK `4,364,875` 字节，`versionCode 108` / `versionName 0.1.8`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名通过，证书 SHA-256 仍为 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
-- SHA-256 `5A1538181F9B90A7C2B0F2F66752C287958C5C40D4C27A8E5A6C9C924F0699A4`；路径 `dist/GuitarShell-0.1.8-release.apk`；APK 内 `assets/public/sw.js` 为 `APP_VERSION = '0.1.8'`。
+- release APK `4,365,515` 字节，`versionCode 108` / `versionName 0.1.8`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名通过，证书 SHA-256 仍为 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- SHA-256 `89086CAFC05D5402E04ED94F0AABF59AB455A5F3EF817498F4734DC95FD5C7E3`；路径 `dist/GuitarShell-0.1.8-release.apk`；APK 内 `assets/public/sw.js` 为 `APP_VERSION = '0.1.8'`。
 - 覆盖安装到 `ca14b16`，系统显示 0.1.8，书架徽标 `v0.1.8`；阅读页 → 书架 → 桌面返回链路正确，打卡弹窗无改动只关弹窗、有改动弹放弃确认。
+- 实机复核导入面板：打开后点节拍器 Tab 停留乐谱并提示「先关闭当前窗口」；点搜索框区域只关面板，搜索框未聚焦；再打开后点管理按钮区域只关面板，未进入管理模式。
 - 双指缩放的实机手势未脚本化（系统拒绝 `sendevent` 写 `/dev/input`），本轮以浏览器合成双指事件 + 代码审查为证据，保留用户手动捏合确认。
 - 已提交 `main`；按用户要求不创建 tag、不发布 GitHub Release。
 
@@ -54,7 +59,7 @@
 - 相册导入仍维持 0.1.7 行为，Android WebView 的 `image/*` 可能落到文件选择器；0.1.9 用原生 Photo Picker 一次最多 20 张，缓存文件 + `Capacitor.convertFileSrc`。
 - 返回层级只覆盖 JS 已注册的浮层；Home / 上滑杀进程无法拦截。
 - `touch-action` 仍保留 `pan-x pan-y`，否则单指拖动会失效；双指缩放依赖 JS 接管。
-- 本轮只提交 `main`，按用户要求不创建 tag、不发布 GitHub Release。
+- 本轮只更新并提交 `main`，按用户要求不创建 tag、不发布 GitHub Release。
 
 ## 0.1.7 — 同步退出保护与拆分页预览（真机验收通过，未发布，2026-11-23）
 
