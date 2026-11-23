@@ -134,7 +134,8 @@
 - Android 13 设备 `ca14b16` 覆盖安装成功，书架徽标 `0.1.11`，原有 6 张乐谱与 10 条练习记录保留。
 - 打开全局设置 → 云同步，账号 / 应用密码 / 路径 / 自定义通道 / 返回 / 覆盖本地 / 上传备份布局正常。
 - 点“测试连接”（只读 PROPFIND）返回“连接正常 · 自定义端点 · 云端已有备份”。
-- 用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次，上传完成、状态“本机已是最新”，测试连接显示“云端已有备份”；未触碰正式 `GuitarShell/backup.json`。该链路因自定义域名 CORS 不含 MOVE，实际走 PUT 回退，证明回退路径可用。测试文件保留，可在坚果云网页端删除。
+- 用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次，上传完成、状态“本机已是最新”，测试连接显示“云端已有备份”；未触碰正式 `GuitarShell/backup.json`。该链路因自定义域名 CORS 不含 MOVE，实际走 PUT 回退，证明回退路径可用。测试文件与遗留测试目录已由用户删除。
+- 自定义域名 Worker 参考源码已补在 `proxy/cloudflare-worker.js`：CORS 放开 `MOVE`，并把 `Destination` 重写为坚果云上游地址；用户可手动替换 Cloudflare Worker 代码。
 
 ## 4. 实施记录
 
@@ -151,10 +152,11 @@
 - `fetchWithTimeout()` 的网络失败错误补 `code = 'NETWORK'`，供上传流程识别 CORS / 断网。
 - `probe()` / `getTimeouts()` / `getEndpointLabel()` / 任务取消接口保持不变。
 
-### 4.2 `js/components/sheet-reader.js` 与 `proxy/proxy.js`
+### 4.2 `js/components/sheet-reader.js` 与 `proxy/`
 
 - 下载流程移除 `remote.exists === false` 的提前抛出，避免正式文件缺失时无法读取可恢复的临时文件。
 - `proxy/proxy.js` 的 CORS 方法增加 `MOVE`；转发前把 `Destination` 重写为坚果云上游地址，并去掉 `Host` / `Origin` / `Referer`。
+- 新增 `proxy/cloudflare-worker.js` 作为自定义域名 Worker 的参考源码：预检直接返回 `204`，CORS 放开 `MOVE`，转发前重写 `Destination`，并去掉 `Host` / `Origin` / `Referer` / `Accept-Encoding`。
 - 上传 / 下载按钮、状态胶囊、取消 / 重试与退出确认均未改动。
 
 ### 4.3 测试
@@ -177,7 +179,7 @@
 - `aapt dump badging`：`com.guitarshell`，`versionCode 111` / `versionName 0.1.11`，`minSdk 22` / `targetSdk 34`。
 - `apksigner verify --print-certs`：v1 / v2 通过，证书 SHA-256 仍为 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
 - 真机 `ca14b16` 覆盖安装成功；书架徽标 `v0.1.11`，原有 6 张乐谱与 10 条练习记录保留。
-- 真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次：上传完成、状态变为“本机已是最新”，测试连接返回“连接正常 · 自定义端点 · 云端已有备份”。未触碰正式 `GuitarShell/backup.json`；测试文件保留，可在坚果云网页端删除。
+- 真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次：上传完成、状态变为“本机已是最新”，测试连接返回“连接正常 · 自定义端点 · 云端已有备份”。未触碰正式 `GuitarShell/backup.json`；测试文件与遗留测试目录已由用户删除。
 - 该测试路径的实际链路走的是 MOVE 失败后的 `PUT` 回退（自定义域名 CORS 仍不含 MOVE），证明回退路径在真机可用。
 
 ### 4.5 版本与状态

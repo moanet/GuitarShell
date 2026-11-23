@@ -103,7 +103,7 @@ Guitar Shell 不要求注册账号。云同步使用你自己的坚果云 WebDAV
 | 路径 | 默认 `GuitarShell/backup.json`；多台设备要保持一致 |
 | 同步通道 | 一般留空，让应用自动选择可用通道 |
 
-「同步通道」不是坚果云服务器地址。默认情况下，应用会通过内置通道访问坚果云的 `https://dav.jianguoyun.com/dav/`；只有在你自建了 WebDAV 反向代理时，才需要填写自己的地址，例如 `https://your-proxy.example.com/dav/`，并且要以 `/dav/` 结尾。首次上传时如果 `GuitarShell` 目录不存在，应用会自动补建。
+「同步通道」不是坚果云服务器地址。默认情况下，应用会通过内置通道访问坚果云的 `https://dav.jianguoyun.com/dav/`；只有在你自建了 WebDAV 反向代理时，才需要填写自己的地址，例如 `https://your-proxy.example.com/dav/`，并且要以 `/dav/` 结尾。首次上传时如果 `GuitarShell` 目录不存在，应用会自动补建。自建 Cloudflare Worker 的参考源码见 `proxy/cloudflare-worker.js`，部署时需要在 CORS 中放开 `MOVE`，并把 `Destination` 重写为坚果云上游地址。
 
 ### 3. 第一次同步：旧设备上传，新设备覆盖本地
 

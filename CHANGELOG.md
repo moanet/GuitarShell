@@ -40,7 +40,8 @@
 - 版本、`sw.js` 缓存名、`js/services/version.js`、`android/app/build.gradle` 已同步为 `0.1.11` / `versionCode 111`。
 - release APK `4,373,460` 字节，SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`；包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名与证书指纹不变。
 - 真机 `ca14b16` 覆盖安装成功，书架徽标 `0.1.11`，原有 6 张乐谱与 10 条练习记录保留。
-- 真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次，上传完成、状态“本机已是最新”，测试连接显示“云端已有备份”；未触碰正式 `GuitarShell/backup.json`，自定义域名 CORS 不含 MOVE，因此实际走的是 PUT 回退。测试文件保留，可在网页端删除。
+- 真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次，上传完成、状态“本机已是最新”，测试连接显示“云端已有备份”；未触碰正式 `GuitarShell/backup.json`，自定义域名 CORS 不含 MOVE，因此实际走的是 PUT 回退。测试文件与遗留测试目录已由用户删除。
+- 自定义域名 Worker 参考源码已补在 `proxy/cloudflare-worker.js`，包含 `MOVE` 放行与 `Destination` 重写；用户可手动替换 Cloudflare Worker 代码，后续自建域名即可走原子 `MOVE`。
 - 已推送 `main`（`61e6d81..adc3906`）；CI 与 GitHub Pages 工作流均成功，网页版已部署 `0.1.11`。
 - 未创建 tag `v0.1.11`、未创建 GitHub Release；Android 正式 Release 仍为 `v0.1.10`，是否单独发布待定。
 
