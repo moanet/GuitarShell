@@ -319,8 +319,41 @@ const readerCSS = `
   .split-range-hint { font-size: 12px; color: var(--muted); line-height: 1.5; min-height: 1.5em; }
   .split-range-hint.error { color: var(--danger-text); }
   .split-inherit { font-size: 11px; color: var(--muted); line-height: 1.5; word-break: break-word; }
+  .split-preview { display: flex; gap: 10px; }
+  .split-thumb {
+    flex: 1; min-width: 0; padding: 0; border: 1px solid var(--line-warm); border-radius: 12px;
+    background: var(--surface-deep); color: var(--txt); cursor: pointer; overflow: hidden;
+    display: flex; flex-direction: column; font-family: inherit; text-align: left;
+  }
+  .split-thumb:active { border-color: var(--primary); transform: translateY(1px); }
+  .split-thumb-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 9px 5px; font-size: 11px; color: var(--muted); }
+  .split-thumb-page { flex: none; font-size: 11px; font-weight: 700; color: var(--accent-text); }
+  .split-thumb-canvas { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 3 / 4; overflow: hidden; background: var(--surface-active); }
+  .split-thumb-canvas canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+  .split-thumb-canvas canvas[hidden], .split-thumb-empty[hidden] { display: none; }
+  .split-thumb-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 8px; font-size: 11px; color: var(--muted); text-align: center; }
+  .split-preview-tip { margin-top: -10px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .split-picker-mask { z-index: 220; }
+  .split-picker-box { gap: 12px; }
+  .split-picker-current {
+    padding: 9px 12px; border-radius: 9px; border: 1px solid var(--line-warm);
+    background: rgba(var(--primary-rgb), .10); color: var(--accent-text);
+    font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .split-picker-grid {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px;
+    max-height: min(48vh, 360px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 2px; overscroll-behavior: contain;
+  }
+  .split-page-btn {
+    padding: 10px 0; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--surface-deep); color: var(--txt); font-family: inherit;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .split-page-btn.current { border-color: var(--line-strong); color: var(--muted); }
+  .split-page-btn.selected { border-color: var(--primary); background: rgba(var(--primary-rgb), .16); color: var(--accent-text); }
   @media (max-width: 360px) {
-    .split-page-row { gap: 8px; }
+    .split-page-row, .split-preview { gap: 8px; }
   }
 
   /* 🔖 页级书签面板 */
@@ -538,6 +571,17 @@ const readerHTML = `
           <input type="number" class="modal-inp" id="splitEnd" min="1" step="1">
         </div>
       </div>
+      <div class="split-preview" id="splitPreview">
+        <button class="split-thumb" id="splitPreviewStart" type="button" aria-label="选择起始页">
+          <span class="split-thumb-head"><span>起始页</span><span class="split-thumb-page" id="splitPreviewStartPage">P1</span></span>
+          <span class="split-thumb-canvas"><canvas id="splitStartCanvas"></canvas><span class="split-thumb-empty" id="splitStartEmpty">加载中…</span></span>
+        </button>
+        <button class="split-thumb" id="splitPreviewEnd" type="button" aria-label="选择结束页">
+          <span class="split-thumb-head"><span>结束页</span><span class="split-thumb-page" id="splitPreviewEndPage">P1</span></span>
+          <span class="split-thumb-canvas"><canvas id="splitEndCanvas"></canvas><span class="split-thumb-empty" id="splitEndEmpty">加载中…</span></span>
+        </button>
+      </div>
+      <div class="split-preview-tip">点缩略图快速选页；起止页顺序会自动纠正。</div>
       <div class="split-range-hint" id="splitRangeHint"></div>
       <div class="modal-field">
         <label>新卡名称</label>
@@ -547,6 +591,17 @@ const readerHTML = `
       <div class="modal-footer">
         <button class="modal-btn cancel" id="splitCancel">取消</button>
         <button class="modal-btn confirm" id="splitConfirm">建卡</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask split-picker-mask" id="splitPickerMask">
+    <div class="modal-box split-picker-box">
+      <h3 id="splitPickerTitle">选择页码</h3>
+      <button class="split-picker-current" id="splitPickerCurrent" type="button">使用当前页</button>
+      <div class="split-picker-grid" id="splitPickerGrid"></div>
+      <div class="modal-footer">
+        <button class="modal-btn cancel" id="splitPickerCancel">返回</button>
       </div>
     </div>
   </div>
@@ -687,6 +742,7 @@ class SheetReader extends HTMLElement {
     if (this.handleTabChange) window.removeEventListener('app-tab-changed', this.handleTabChange);
     if (this.handleMetronomeSettings) window.removeEventListener('metronome-settings', this.handleMetronomeSettings);
     if (this.handleDataChanged) window.removeEventListener('gs-data-changed', this.handleDataChanged);
+    if (this.handleCloudCancelRequest) window.removeEventListener('gs-cloud-cancel-request', this.handleCloudCancelRequest);
     if (this.offTheme) { this.offTheme(); this.offTheme = null; }
     if (this.handleOpenCloudSync) window.removeEventListener('open-cloud-sync', this.handleOpenCloudSync);
     if (this.handleFullscreenChange) document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
@@ -766,8 +822,15 @@ class SheetReader extends HTMLElement {
       });
     };
 
+    const publishCloudTaskState = (busy, text = '') => {
+      window.dispatchEvent(new CustomEvent('gs-cloud-task', {
+        detail: { busy: !!busy, text: text || '' }
+      }));
+    };
+
     const setCloudBusy = (text) => {
       this.cloudBusy = !!text;
+      publishCloudTaskState(this.cloudBusy, this.cloudBusy ? text : (this.cloudFailure || ''));
       if (text) {
         // 新任务开始：清掉上一次的失败 / 重试状态
         this.cloudFailure = null;
@@ -793,6 +856,7 @@ class SheetReader extends HTMLElement {
       this.cloudBusy = false;
       this.cloudFailure = text;
       this.cloudRetry = retry || null;
+      publishCloudTaskState(false, text);
       cloudTask.classList.remove('busy');
       cloudTask.classList.add('failed', 'show');
       cloudTaskText.textContent = text;
@@ -809,19 +873,22 @@ class SheetReader extends HTMLElement {
     const dismissCloudFailure = () => {
       this.cloudFailure = null;
       this.cloudRetry = null;
+      publishCloudTaskState(false, '');
       cloudTask.classList.remove('busy', 'failed', 'show');
       cloudTaskText.textContent = '';
       cloudTask.title = '';
       if (cloudModalMask.classList.contains('show')) refreshCloudStatus();
     };
 
-    cloudTaskCancel.onclick = () => {
+    const requestCloudCancel = () => {
       if (!this.cloudBusy) return;
       if (webdavService.cancelTask()) {
         cloudTaskText.textContent = '正在取消...';
         cloudTaskCancel.disabled = true;
       }
     };
+
+    cloudTaskCancel.onclick = requestCloudCancel;
     cloudTaskRetry.onclick = () => {
       const retry = this.cloudRetry;
       if (!retry || this.cloudBusy) return;
@@ -830,6 +897,8 @@ class SheetReader extends HTMLElement {
       retry();
     };
     cloudTaskDismiss.onclick = () => dismissCloudFailure();
+    this.handleCloudCancelRequest = requestCloudCancel;
+    window.addEventListener('gs-cloud-cancel-request', this.handleCloudCancelRequest);
 
     if (this.isMobile) {
       $('btnFolderMain').style.display = 'none';
@@ -1594,8 +1663,24 @@ class SheetReader extends HTMLElement {
     const splitInherit = $('splitInherit');
     const splitCancel = $('splitCancel');
     const splitConfirm = $('splitConfirm');
+    const splitPreviewStart = $('splitPreviewStart');
+    const splitPreviewEnd = $('splitPreviewEnd');
+    const splitPreviewStartPage = $('splitPreviewStartPage');
+    const splitPreviewEndPage = $('splitPreviewEndPage');
+    const splitStartCanvas = $('splitStartCanvas');
+    const splitEndCanvas = $('splitEndCanvas');
+    const splitStartEmpty = $('splitStartEmpty');
+    const splitEndEmpty = $('splitEndEmpty');
+    const splitPickerMask = $('splitPickerMask');
+    const splitPickerTitle = $('splitPickerTitle');
+    const splitPickerCurrent = $('splitPickerCurrent');
+    const splitPickerGrid = $('splitPickerGrid');
+    const splitPickerCancel = $('splitPickerCancel');
     let splitBusy = false;
     let splitNameTouched = false;
+    let splitPreviewTimer = null;
+    let splitPreviewToken = 0;
+    let splitPickerTarget = 'start';
 
     const splitTotalPages = () => (this.pdfDoc && this.pdfDoc.numPages) || 0;
     const splitDefaultName = (start, end) => {
@@ -1603,7 +1688,105 @@ class SheetReader extends HTMLElement {
       return `${base} · ${start === end ? `P${start}` : `P${start}-${end}`}`;
     };
 
-    const updateSplitRange = ({ refreshName = true } = {}) => {
+    const splitCurrentPage = () => {
+      const total = splitTotalPages();
+      const pos = getReadingPosition();
+      return Math.min(Math.max(1, pos.page || 1), total || 1);
+    };
+
+    const splitPageValid = (n, total = splitTotalPages()) => (
+      Number.isInteger(n) && n >= 1 && n <= total
+    );
+
+    // 输入一侧页码时自动纠正顺序：起始页变大就抬高结束页，结束页变小就压低起始页。
+    const normalizeSplitRange = (source) => {
+      const total = splitTotalPages();
+      if (!total) return;
+      const start = Number(splitStart.value);
+      const end = Number(splitEnd.value);
+      if (!splitPageValid(start, total) || !splitPageValid(end, total)) return;
+      if (source === 'start' && start > end) splitEnd.value = String(start);
+      if (source === 'end' && end < start) splitStart.value = String(end);
+    };
+
+    const clearSplitPreview = () => {
+      splitPreviewToken++;
+      clearTimeout(splitPreviewTimer);
+      splitPreviewTimer = null;
+      [splitStartCanvas, splitEndCanvas].forEach((canvas) => {
+        canvas.width = 0;
+        canvas.height = 0;
+        canvas.hidden = true;
+      });
+      splitStartEmpty.textContent = '加载中…';
+      splitEndEmpty.textContent = '加载中…';
+      splitStartEmpty.hidden = false;
+      splitEndEmpty.hidden = false;
+    };
+
+    const renderSplitThumb = async (pageNumber, canvas) => {
+      const page = await this.pdfDoc.getPage(pageNumber);
+      try {
+        const base = page.getViewport({ scale: 1.0 });
+        const scale = Math.min(0.8, 160 / Math.max(1, base.width));
+        const vp = page.getViewport({ scale });
+        canvas.width = Math.max(1, Math.floor(vp.width));
+        canvas.height = Math.max(1, Math.floor(vp.height));
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+      } finally {
+        if (page.cleanup) { try { page.cleanup(); } catch (err) {} }
+      }
+    };
+
+    const renderSplitPreview = async () => {
+      const token = ++splitPreviewToken;
+      const total = splitTotalPages();
+      const start = Number(splitStart.value);
+      const end = Number(splitEnd.value);
+      splitPreviewStartPage.textContent = total && start ? `P${start}` : 'P?';
+      splitPreviewEndPage.textContent = total && end ? `P${end}` : 'P?';
+
+      const valid = splitPageValid(start, total) && splitPageValid(end, total);
+      if (!valid) {
+        splitStartCanvas.hidden = true;
+        splitEndCanvas.hidden = true;
+        splitStartEmpty.textContent = '页码无效';
+        splitEndEmpty.textContent = '页码无效';
+        splitStartEmpty.hidden = false;
+        splitEndEmpty.hidden = false;
+        return;
+      }
+
+      splitStartCanvas.hidden = true;
+      splitEndCanvas.hidden = true;
+      splitStartEmpty.textContent = '加载中…';
+      splitEndEmpty.textContent = '加载中…';
+      splitStartEmpty.hidden = false;
+      splitEndEmpty.hidden = false;
+      try {
+        await renderSplitThumb(start, splitStartCanvas);
+        if (token !== splitPreviewToken) return;
+        await renderSplitThumb(end, splitEndCanvas);
+      } catch (err) {
+        if (token !== splitPreviewToken) return;
+        console.warn('拆分缩略图渲染失败:', err);
+        splitStartEmpty.textContent = '预览失败';
+        splitEndEmpty.textContent = '预览失败';
+        return;
+      }
+      if (token !== splitPreviewToken) return;
+      splitStartCanvas.hidden = false;
+      splitEndCanvas.hidden = false;
+      splitStartEmpty.hidden = true;
+      splitEndEmpty.hidden = true;
+    };
+
+    const scheduleSplitPreview = (delay = 140) => {
+      clearTimeout(splitPreviewTimer);
+      splitPreviewTimer = setTimeout(renderSplitPreview, delay);
+    };
+
+    const updateSplitRange = ({ refreshName = true, refreshPreview = true } = {}) => {
       const total = splitTotalPages();
       const start = Number(splitStart.value);
       const end = Number(splitEnd.value);
@@ -1623,10 +1806,61 @@ class SheetReader extends HTMLElement {
       if (!error && refreshName && !splitNameTouched) {
         splitName.value = splitDefaultName(start, end);
       }
+      if (refreshPreview && splitModalMask.classList.contains('show')) scheduleSplitPreview();
+    };
+
+    const closeSplitPicker = () => splitPickerMask.classList.remove('show');
+
+    const openSplitPicker = (target) => {
+      const total = splitTotalPages();
+      if (!total) return showToast('PDF 尚未准备好，请稍后再试');
+      splitPickerTarget = target === 'end' ? 'end' : 'start';
+      const input = splitPickerTarget === 'start' ? splitStart : splitEnd;
+      const selected = Number(input.value);
+      const current = splitCurrentPage();
+      splitPickerTitle.textContent = splitPickerTarget === 'start' ? '选择起始页' : '选择结束页';
+      splitPickerCurrent.textContent = `使用当前阅读页 P${current}`;
+      splitPickerCurrent.dataset.page = String(current);
+
+      splitPickerGrid.innerHTML = '';
+      for (let i = 1; i <= total; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'split-page-btn';
+        if (i === selected) btn.classList.add('selected');
+        if (i === current) btn.classList.add('current');
+        btn.dataset.page = String(i);
+        btn.textContent = String(i);
+        btn.setAttribute('aria-label', `第 ${i} 页`);
+        splitPickerGrid.appendChild(btn);
+      }
+      splitPickerMask.classList.add('show');
+      requestAnimationFrame(() => {
+        const selectedBtn = splitPickerGrid.querySelector('.split-page-btn.selected');
+        if (selectedBtn) selectedBtn.scrollIntoView({ block: 'center' });
+      });
+    };
+
+    const applySplitPage = (page) => {
+      const total = splitTotalPages();
+      if (!splitPageValid(page, total)) return;
+      if (splitPickerTarget === 'start') {
+        splitStart.value = String(page);
+        const end = Number(splitEnd.value);
+        if (splitPageValid(end, total) && end < page) splitEnd.value = String(page);
+      } else {
+        splitEnd.value = String(page);
+        const start = Number(splitStart.value);
+        if (splitPageValid(start, total) && start > page) splitStart.value = String(page);
+      }
+      closeSplitPicker();
+      updateSplitRange();
     };
 
     const closeSplitModal = () => {
       if (splitBusy) return;
+      closeSplitPicker();
+      clearSplitPreview();
       splitModalMask.classList.remove('show');
     };
 
@@ -1635,8 +1869,7 @@ class SheetReader extends HTMLElement {
       const total = splitTotalPages();
       if (!total) return showToast('PDF 尚未准备好，请稍后再试');
 
-      const pos = getReadingPosition();
-      const current = Math.min(Math.max(1, pos.page || 1), total);
+      const current = splitCurrentPage();
       splitBusy = false;
       splitNameTouched = false;
       splitStart.disabled = false;
@@ -1652,13 +1885,26 @@ class SheetReader extends HTMLElement {
       splitInherit.textContent = this.currentTags.length
         ? `将沿用标签：${this.currentTags.join('，')}`
         : '新卡暂无标签，可建卡后在书架编辑';
+      closeSplitPicker();
+      clearSplitPreview();
       splitModalMask.classList.add('show');
       updateSplitRange();
+      scheduleSplitPreview(0);
     };
 
-    splitStart.oninput = () => updateSplitRange();
-    splitEnd.oninput = () => updateSplitRange();
+    splitStart.oninput = () => { normalizeSplitRange('start'); updateSplitRange(); };
+    splitEnd.oninput = () => { normalizeSplitRange('end'); updateSplitRange(); };
     splitName.oninput = () => { splitNameTouched = true; };
+    splitPreviewStart.onclick = () => openSplitPicker('start');
+    splitPreviewEnd.onclick = () => openSplitPicker('end');
+    splitPickerGrid.onclick = (e) => {
+      const btn = e.target.closest('.split-page-btn');
+      if (!btn) return;
+      applySplitPage(Number(btn.dataset.page));
+    };
+    splitPickerCurrent.onclick = () => applySplitPage(Number(splitPickerCurrent.dataset.page));
+    splitPickerCancel.onclick = closeSplitPicker;
+    splitPickerMask.onclick = (e) => { if (e.target === splitPickerMask) closeSplitPicker(); };
     splitCancel.onclick = closeSplitModal;
     splitModalMask.onclick = (e) => { if (e.target === splitModalMask) closeSplitModal(); };
 
@@ -1678,6 +1924,9 @@ class SheetReader extends HTMLElement {
       splitName.disabled = true;
       splitCancel.disabled = true;
       splitConfirm.disabled = true;
+      splitPreviewStart.disabled = true;
+      splitPreviewEnd.disabled = true;
+      closeSplitPicker();
       splitConfirm.textContent = '正在建卡...';
       loading.textContent = '正在拆分 PDF...';
       loading.classList.add('show');
@@ -1691,11 +1940,13 @@ class SheetReader extends HTMLElement {
         created = true;
         try { await this.loadShelf(); } catch (err) { console.warn('建卡后刷新书架失败', err); }
         splitModalMask.classList.remove('show');
+        clearSplitPreview();
         showToast(`已建卡：${name} · ${result.pageCount} 页（原谱保留）`);
       } catch (err) {
         console.error(err);
         if (created) {
           splitModalMask.classList.remove('show');
+          clearSplitPreview();
           showToast('已建卡，但书架刷新失败');
         } else {
           const msg = /encrypt/i.test(err && err.message ? err.message : '')
@@ -1710,6 +1961,8 @@ class SheetReader extends HTMLElement {
         splitEnd.disabled = false;
         splitName.disabled = false;
         splitCancel.disabled = false;
+        splitPreviewStart.disabled = false;
+        splitPreviewEnd.disabled = false;
         splitConfirm.textContent = '建卡';
         updateSplitRange({ refreshName: false });
       }

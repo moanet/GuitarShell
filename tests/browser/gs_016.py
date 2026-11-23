@@ -222,6 +222,38 @@ def main():
     boxOverflow: box.scrollWidth > box.clientWidth,
     inputFocused: sr.activeElement?.id === 'splitStart'
   };
+
+  await sleep(650);
+  const sc = sr.querySelector('#splitStartCanvas');
+  const ec = sr.querySelector('#splitEndCanvas');
+  const previewStart = sr.querySelector('#splitPreviewStart').getBoundingClientRect();
+  const previewEnd = sr.querySelector('#splitPreviewEnd').getBoundingClientRect();
+  out.preview = {
+    startPage: sr.querySelector('#splitPreviewStartPage').textContent,
+    endPage: sr.querySelector('#splitPreviewEndPage').textContent,
+    startRendered: !sc.hidden && sc.width > 0 && sc.height > 0,
+    endRendered: !ec.hidden && ec.width > 0 && ec.height > 0,
+    startEmptyDisplay: getComputedStyle(sr.querySelector('#splitStartEmpty')).display,
+    endEmptyDisplay: getComputedStyle(sr.querySelector('#splitEndEmpty')).display,
+    startSize: { w: Math.round(previewStart.width), h: Math.round(previewStart.height) },
+    endSize: { w: Math.round(previewEnd.width), h: Math.round(previewEnd.height) },
+    inViewport: previewStart.left >= 0 && previewEnd.right <= innerWidth
+  };
+
+  sr.querySelector('#splitPreviewStart').click(); await sleep(90);
+  out.picker = {
+    open: sr.querySelector('#splitPickerMask').classList.contains('show'),
+    title: sr.querySelector('#splitPickerTitle').textContent,
+    current: sr.querySelector('#splitPickerCurrent').textContent,
+    count: sr.querySelectorAll('#splitPickerGrid .split-page-btn').length,
+    selected: sr.querySelector('#splitPickerGrid .split-page-btn.selected')?.textContent || '',
+    gridOverflow: (() => {
+      const g = sr.querySelector('#splitPickerGrid');
+      return g.scrollWidth > g.clientWidth;
+    })()
+  };
+  sr.querySelector('#splitPickerCancel').click(); await sleep(70);
+  out.picker.closed = !sr.querySelector('#splitPickerMask').classList.contains('show');
   return out;
 })()
 """.replace("__PDF_B64__", pdf_b64))
@@ -242,10 +274,37 @@ def main():
         assert out1["open"]["boxRight"] <= WIDTH, out1
         assert out1["open"]["boxOverflow"] is False, out1
         assert out1["open"]["inputFocused"] is False, out1
+        assert out1["preview"]["startPage"] == "P2", out1
+        assert out1["preview"]["endPage"] == "P2", out1
+        assert out1["preview"]["startRendered"] is True, out1
+        assert out1["preview"]["endRendered"] is True, out1
+        assert out1["preview"]["startEmptyDisplay"] == "none", out1
+        assert out1["preview"]["endEmptyDisplay"] == "none", out1
+        assert out1["preview"]["inViewport"] is True, out1
+        assert out1["picker"]["open"] is True, out1
+        assert out1["picker"]["title"] == "选择起始页", out1
+        assert "P2" in out1["picker"]["current"], out1
+        assert out1["picker"]["count"] == 3, out1
+        assert out1["picker"]["selected"] == "2", out1
+        assert out1["picker"]["gridOverflow"] is False, out1
+        assert out1["picker"]["closed"] is True, out1
 
         shot = cdp.cmd("Page.captureScreenshot", {"format": "png"})
         shot_path = Path(os.environ.get("TEMP", r"C:\Users\Mao\AppData\Local\Temp")) / f"gs_016_{WIDTH}_split.png"
         shot_path.write_bytes(base64.b64decode(shot["result"]["data"]))
+
+        cdp.ev(r"""
+(async () => {
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const sr = document.querySelector('guitar-sheet-reader').shadowRoot;
+  sr.querySelector('#splitPreviewStart').click();
+  await sleep(160);
+})()
+""")
+        picker_shot = cdp.cmd("Page.captureScreenshot", {"format": "png"})
+        picker_path = Path(os.environ.get("TEMP", r"C:\Users\Mao\AppData\Local\Temp")) / f"gs_016_{WIDTH}_picker.png"
+        picker_path.write_bytes(base64.b64decode(picker_shot["result"]["data"]))
+        cdp.ev("document.querySelector('guitar-sheet-reader').shadowRoot.querySelector('#splitPickerCancel').click()")
 
         out2 = cdp.ev(r"""
 (async () => {
@@ -263,12 +322,20 @@ def main():
   const rangeState = () => ({
     disabled: sr.querySelector('#splitConfirm').disabled,
     error: sr.querySelector('#splitRangeHint').classList.contains('error'),
-    hint: sr.querySelector('#splitRangeHint').textContent
+    hint: sr.querySelector('#splitRangeHint').textContent,
+    start: sr.querySelector('#splitStart').value,
+    end: sr.querySelector('#splitEnd').value
   });
 
   await setRange(0, 2); out.zero = rangeState();
   await setRange(2, 4); out.over = rangeState();
   await setRange(3, 2); out.reverse = rangeState();
+  sr.querySelector('#splitPreviewStart').click(); await sleep(80);
+  sr.querySelector('#splitPickerGrid .split-page-btn[data-page="3"]').click(); await sleep(80);
+  out.pickStart = rangeState();
+  sr.querySelector('#splitPreviewEnd').click(); await sleep(80);
+  sr.querySelector('#splitPickerGrid .split-page-btn[data-page="1"]').click(); await sleep(80);
+  out.pickEnd = rangeState();
   await setRange(2, 3);
   out.valid = {
     ...rangeState(),
@@ -424,8 +491,15 @@ def main():
         assert out2["over"]["disabled"] is True, out2
         assert out2["over"]["error"] is True, out2
         assert "结束页必须是" in out2["over"]["hint"], out2
-        assert out2["reverse"]["disabled"] is True, out2
-        assert "起始页不能大于结束页" in out2["reverse"]["hint"], out2
+        assert out2["reverse"]["disabled"] is False, out2
+        assert out2["reverse"]["error"] is False, out2
+        assert out2["reverse"]["start"] == "2", out2
+        assert out2["reverse"]["end"] == "2", out2
+        assert "第 2–2 页" in out2["reverse"]["hint"], out2
+        assert out2["pickStart"]["start"] == "3", out2
+        assert out2["pickStart"]["end"] == "3", out2
+        assert out2["pickEnd"]["start"] == "1", out2
+        assert out2["pickEnd"]["end"] == "1", out2
         assert out2["valid"]["disabled"] is False, out2
         assert out2["valid"]["error"] is False, out2
         assert out2["valid"]["name"] == "三页测试 · P2-3", out2
@@ -457,7 +531,7 @@ def main():
         assert out2["badPdf"]["error"] != "", out2
         assert out2["finalCount"] == 4, out2
 
-        print(json.dumps({"open": out1, "flow": out2, "screenshot": str(shot_path)}, ensure_ascii=False, indent=2))
+        print(json.dumps({"open": out1, "flow": out2, "screenshot": str(shot_path), "pickerScreenshot": str(picker_path)}, ensure_ascii=False, indent=2))
     finally:
         if cdp:
             cdp.close()

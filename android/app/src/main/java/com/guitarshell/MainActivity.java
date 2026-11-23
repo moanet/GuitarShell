@@ -12,6 +12,7 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.PluginHandle;
 
 public class MainActivity extends BridgeActivity {
 
@@ -32,6 +33,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(KeepAwakePlugin.class);
         registerPlugin(SaveBackupPlugin.class);
         registerPlugin(ThemeBarsPlugin.class);
+        registerPlugin(BackGuardPlugin.class);
         super.onCreate(savedInstanceState);
         applyThemeSystemBars("deep");
         if (savedInstanceState == null) showSplashOverlay();
@@ -115,6 +117,19 @@ public class MainActivity extends BridgeActivity {
                 }
             })
             .start();
+    }
+
+    @Override
+    public void onBackPressed() {
+        PluginHandle handle = getBridge() != null ? getBridge().getPlugin("BackGuard") : null;
+        if (handle != null && handle.getInstance() instanceof BackGuardPlugin
+                && ((BackGuardPlugin) handle.getInstance()).isBusy()) {
+            getBridge().getWebView().post(() ->
+                getBridge().getWebView().evaluateJavascript(
+                    "window.dispatchEvent(new CustomEvent('gs-cloud-exit-request'))", null));
+            return;
+        }
+        super.onBackPressed();
     }
 
     @Override

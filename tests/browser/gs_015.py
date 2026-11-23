@@ -209,9 +209,25 @@ def main():
     }
   });
 
-  // 取消：请求挂起时点浮动胶囊的“取消”
+  // 取消：请求挂起时先验证“同步中退出确认”，再点浮动胶囊取消
   window.fetch = slowFetch;
-  sr.querySelector('#cloudUpload').click(); await sleep(120);
+  sr.querySelector('#cloudUpload').click(); await sleep(140);
+  window.dispatchEvent(new CustomEvent('gs-cloud-exit-request')); await sleep(140);
+  const exitDlg = document.querySelector('guitar-app-dialog');
+  const exitSr = exitDlg?.shadowRoot;
+  out.exitPrompt = {
+    busy: r.cloudBusy,
+    open: !!exitDlg,
+    title: exitSr?.querySelector('#dlgTitle')?.textContent || '',
+    message: exitSr?.querySelector('#dlgMessage')?.textContent || '',
+    detail: exitSr?.querySelector('.detail-row .v')?.textContent || '',
+    cancelText: exitSr?.querySelector('#dlgCancel')?.textContent || '',
+    confirmText: exitSr?.querySelector('#dlgConfirm')?.textContent || ''
+  };
+  exitSr?.querySelector('#dlgCancel')?.click(); await sleep(260);
+  out.exitPrompt.closed = !document.querySelector('guitar-app-dialog');
+  out.exitPrompt.stillBusy = r.cloudBusy;
+
   const cancelRect = sr.querySelector('#cloudTaskCancel').getBoundingClientRect();
   const cancelHit = sr.elementFromPoint(cancelRect.left + cancelRect.width / 2, cancelRect.top + cancelRect.height / 2);
   out.cancelStart = {
@@ -276,6 +292,14 @@ def main():
         assert out["batchChip"]["active"] is None, out
         assert out["batchChip"]["inputFocused"] is False, out
         assert out["timeouts"] == {"upload": 60000, "download": 30000, "meta": 12000}, out
+        assert out["exitPrompt"]["busy"] is True, out
+        assert out["exitPrompt"]["open"] is True, out
+        assert out["exitPrompt"]["title"] == "云同步仍在进行", out
+        assert "可能中断上传" in out["exitPrompt"]["message"], out
+        assert out["exitPrompt"]["cancelText"] == "继续同步", out
+        assert out["exitPrompt"]["confirmText"] == "取消同步并退出", out
+        assert out["exitPrompt"]["closed"] is True, out
+        assert out["exitPrompt"]["stillBusy"] is True, out
         assert out["cancelStart"]["busy"] is True, out
         assert out["cancelStart"]["cancelVisible"] is True, out
         assert out["cancelStart"]["cancelHit"] is True, out
