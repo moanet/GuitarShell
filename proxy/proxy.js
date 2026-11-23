@@ -3,11 +3,13 @@ import { fetch } from 'undici';
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,PUT,DELETE,PROPFIND,OPTIONS",
+  // MOVE 是 WebDAV 替换临时文件的必要方法；浏览器会先发 OPTIONS 预检
+  "Access-Control-Allow-Methods": "GET,PUT,DELETE,PROPFIND,MOVE,OPTIONS",
   "Access-Control-Allow-Headers": "Authorization, Content-Type, Depth, Destination, Overwrite, X-Requested-With",
   "Access-Control-Max-Age": "86400"
 };
 
+const UPSTREAM = new URL("https://dav.jianguoyun.com");
 const METHODS_WITH_BODY = new Set(["PUT", "POST", "PATCH"]);
 
 const server = http.createServer(async (req, res) => {
@@ -19,10 +21,28 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    const upstreamUrl = new URL(req.url ?? "/", "https://dav.jianguoyun.com");
+    const upstreamUrl = new URL(req.url ?? "/", UPSTREAM);
+    const headers = { ...req.headers };
+
+    // 浏览器把 Destination 写成代理域名；坚果云要求目标指回它自己的上游地址。
+    // 只保留路径与查询串，统一换成 https://dav.jianguoyun.com/...。
+    if (headers.destination) {
+      try {
+        const dest = new URL(headers.destination, upstreamUrl);
+        headers.destination = new URL(dest.pathname + dest.search, UPSTREAM).toString();
+      } catch (err) {
+        console.warn("忽略无法解析的 Destination:", headers.destination);
+        delete headers.destination;
+      }
+    }
+    // 这些是浏览器 / 代理层的头，不应该带给上游
+    delete headers.host;
+    delete headers.origin;
+    delete headers.referer;
+
     const fetchOpts = {
       method: req.method,
-      headers: req.headers,
+      headers,
       redirect: "follow"
     };
 

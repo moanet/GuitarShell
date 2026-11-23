@@ -3,6 +3,46 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.11 — WebDAV 可恢复写入（开发完成，待推送，2026-11-23）
+
+> 版本号已同步为 `0.1.11` / `versionCode 111`。只收口 WebDAV 写入技术债，不新增用户功能，不改备份格式与同步 UI。
+
+**坚果云实测边界**
+
+- `OPTIONS` 返回 `DAV: 2`，`Allow` 含 `MOVE`；普通 `MOVE` `201`。
+- 目标已存在时 `MOVE` 返回 `409`，带 `Overwrite: T` 也不覆盖；不能单次 `MOVE` 原子替换。
+- 单文件 `DELETE` 成功；空目录 `DELETE` 返回 `OperationNotAllowed`，与本版本无关。
+
+**浏览器 CORS 边界**
+
+- 自定义域名 `dav.noamet.ccwu.cc` 与 `workers.dev` 的 `OPTIONS` 只返回 `Access-Control-Allow-Methods: GET,PUT,DELETE,PROPFIND,OPTIONS`，缺少 `MOVE`，浏览器预检会直接拦截。
+- 本地 `proxy/proxy.js` 原先同样缺少 `MOVE`，且没有重写 `Destination`；已同步放开 `MOVE`、把 `Destination` 指回 `https://dav.jianguoyun.com/...`，并去掉转发给上游的 `Host` / `Origin` / `Referer`。
+- 自定义域名 Worker 不在本仓库内，未重新部署；App 端必须有 `MOVE` 失败后的兜底路径。
+
+**可恢复写入**
+
+- `js/services/webdav.js` 上传改为：`PUT <path>.uploading` → `PROPFIND` 校验 `getcontentlength` → `DELETE` 正式文件（404 视为首次上传）→ `MOVE` 临时文件到正式文件。
+- 首次 PUT 仍走候选端点与 5xx 回退；临时文件写成功后，后续 PROPFIND / DELETE / MOVE 锁定同一端点，避免跨通道替换。
+- 大小不一致时只删除临时文件，不碰正式文件；`DELETE` 旧文件失败时保留临时文件，错误提示“临时文件已保留”。
+- `MOVE` 使用绝对 `Destination` 与 `Overwrite: F`，避免覆盖替换过程中另一台设备刚写入的文件。
+- `MOVE` 被 CORS 预检拦截、代理不转发、返回 409 / 非 2xx 时，自动回退 `PUT 正式文件 → PROPFIND 校验 → DELETE .uploading`；回退失败保留临时文件。
+- `download()` 在正式文件 404 时回退 `GET .uploading`；正式文件 200 但不是完整 JSON 时也改用临时文件；`sheet-reader.js` 不再在 `stat` 为 `exists:false` 时提前拦截下载。
+
+**测试**
+
+- 新增 `tests/browser/gs_021.py`（端口 `9356`）：正常序列 `PUT → PROPFIND → DELETE → MOVE`、`Destination` / `Overwrite`、大小不一致、MOVE 409 回退、CORS TypeError 回退、回退 PUT 失败、下载回退、半截 JSON 回退、无备份、首个端点 503 后锁端点，九组全部通过。
+- `gs_015.py` mock 适配 `PUT / PROPFIND / DELETE / MOVE`，云同步取消、失败重试、退出确认全部通过。
+- `gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` 全部通过。
+- `npm run check` 通过 `v0.1.11 / 29 个 JS`；`python -m compileall -q tests/browser` 通过。
+
+**状态**
+
+- 版本、`sw.js` 缓存名、`js/services/version.js`、`android/app/build.gradle` 已同步为 `0.1.11` / `versionCode 111`。
+- release APK `4,373,460` 字节，SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`；包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名与证书指纹不变。
+- 真机 `ca14b16` 覆盖安装成功，书架徽标 `0.1.11`，原有 6 张乐谱与 10 条练习记录保留。
+- 真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次，上传完成、状态“本机已是最新”，测试连接显示“云端已有备份”；未触碰正式 `GuitarShell/backup.json`，自定义域名 CORS 不含 MOVE，因此实际走的是 PUT 回退。测试文件保留，可在网页端删除。
+- 待提交 / 推送 `main`；是否单独发布 GitHub Release 待定。
+
 ## 0.1.10 — 节拍器设置分组与说明（已发布 v0.1.10，2026-11-23）
 
 > 版本号已同步为 `0.1.10` / `versionCode 110`。只调整节拍器设置面板的视觉分组、拍号快捷格、细分说明与定时快捷档；不关节拍引擎、存档结构、原生插件。

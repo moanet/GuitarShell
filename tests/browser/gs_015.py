@@ -197,9 +197,18 @@ def main():
   sr.querySelector('#cloudBase').value = 'http://127.0.0.1:8123/';
 
   const realFetch = window.fetch;
+  // 上传已改成 PUT 临时文件 → PROPFIND 校验 → DELETE 旧文件 → MOVE 正式文件；
+  // 这个通用 mock 只验证 UI 流程，不校验远端状态。PROPFIND 返回 405 表示跳过校验。
+  const okStatus = (opt = {}) => {
+    const method = (opt.method || 'GET').toUpperCase();
+    if (method === 'PUT' || method === 'MOVE') return 201;
+    if (method === 'PROPFIND') return 405;
+    if (method === 'DELETE') return 404;
+    return 404;
+  };
   const slowFetch = (url, opt = {}) => new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      resolve(new Response('', { status: (opt.method || 'GET').toUpperCase() === 'PUT' ? 201 : 404 }));
+      resolve(new Response('', { status: okStatus(opt) }));
     }, 900);
     if (opt.signal) {
       opt.signal.addEventListener('abort', () => {
@@ -268,7 +277,7 @@ def main():
 
   // 重试：恢复成功响应后点“重试”
   window.fetch = (url, opt = {}) => Promise.resolve(
-    new Response('', { status: (opt.method || 'GET').toUpperCase() === 'PUT' ? 201 : 404 })
+    new Response('', { status: okStatus(opt) })
   );
   sr.querySelector('#cloudTaskRetry').click(); await sleep(500);
   out.retry = {

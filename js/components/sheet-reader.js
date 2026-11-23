@@ -2907,8 +2907,8 @@ class SheetReader extends HTMLElement {
           console.warn('[云同步] 读取云端状态失败:', err.message);
           return null;
         });
-        if (remote && remote.exists === false) throw new Error('云端没有找到备份文件');
-
+        // 正式文件可能在上次上传中断后缺失，但 .uploading 临时文件是完整的；
+        // 不在 stat 阶段拦截，交给 download 回退读取临时文件。
         setCloudBusy('正在下载云端备份...');
         const text = await webdavService.download(form.user, form.pass, form.path);
         const payload = JSON.parse(text);

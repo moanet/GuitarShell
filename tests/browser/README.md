@@ -18,6 +18,7 @@ python tests/browser/gs_016.py
 python tests/browser/gs_018.py
 python tests/browser/gs_019.py
 python tests/browser/gs_020.py
+python tests/browser/gs_021.py
 ```
 
 脚本会：
@@ -30,7 +31,7 @@ python tests/browser/gs_020.py
 
 - `GS_BROWSER`：浏览器可执行文件路径。
 - `GS_BASE_URL`：默认 `http://127.0.0.1:8123/`。
-- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`。
+- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`。
 - `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` 视口宽度，默认 `320`；可设 `360` 复跑宽屏。
 - `GS_THEME`：仅 `gs_020.py`，`deep`（默认）或 `light`，用于检查两套主题下的设置卡片。
 
@@ -88,5 +89,15 @@ python tests/browser/gs_020.py
 - 闪光条 / 震动反馈归属“重音与反馈”，定时档归属“高级练习”，音频标题为“音频跟练与测速”。
 - 滚到底部后关闭再打开设置，内容回到顶部。
 - 320 / 360、深色 / 浅色均通过；无横向溢出，并输出顶部 / 定时卡 / 底部截图。
+
+`gs_021.py`：
+
+- 直接调用 `js/services/webdav.js`，mock `fetch` 记录请求序列。
+- 正常上传必须是 `PUT .uploading → PROPFIND 校验 → DELETE 正式文件 → MOVE 正式文件`，`Destination` 指向正式路径、`Overwrite: F`。
+- PROPFIND 返回的大小与 PUT 字节数不一致时，只删除临时文件，不碰正式文件。
+- MOVE 返回 409 或被 CORS 预检拦截（fetch TypeError）时，回退为 `PUT 正式文件 → PROPFIND 校验 → DELETE .uploading`，上传成功。
+- MOVE 失败且回退 PUT 失败时，保留临时文件，错误提示包含“临时文件已保留”。
+- 正式文件 GET 404 时，下载回退读取 `.uploading`；正式文件是半截 JSON 时，也改用完整的 `.uploading`；两者都不存在时报“云端没有找到备份文件”。
+- 首个自定义端点 503 时自动换到本地端点，后续请求全部锁在该端点，避免跨端点替换。
 
 CI 只做 Python 语法编译；浏览器交互需要本机浏览器，仍在本地执行。
