@@ -1,8 +1,8 @@
 # CURRENT TASK — 0.1.11 WebDAV 可恢复写入
 
-> 状态：代码、浏览器回归、APK、真机测试路径上传均完成，已推送 `main`，未发布 Release
+> 状态：已完成并发布 `v0.1.11`
 > 更新时间：2026-11-23
-> 版本基线：线上 Release 为 `0.1.10`；`0.1.11` 只收口 WebDAV 写入技术债，不新增用户功能。
+> 版本基线：线上 Release 为 `0.1.11`；本次只收口 WebDAV 写入技术债，不新增用户功能。
 > 关联：[TASK.md](TASK.md)（项目总账） / [CHANGELOG.md](CHANGELOG.md)（发布历史）
 
 0.1.10 的完整记录已归档到 [docs/archive/CURRENT_TASK-0.1.10.md](docs/archive/CURRENT_TASK-0.1.10.md)。
@@ -185,6 +185,7 @@
 ### 4.5 版本与状态
 
 - 版本已同步：`package.json` / `package-lock.json`、`sw.js`、`js/services/version.js`、`android/app/build.gradle` 均为 `0.1.11` / `versionCode 111`。
-- `README.md` 版本徽标改为 `0.1.11`；当前正式 Release 仍为 `v0.1.10`，0.1.11 是否单独发布待定。
+- `README.md` 版本徽标改为 `0.1.11`；GitHub Release 已更新为 `v0.1.11`。
 - APK：`dist/GuitarShell-0.1.11-release.apk`，4,373,460 字节，SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`。
-- 已推送 `main`（`61e6d81..adc3906`）；GitHub Pages 随 `main` 自动部署 `0.1.11`，CI 与 Pages 工作流均成功。未创建 tag / GitHub Release，Android 正式 Release 仍为 `v0.1.10`。
+- 已推送 `main`；CI 与 Pages 工作流成功，网页版已部署 `0.1.11`。
+- 已发布 GitHub Release `v0.1.11`（Release ID `455427768`，tag 指向 `4aa7358`）；APK asset ID `782951194`，远端下载大小与 SHA-256 复核一致。

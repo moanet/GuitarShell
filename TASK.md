@@ -3,7 +3,7 @@
 > 项目总账：记录长期路线、版本时间线、任务队列、冒烟清单、构建发布、技术债与避坑指南。
 > 当前迭代：见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 > 已发布版本的完整改动与验收证据：见 [CHANGELOG.md](CHANGELOG.md)。
-> 当前基线：Android 正式 Release 为 `0.1.10`；`0.1.5`–`0.1.10` 的改动与发布记录见 `CHANGELOG.md`；`0.1.11` 已完成 WebDAV 可恢复写入，代码、浏览器回归、APK、真机测试路径上传均通过，已推送 `main` 并由 Pages 部署网页版，未发布 Android Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
+> 当前基线：Android 正式 Release 为 `0.1.11`；`0.1.5`–`0.1.10` 的改动与发布记录见 `CHANGELOG.md`；`0.1.11` 已完成 WebDAV 可恢复写入，代码、浏览器回归、APK、真机测试路径上传均通过，已推送 `main`、Pages 部署网页版并发布 GitHub Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
 
 ## 1. 当前阶段
 
@@ -91,9 +91,9 @@
 
 0.1.10 只调节拍器设置面板：把平铺设置收进 5 张卡片（基础节奏 / 重音与反馈 / 高级练习 / 节奏型 / 音频跟练与测速），拍号快捷格从 9 个减到 8 个并移除 `8/8`（自定义仍可输入），11 个细分按钮补两行小字与完整悬浮说明，倒计时增加 `3 / 5 / 10 / 15 / 20 / 30` 六个一行快捷片，重音模式后紧跟闪光条与震动反馈，关闭重开设置回到顶部。新增 `gs_020.py`，320 / 360 与深浅色通过；既有 `gs_015/016/018/019` 无回归；release APK `4,371,265` 字节 / `versionCode 110`，已覆盖安装 `ca14b16` 并真机点选定时档、`十·休3` 与重开滚动验证。已提交并推送 `main`，创建 tag `v0.1.10` 并发布 GitHub Release，APK 已上传并复核；Release notes 汇总 `0.1.7` / `0.1.8` / `0.1.9` / `0.1.10`。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
-### 1.12 0.1.11 WebDAV 可恢复写入（已推送 main，未发布 Release）
+### 1.12 0.1.11 WebDAV 可恢复写入（已发布 v0.1.11）
 
-0.1.11 收口最后一条数据可靠性技术债。坚果云实测普通 `MOVE` 可用、覆盖目标 `MOVE` 返回 409，不能单次原子替换；上传改为 `PUT <path>.uploading → PROPFIND 校验大小 → DELETE 正式文件 → MOVE 临时文件`，任何一步失败都保留临时文件。实测自定义域名 / Worker 的 CORS 只允许 `GET,PUT,DELETE,PROPFIND,OPTIONS`，MOVE 会被预检拦截；因此 MOVE 失败时自动回退 `PUT 正式文件 → PROPFIND 校验`，下载在正式文件缺失或不是完整 JSON 时回退临时文件。仓库内本地 Node 代理已放开 MOVE 并重写 `Destination`，自定义域名 Worker 未重新部署。新增 `gs_021.py` 覆盖正常序列、大小失败、MOVE 409 回退、CORS TypeError 回退、回退 PUT 失败、下载回退、半截 JSON 回退、无备份与端点回退锁定；`gs_015.py` mock 适配新序列；`gs_015/016/018/019/020` 全部通过。`npm run check` 通过 `v0.1.11 / 29 个 JS`；release APK `4,373,460` 字节 / SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`，已覆盖安装 `ca14b16`，书架徽标 `0.1.11`。真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次成功，测试连接显示云端已有备份；未触碰正式 `backup.json`，测试文件与遗留测试目录已由用户删除。自定义域名 Worker 的参考源码补在 `proxy/cloudflare-worker.js`（放开 MOVE + 重写 Destination），用户可手动替换后走原子 MOVE。已推送 `main`（`61e6d81..adc3906`），CI 与 Pages 工作流成功，网页版自动部署 `0.1.11`。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
+0.1.11 收口最后一条数据可靠性技术债。坚果云实测普通 `MOVE` 可用、覆盖目标 `MOVE` 返回 409，不能单次原子替换；上传改为 `PUT <path>.uploading → PROPFIND 校验大小 → DELETE 正式文件 → MOVE 临时文件`，任何一步失败都保留临时文件。实测自定义域名 / Worker 的 CORS 只允许 `GET,PUT,DELETE,PROPFIND,OPTIONS`，MOVE 会被预检拦截；因此 MOVE 失败时自动回退 `PUT 正式文件 → PROPFIND 校验`，下载在正式文件缺失或不是完整 JSON 时回退临时文件。仓库内本地 Node 代理已放开 MOVE 并重写 `Destination`，自定义域名 Worker 未重新部署。新增 `gs_021.py` 覆盖正常序列、大小失败、MOVE 409 回退、CORS TypeError 回退、回退 PUT 失败、下载回退、半截 JSON 回退、无备份与端点回退锁定；`gs_015.py` mock 适配新序列；`gs_015/016/018/019/020` 全部通过。`npm run check` 通过 `v0.1.11 / 29 个 JS`；release APK `4,373,460` 字节 / SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`，已覆盖安装 `ca14b16`，书架徽标 `0.1.11`。真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次成功，测试连接显示云端已有备份；未触碰正式 `backup.json`，测试文件与遗留测试目录已由用户删除。自定义域名 Worker 的参考源码补在 `proxy/cloudflare-worker.js`（放开 MOVE + 重写 Destination），用户可手动替换后走原子 MOVE。已推送 `main`，CI 与 Pages 工作流成功，网页版自动部署 `0.1.11`；已发布 GitHub Release `v0.1.11`（tag `4aa7358`），APK 上传并完成远端 SHA-256 复核。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
 ## 2. 演进路线
 
@@ -169,6 +169,7 @@ flowchart LR
 | 0.1.8             | 阅读工具栏五段式 / 双指缩放 / 弹窗外点与脏确认 / 系统返回层级栈 | 已并入 v0.1.10；双指缩放已确认 |
 | 0.1.9             | 原生相册 Photo Picker / 20 张上限 / Android 12 以下 SAF 回退 | 已并入 v0.1.10；12 以下真机验证跳过 |
 | 0.1.10            | 节拍器设置五卡分组 / 8 组拍号 / 细分说明 / 定时快捷档 | 已正式发布，GitHub Release `v0.1.10` |
+| 0.1.11            | WebDAV 可恢复写入：临时文件 + 校验 + MOVE / PUT 回退 | 已正式发布，GitHub Release `v0.1.11` |
 
 ### 2.1 永久非目标（不进入任务队列）
 
@@ -262,6 +263,7 @@ flowchart LR
 | 20 | 0.1.8：五段式阅读工具栏 / 双指缩放 / 弹窗外点与脏确认 / 返回层级栈 | 已并入 v0.1.10 | 19         | 新增 `ui-layer.js` 与 `setLayerDepth`；`gs_018.py` 覆盖 320 / 360；双指手感已确认 |
 | 21 | 0.1.9：原生相册 Photo Picker，一次最多 20 张 | 已并入 v0.1.10 | 20         | Android 13+ `ACTION_PICK_IMAGES`，低版本回退；缓存文件 + `Capacitor.convertFileSrc`，不返回 base64 |
 | 22 | 0.1.10：节拍器设置卡片分组 / 拍号 8 组 / 细分说明 / 定时快捷档 | 已发布 | 21         | GitHub Release `v0.1.10`；汇总 0.1.7–0.1.10；`gs_020.py` 覆盖 320 / 360 与深浅色；不改引擎与存档 |
+| 23 | 0.1.11：WebDAV 可恢复写入 / MOVE 回退 / 下载 JSON 校验 | 已发布 | 22 | GitHub Release `v0.1.11`；`gs_021.py` 九组；自定义域名 Worker 源码补在 `proxy/cloudflare-worker.js` |
 
 ## 7. 冒烟清单
 

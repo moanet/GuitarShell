@@ -3,7 +3,7 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
-## 0.1.11 — WebDAV 可恢复写入（开发完成，已推送 main，2026-11-23）
+## 0.1.11 — WebDAV 可恢复写入（已发布 v0.1.11，2026-11-23）
 
 > 版本号已同步为 `0.1.11` / `versionCode 111`。只收口 WebDAV 写入技术债，不新增用户功能，不改备份格式与同步 UI。
 
@@ -42,8 +42,8 @@
 - 真机 `ca14b16` 覆盖安装成功，书架徽标 `0.1.11`，原有 6 张乐谱与 10 条练习记录保留。
 - 真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次，上传完成、状态“本机已是最新”，测试连接显示“云端已有备份”；未触碰正式 `GuitarShell/backup.json`，自定义域名 CORS 不含 MOVE，因此实际走的是 PUT 回退。测试文件与遗留测试目录已由用户删除。
 - 自定义域名 Worker 参考源码已补在 `proxy/cloudflare-worker.js`，包含 `MOVE` 放行与 `Destination` 重写；用户可手动替换 Cloudflare Worker 代码，后续自建域名即可走原子 `MOVE`。
-- 已推送 `main`（`61e6d81..adc3906`）；CI 与 GitHub Pages 工作流均成功，网页版已部署 `0.1.11`。
-- 未创建 tag `v0.1.11`、未创建 GitHub Release；Android 正式 Release 仍为 `v0.1.10`，是否单独发布待定。
+- 已推送 `main`；CI 与 GitHub Pages 工作流均成功，网页版已部署 `0.1.11`。
+- 已发布 GitHub Release `v0.1.11`（Release ID `455427768`，tag 指向 `4aa7358`），APK asset ID `782951194`，远端下载复核大小 `4,373,460` 字节、SHA-256 与本地一致。
 
 ## 0.1.10 — 节拍器设置分组与说明（已发布 v0.1.10，2026-11-23）
 
