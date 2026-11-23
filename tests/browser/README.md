@@ -14,6 +14,7 @@ pip install websocket-client
 
 ```bash
 python tests/browser/gs_015.py
+python tests/browser/gs_016.py
 ```
 
 脚本会：
@@ -26,7 +27,8 @@ python tests/browser/gs_015.py
 
 - `GS_BROWSER`：浏览器可执行文件路径。
 - `GS_BASE_URL`：默认 `http://127.0.0.1:8123/`。
-- `GS_CDP_PORT`：默认 `9351`。
+- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`。
+- `GS_WIDTH`：`gs_016.py` 视口宽度，默认 `320`；可设 `360` 复跑宽屏。
 
 ## 当前覆盖
 
@@ -37,5 +39,14 @@ python tests/browser/gs_015.py
 - 挂起请求可取消，取消后胶囊消失、按钮恢复。
 - 网络失败显示失败胶囊与“重试”，重试成功后恢复。
 - 云同步底部按钮仍为“返回”。
+
+`gs_016.py`：
+
+- 用 `fixtures/split-source.pdf` 建一张 3 页卡，从当前第 2 页打开拆分。
+- 校验页段输入：0、超出总页、起始页大于结束页都会禁用“建卡”。
+- 拆 2–3 页生成独立 PDF，新卡 2 页，原卡仍 3 页且标签继承。
+- 新卡可重新打开、加书签、保存第 2 页进度。
+- 图片卡不显示拆分按钮；损坏 PDF 拆分报错且不写记录。
+- 320 宽拆分母版不横向溢出，按钮可点。
 
 CI 只做 Python 语法编译；浏览器交互需要本机浏览器，仍在本地执行。

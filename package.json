@@ -1,6 +1,6 @@
 {
   "name": "guitarshell",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "Guitar Shell Android shell",
   "scripts": {
@@ -19,5 +19,3 @@
     "@capacitor/cli": "6.2.3"
   }
 }
-
-

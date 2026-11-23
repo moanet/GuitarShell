@@ -3,6 +3,48 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.6 — 乐谱拆分建卡（真机验收通过，准备发布，2026-11-23）
+
+> 版本号已同步为 `0.1.6`；补读谱器最后一个硬缺口：多曲 PDF 选中页段生成独立新卡，原谱保留。
+
+**拆分核心**
+
+- 引入 `pdf-lib 1.17.1` 浏览器 ESM 包：`js/lib/pdf-lib.esm.min.js`（`523,417` 字节），MIT 许可证放在 `js/lib/pdf-lib.LICENSE.md`。
+- 新增 `js/services/pdf-split.js`：`splitPdfPages(fileBlob, startPage, endPage, title)` 动态加载 `pdf-lib`，复制页段生成新的 PDF Blob；返回 `{ blob, pageCount, byteLength, sourcePages }`。
+- 校验整数页、`1..总页数`、起始页不大于结束页；加密 / 损坏 PDF 读取失败时不写记录。
+- `pdf-lib` 只在点击“拆分”后加载，不进入首屏执行路径；拆出的新卡是独立 PDF，不依赖原谱记录或原 Blob。
+
+**拆分入口与弹窗**
+
+- PDF 阅读工具栏新增 `✂ 拆分`，图片阅读不显示；返回书架、打开别的谱时自动隐藏并收起弹窗。
+- 拆分弹窗默认起始页为当前阅读页，结束页同起始页；显示原谱总页数与“将抽取第 a–b 页，共 N 页”。
+- 新卡名默认 `${原谱名} · Pn` 或 `${原谱名} · Pn-m`，可手动改；手动改后不再随页段变化。
+- 新卡继承原谱标签；建卡成功后自动补 `.pdf`、刷新书架并 toast 提示，不自动跳转，避免打断当前阅读。
+- 非法页段禁用“建卡”；提交中禁用字段与按钮，避免重复点击。
+
+**版本与缓存**
+
+- `package.json` / `package-lock.json` / `js/services/version.js` / `sw.js` 同步为 `0.1.6`。
+- `android/app/build.gradle` 改为 `versionCode 106` / `versionName "0.1.6"`；README 徽标同步。
+- `sw.js` 缓存清单加入 `js/services/pdf-split.js` 与 `js/lib/pdf-lib.esm.min.js`。
+
+**浏览器验收（2026-11-23）**
+
+- `npm run check` 通过：`v0.1.6`，27 个 JS 文件，SW 缓存与版本一致。
+- `python tests/browser/gs_016.py` 在 320 与 360 宽均通过；320 / 360 弹窗宽度分别为 `280` / `320`，无横向溢出，按钮可点。
+- 3 页 fixture 从第 2 页打开拆分，默认起止页均为 `2`；拆 2–3 页后新卡 2 页、原卡仍 3 页，标签 `练习 / 待练` 继承。
+- 新卡可重新打开、加书签、保存第 2 页进度；可再次拆出 1 页新卡，说明拆分入口对拆出的卡同样可用。
+- 图片卡不显示拆分按钮；损坏 PDF 拆分报错，记录数未增加。
+- release APK 已构建：`4,357,120` 字节，`versionCode 106` / `versionName 0.1.6`，SHA-256 `D397762F6A1A19FEEAA29E8BD79D9B74AE4D49BEEAB61329BC9F4E11F18BC76C`，v1 / v2 签名通过，证书 SHA-256 仍为 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- APK 内已确认包含 `assets/public/js/lib/pdf-lib.esm.min.js`、`assets/public/js/services/pdf-split.js` 与新版 `sw.js`。
+- 真机验收通过：用户确认拆分建卡流程、新卡阅读与数据操作正常；准备提交 `main` 并创建 `v0.1.6` Release。
+
+**已知边界**
+
+- 独立 PDF 会额外占用页段体积；大 PDF 复制页面可能短时占用较多内存。
+- 只复制页面内容，不保证保留原 PDF 的书签、表单、附件等文档级结构。
+- 首版不做页预览缩略图、批量拆分、按目录自动识别、删除原谱，也不保存“拆分自哪本谱”的来源关系。
+
 ## 0.1.5 — 交互一致性与云同步韧性（真机验收通过，未发布，2026-11-23）
 
 > 版本号已同步为 `0.1.5`；不铺新功能，只补 0.1.4 暴露的焦点一致性与云同步长任务缺口。

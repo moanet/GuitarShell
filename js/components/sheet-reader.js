@@ -12,6 +12,7 @@ import { themeColor, onThemeChange } from '../services/theme.js';
 import { showConfirm, showAlert } from './app-dialog.js';
 import { parseTagInput, uniqueTags, toggleTag, hasTag, applyTagChanges, collectTagStats } from '../services/tag-utils.js';
 import { saveBackupFile } from '../services/backup.js';
+import { splitPdfPages } from '../services/pdf-split.js';
 
 let pdfjsLib = null;
 
@@ -42,6 +43,7 @@ const readerCSS = `
   .btn.outline:hover { background: rgba(var(--primary-rgb), 0.12); }
   .btn-back { background: var(--line-strong); color: var(--txt); display: none; }
   .btn-log { background: var(--success); color: var(--on-success); display: none; }
+  .btn-split { background: transparent; color: var(--accent-text); border: 1px solid var(--line-warm); box-shadow: none; }
 
   .filter-bar { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; background: var(--surface-deep); border-bottom: 1px solid var(--line); }
   .search-row { display: flex; gap: 8px; align-items: center; }
@@ -310,6 +312,16 @@ const readerCSS = `
   .modal-check-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
   .modal-check-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
   .modal-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .split-note { font-size: 12px; color: var(--muted); line-height: 1.6; margin: -4px 0 0; }
+  .split-page-row { display: flex; gap: 10px; }
+  .split-page-row .modal-field { flex: 1; min-width: 0; }
+  .split-page-row .modal-inp { width: 100%; box-sizing: border-box; }
+  .split-range-hint { font-size: 12px; color: var(--muted); line-height: 1.5; min-height: 1.5em; }
+  .split-range-hint.error { color: var(--danger-text); }
+  .split-inherit { font-size: 11px; color: var(--muted); line-height: 1.5; word-break: break-word; }
+  @media (max-width: 360px) {
+    .split-page-row { gap: 8px; }
+  }
 
   /* 🔖 页级书签面板 */
   #bookmarkMask {
@@ -354,6 +366,7 @@ const readerHTML = `
     <button class="btn btn-log" id="btnLog">📝 打卡</button>
     <button class="btn btn-save-pos" id="btnSavePos" style="display:none;">📍 存进度</button>
     <button class="btn btn-bookmark" id="btnBookmarks" style="display:none;">🔖 书签</button>
+    <button class="btn btn-split" id="btnSplit" style="display:none;">✂ 拆分</button>
   </div>
   
   <input type="file" id="inputSingleFile" accept="image/*,application/pdf" multiple style="display:none">
@@ -511,6 +524,33 @@ const readerHTML = `
     </div>
   </div>
 
+  <div class="modal-mask" id="splitModalMask">
+    <div class="modal-box split-box">
+      <h3>拆分建卡</h3>
+      <div class="split-note">从当前 PDF 抽取页段，生成一份独立乐谱卡；原谱保持不变。</div>
+      <div class="split-page-row">
+        <div class="modal-field">
+          <label>起始页</label>
+          <input type="number" class="modal-inp" id="splitStart" min="1" step="1">
+        </div>
+        <div class="modal-field">
+          <label>结束页</label>
+          <input type="number" class="modal-inp" id="splitEnd" min="1" step="1">
+        </div>
+      </div>
+      <div class="split-range-hint" id="splitRangeHint"></div>
+      <div class="modal-field">
+        <label>新卡名称</label>
+        <input type="text" class="modal-inp" id="splitName" placeholder="如: 某首曲子">
+      </div>
+      <div class="split-inherit" id="splitInherit"></div>
+      <div class="modal-footer">
+        <button class="modal-btn cancel" id="splitCancel">取消</button>
+        <button class="modal-btn confirm" id="splitConfirm">建卡</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-mask" id="cloudModalMask">
     <div class="modal-box">
       <h3>☁️ 云同步</h3>
@@ -572,6 +612,8 @@ class SheetReader extends HTMLElement {
     this.mmAutoCollapseTimer = null;
     this.currentFileName = "";
     this.currentScoreId = null;
+    this.currentFileBlob = null;
+    this.currentTags = [];
     this.mmKnob = { ctx: null, size: 0, cx: 0, cy: 0, r: 0, dragging: false };
 
     // 🌟 阅读进度状态
@@ -665,6 +707,7 @@ class SheetReader extends HTMLElement {
     
     const btnBack = $('btnBack');
     const btnLog = $('btnLog');
+    const btnSplit = $('btnSplit');
     const btnImportMain = $('btnImportMain');
     const shelfView = $('shelfView');
     const filterBar = $('filterBar');
@@ -1542,6 +1585,138 @@ class SheetReader extends HTMLElement {
     $('bmAdd').onclick = addBookmark;
     bookmarkMask.onclick = (e) => { if (e.target === bookmarkMask) bookmarkMask.classList.remove('show'); };
 
+    // ==================== ✂ 拆分建卡（独立 PDF） ====================
+    const splitModalMask = $('splitModalMask');
+    const splitStart = $('splitStart');
+    const splitEnd = $('splitEnd');
+    const splitName = $('splitName');
+    const splitRangeHint = $('splitRangeHint');
+    const splitInherit = $('splitInherit');
+    const splitCancel = $('splitCancel');
+    const splitConfirm = $('splitConfirm');
+    let splitBusy = false;
+    let splitNameTouched = false;
+
+    const splitTotalPages = () => (this.pdfDoc && this.pdfDoc.numPages) || 0;
+    const splitDefaultName = (start, end) => {
+      const base = (this.currentFileName || '乐谱').trim() || '乐谱';
+      return `${base} · ${start === end ? `P${start}` : `P${start}-${end}`}`;
+    };
+
+    const updateSplitRange = ({ refreshName = true } = {}) => {
+      const total = splitTotalPages();
+      const start = Number(splitStart.value);
+      const end = Number(splitEnd.value);
+      let error = '';
+
+      if (!total) error = '原 PDF 页数不可用，请重新打开乐谱';
+      else if (!Number.isInteger(start) || start < 1 || start > total) error = `起始页必须是 1–${total} 之间的整数`;
+      else if (!Number.isInteger(end) || end < 1 || end > total) error = `结束页必须是 1–${total} 之间的整数`;
+      else if (start > end) error = '起始页不能大于结束页';
+
+      splitRangeHint.textContent = error
+        ? error
+        : `原谱共 ${total} 页 · 将抽取第 ${start}–${end} 页，共 ${end - start + 1} 页`;
+      splitRangeHint.classList.toggle('error', !!error);
+      splitConfirm.disabled = !!error || splitBusy;
+
+      if (!error && refreshName && !splitNameTouched) {
+        splitName.value = splitDefaultName(start, end);
+      }
+    };
+
+    const closeSplitModal = () => {
+      if (splitBusy) return;
+      splitModalMask.classList.remove('show');
+    };
+
+    const openSplitModal = () => {
+      if (!this.currentScoreId || !this.currentFileBlob) return showToast('还没有打开的 PDF');
+      const total = splitTotalPages();
+      if (!total) return showToast('PDF 尚未准备好，请稍后再试');
+
+      const pos = getReadingPosition();
+      const current = Math.min(Math.max(1, pos.page || 1), total);
+      splitBusy = false;
+      splitNameTouched = false;
+      splitStart.disabled = false;
+      splitEnd.disabled = false;
+      splitName.disabled = false;
+      splitCancel.disabled = false;
+      splitConfirm.disabled = false;
+      splitConfirm.textContent = '建卡';
+      splitStart.max = String(total);
+      splitEnd.max = String(total);
+      splitStart.value = String(current);
+      splitEnd.value = String(current);
+      splitInherit.textContent = this.currentTags.length
+        ? `将沿用标签：${this.currentTags.join('，')}`
+        : '新卡暂无标签，可建卡后在书架编辑';
+      splitModalMask.classList.add('show');
+      updateSplitRange();
+    };
+
+    splitStart.oninput = () => updateSplitRange();
+    splitEnd.oninput = () => updateSplitRange();
+    splitName.oninput = () => { splitNameTouched = true; };
+    splitCancel.onclick = closeSplitModal;
+    splitModalMask.onclick = (e) => { if (e.target === splitModalMask) closeSplitModal(); };
+
+    splitConfirm.onclick = async () => {
+      if (splitBusy) return;
+      updateSplitRange({ refreshName: false });
+      if (splitConfirm.disabled) return;
+
+      const start = Number(splitStart.value);
+      const end = Number(splitEnd.value);
+      const name = splitName.value.trim();
+      if (!name) { splitName.focus({ preventScroll: true }); return showToast('请输入新卡名称'); }
+
+      splitBusy = true;
+      splitStart.disabled = true;
+      splitEnd.disabled = true;
+      splitName.disabled = true;
+      splitCancel.disabled = true;
+      splitConfirm.disabled = true;
+      splitConfirm.textContent = '正在建卡...';
+      loading.textContent = '正在拆分 PDF...';
+      loading.classList.add('show');
+
+      let created = false;
+      try {
+        const result = await splitPdfPages(this.currentFileBlob, start, end, name);
+        const fileName = /\.pdf$/i.test(name) ? name : `${name}.pdf`;
+        const fileHash = await hashBlob(result.blob);
+        await dbService.addScore(fileName, result.blob, { tags: this.currentTags.slice(), fileHash });
+        created = true;
+        try { await this.loadShelf(); } catch (err) { console.warn('建卡后刷新书架失败', err); }
+        splitModalMask.classList.remove('show');
+        showToast(`已建卡：${name} · ${result.pageCount} 页（原谱保留）`);
+      } catch (err) {
+        console.error(err);
+        if (created) {
+          splitModalMask.classList.remove('show');
+          showToast('已建卡，但书架刷新失败');
+        } else {
+          const msg = /encrypt/i.test(err && err.message ? err.message : '')
+            ? '该 PDF 已加密，暂不支持拆分'
+            : (err && err.message ? err.message : 'PDF 拆分失败');
+          await showAlert(msg, { title: '无法拆分' });
+        }
+      } finally {
+        splitBusy = false;
+        loading.classList.remove('show');
+        splitStart.disabled = false;
+        splitEnd.disabled = false;
+        splitName.disabled = false;
+        splitCancel.disabled = false;
+        splitConfirm.textContent = '建卡';
+        updateSplitRange({ refreshName: false });
+      }
+    };
+
+    btnSplit.onclick = openSplitModal;
+
     // 🌟 统一的进度写库入口（手动按钮 / 打卡 / 定时兜底 / 返回书架 共用）
     const saveReadingProgress = async (withToast) => {
       if (!this.currentScoreId) return false;
@@ -1631,6 +1806,11 @@ class SheetReader extends HTMLElement {
     this.openScore = async (fileBlob, fileName, fileId, tags, scoreData, opts = {}) => {
       this.currentFileName = fileName.replace(/\.[^/.]+$/, ""); 
       this.currentScoreId = fileId;
+      this.currentFileBlob = fileBlob;
+      this.currentTags = Array.isArray(tags) ? tags.slice() : [];
+      const isPdf = fileName.toLowerCase().endsWith('.pdf');
+      btnSplit.style.display = isPdf ? 'block' : 'none';
+      $('splitModalMask').classList.remove('show');
 
       // 🔖 载入这份谱已有的书签（存于乐谱记录里，随备份 / 云同步一起走）
       this.bookmarks = (scoreData && Array.isArray(scoreData.bookmarks))
@@ -1678,7 +1858,7 @@ class SheetReader extends HTMLElement {
       zoomControls.style.display = 'flex';
       container.style.padding = '20px 0'; container.style.height = ''; container.style.position = 'static';
 
-      if (fileName.toLowerCase().endsWith('.pdf')) {
+      if (isPdf) {
         try { await renderPDFLazy(fileBlob); } catch (err) { await showAlert(err.message, { title: '无法打开乐谱' }); }
       } else {
         this.currentObjectUrl = URL.createObjectURL(fileBlob);
@@ -1736,6 +1916,8 @@ class SheetReader extends HTMLElement {
 
       $('btnSavePos').style.display = 'none';
       $('btnBookmarks').style.display = 'none';
+      $('btnSplit').style.display = 'none';
+      $('splitModalMask').classList.remove('show');
       $('bookmarkMask').classList.remove('show');
       $('navPrev').classList.remove('show'); $('navNext').classList.remove('show');
 
@@ -1751,6 +1933,8 @@ class SheetReader extends HTMLElement {
       this.classList.remove('reading');
       if (this.observer) this.observer.disconnect();
       if (this.destroyPdf) this.destroyPdf();
+      this.currentFileBlob = null;
+      this.currentTags = [];
     };
 
     $('logCancel').onclick = () => logModalMask.classList.remove('show');
