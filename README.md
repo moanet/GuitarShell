@@ -55,8 +55,8 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 ## 下载与安装
 
 - **Android 当前正式版**：前往 [GitHub Releases](https://github.com/moanet/GuitarShell/releases/latest) 下载 `GuitarShell-0.1.10-release.apk`。
-- **当前 Release**：[v0.1.10](https://github.com/moanet/GuitarShell/releases/tag/v0.1.10)，2026-11-23 正式发布；汇总 `0.1.7` / `0.1.8` / `0.1.9` / `0.1.10` 的全部改动；APK 已上传并通过远端 SHA-256 复核。GitHub Pages 已部署 0.1.10。
-- **0.1.11 开发版**：WebDAV 上传改为 `.uploading` 临时文件 → 大小校验 → 删除旧文件 → `MOVE` 的可恢复写入；自定义域名 / Worker 的 CORS 未放开 `MOVE` 时自动回退 `PUT` 正式文件并再次校验。失败保留临时文件，正式文件缺失或不是完整 JSON 时下载回退读取临时文件。`gs_021.py` 九组用例与既有浏览器回归通过；release APK `4,373,460` 字节，SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`，已在 `ca14b16` 覆盖安装，并用测试路径实际上传成功。尚未发布 Release。
+- **当前 Release**：[v0.1.10](https://github.com/moanet/GuitarShell/releases/tag/v0.1.10)，2026-11-23 正式发布；汇总 `0.1.7` / `0.1.8` / `0.1.9` / `0.1.10` 的全部改动；APK 已上传并通过远端 SHA-256 复核。
+- **0.1.11 开发版**：WebDAV 上传改为 `.uploading` 临时文件 → 大小校验 → 删除旧文件 → `MOVE` 的可恢复写入；自定义域名 / Worker 的 CORS 未放开 `MOVE` 时自动回退 `PUT` 正式文件并再次校验。失败保留临时文件，正式文件缺失或不是完整 JSON 时下载回退读取临时文件。`gs_021.py` 九组用例与既有浏览器回归通过；release APK `4,373,460` 字节，SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`，已在 `ca14b16` 覆盖安装，并用测试路径实际上传成功。已推送 `main`，GitHub Pages 已部署网页版 `0.1.11`；Android 尚未发布 Release。
 - **0.1.10 APK 校验**：SHA-256 `311EA1E6C236C0855B74EE63F60B94465CCF6D0825317FB474875691EDB45498`，`4,371,265` 字节，`versionCode 110` / `versionName 0.1.10`。
 - **0.1.10 主要更新**：节拍器设置重排为 5 张卡片；拍号快捷格 8 组并移除 `8/8`（自定义仍可输入），细分按钮补两行说明，倒计时增加 `3 / 5 / 10 / 15 / 20 / 30` 一行快捷档，音频卡片改为“音频跟练与测速”，关闭重开设置回到顶部。
 - **0.1.9 状态**：已真机验收并推送 `main`，改动已并入 `v0.1.10`；Android “从相册选择”改为系统 Photo Picker，Android 13+ 使用 `ACTION_PICK_IMAGES`，12 以下回退 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`，一次最多 20 张（用户确认 20 张完整导入正常，第 21 张会被系统拦截）。Android 12 及以下真机验证按决定永久跳过，SAF 回退代码保留。选中图片复制到缓存后由 JS `convertFileSrc` 读成 File，复用现有导入与去重链路。APK `4,370,166` 字节，SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`，`versionCode 109` / `versionName 0.1.9`；未单独发布 Release。
