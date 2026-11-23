@@ -58,9 +58,9 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 - **当前 Release**：[v0.1.10](https://github.com/moanet/GuitarShell/releases/tag/v0.1.10)，2026-11-23 正式发布；汇总 `0.1.7` / `0.1.8` / `0.1.9` / `0.1.10` 的全部改动；APK 已上传并通过远端 SHA-256 复核。GitHub Pages 已部署 0.1.10。
 - **0.1.10 APK 校验**：SHA-256 `311EA1E6C236C0855B74EE63F60B94465CCF6D0825317FB474875691EDB45498`，`4,371,265` 字节，`versionCode 110` / `versionName 0.1.10`。
 - **0.1.10 主要更新**：节拍器设置重排为 5 张卡片；拍号快捷格 8 组并移除 `8/8`（自定义仍可输入），细分按钮补两行说明，倒计时增加 `3 / 5 / 10 / 15 / 20 / 30` 一行快捷档，音频卡片改为“音频跟练与测速”，关闭重开设置回到顶部。
-- **0.1.9 状态**：已真机验收并推送 `main`；Android “从相册选择”改为系统 Photo Picker，Android 13+ 使用 `ACTION_PICK_IMAGES`，12 以下回退 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`，一次最多 20 张；选中图片复制到缓存后由 JS `convertFileSrc` 读成 File，复用现有导入与去重链路。APK `4,370,166` 字节，SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`，`versionCode 109` / `versionName 0.1.9`。按要求不发布 Release。
-- **0.1.8 状态**：已真机验收并推送 `main`；阅读页工具栏五段式单行、手机双指缩放、弹窗外点关闭 / 表单有改动才弹放弃确认、系统返回键按层级逐层关闭；导入面板外点已修掉点击穿透，模态层会锁住四页导航，阅读页仍可切页并保留状态。按要求未发布 Release。
-- **0.1.7 状态**：真机验收通过，已推送 `main`，按要求未发布 Release；新增云同步中退出确认，以及拆分弹窗起止页缩略图、页码选择与顺序自动纠正。
+- **0.1.9 状态**：已真机验收并推送 `main`，改动已并入 `v0.1.10`；Android “从相册选择”改为系统 Photo Picker，Android 13+ 使用 `ACTION_PICK_IMAGES`，12 以下回退 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`，一次最多 20 张（用户确认 20 张完整导入正常，第 21 张会被系统拦截）。Android 12 及以下真机验证按决定永久跳过，SAF 回退代码保留。选中图片复制到缓存后由 JS `convertFileSrc` 读成 File，复用现有导入与去重链路。APK `4,370,166` 字节，SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`，`versionCode 109` / `versionName 0.1.9`；未单独发布 Release。
+- **0.1.8 状态**：已真机验收并推送 `main`，改动已并入 `v0.1.10`；阅读页工具栏五段式单行、手机双指缩放、弹窗外点关闭 / 表单有改动才弹放弃确认、系统返回键按层级逐层关闭；导入面板外点已修掉点击穿透，模态层会锁住四页导航，阅读页仍可切页并保留状态。双指缩放手感已经用户确认正常；未单独发布 Release。
+- **0.1.7 状态**：真机验收通过，已推送 `main`，改动已并入 `v0.1.10`，未单独发布 Release；新增云同步中退出确认，以及拆分弹窗起止页缩略图、页码选择与顺序自动纠正。
 - **0.1.5 状态**：已真机验收并推送 `main`，未创建 GitHub Release；功能已并入 0.1.6 正式发布。
 - **上一版**：[v0.1.6](https://github.com/moanet/GuitarShell/releases/tag/v0.1.6)，2026-11-23 发布；SHA-256 `D397762F6A1A19FEEAA29E8BD79D9B74AE4D49BEEAB61329BC9F4E11F18BC76C`，`4,357,120` 字节，`versionCode 106` / `versionName 0.1.6`。
 - **更早版本**：[v0.1.4](https://github.com/moanet/GuitarShell/releases/tag/v0.1.4)，2026-11-23 发布；SHA-256 `56CF329C0F9EC0873D47BC179C4FA94D14A937F7167732A608B20BA4C3BD32D7`；[v0.1.3](https://github.com/moanet/GuitarShell/releases/tag/v0.1.3)，2026-11-22 发布，乐谱去重与云同步状态提示。
