@@ -3,7 +3,7 @@
 > 项目总账：记录长期路线、版本时间线、任务队列、冒烟清单、构建发布、技术债与避坑指南。
 > 当前迭代：见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 > 已发布版本的完整改动与验收证据：见 [CHANGELOG.md](CHANGELOG.md)。
-> 当前基线：线上 Release 为 `0.1.6`；`0.1.5` 已真机验收并推送 `main`，未单独发布；`0.1.6` 已正式发布，APK 已上传并复核；`0.1.7` 真机验收通过并推送 `main`，按要求未发布 Release；`0.1.8` 开发完成并安装真机，待用户复核双指缩放手感后提交 `main`。
+> 当前基线：线上 Release 为 `0.1.6`；`0.1.5` 已真机验收并推送 `main`，未单独发布；`0.1.6` 已正式发布，APK 已上传并复核；`0.1.7` 真机验收通过并推送 `main`，按要求未发布 Release；`0.1.8` 已真机验收并推送 `main`；`0.1.9` 原生相册导入已真机验收并推送 `main`。
 
 ## 1. 当前阶段
 
@@ -79,9 +79,13 @@
 
 0.1.7 做两项任务保护与操作顺滑收口：一是云同步上传 / 下载进行中，按 Android 返回键或关闭网页先弹确认，确认后先取消任务再退出，避免误关应用中断上传；二是拆分弹窗增加起止页缩略图、轻量页码选择器，起止页顺序输反自动纠正，非法页码仍禁用建卡。新增原生 `BackGuardPlugin` 拦截返回键，未引入 `@capacitor/app`；缩略图复用已加载的 pdf.js，不新增依赖。`npm run check` 通过；`gs_015.py` 与 320 / 360 宽 `gs_016.py` 全部通过。release APK 已构建并安装，真机验收通过；按要求只推送 `main`，未创建 tag / GitHub Release。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
-### 1.9 0.1.8 阅读工具栏、双指缩放与统一返回层级（开发完成，未发布）
+### 1.9 0.1.8 阅读工具栏、双指缩放与统一返回层级（真机验收通过，未发布）
 
-0.1.8 四项交互收口：阅读页工具栏改五段式单行（返回 / 打卡 / 存进度 / 书签 / 拆分），手机阅读页补双指捏合缩放并保持缩放锚点，弹窗补齐外点关闭且表单有改动才弹放弃确认，系统返回按统一层级栈逐层关闭。新增 `js/services/ui-layer.js` 与 `BackGuard` 的 `setLayerDepth` / `getLayerDepth`，返回键从“只有云同步忙时拦截”改为“有浮层就派发 `gs-back-request`”。`gs_018.py` 在 320 / 360 通过；`gs_015.py`、`gs_016.py` 无回归；release APK `4,364,875` 字节 / `versionCode 108`，已安装 `ca14b16` 并实测阅读页→书架→桌面返回链路、弹窗无改动关闭与脏确认。双指缩放真机手势待用户手动复核。按用户要求不发布 Release，0.1.9 再做原生 Photo Picker（最多 20 张，缓存文件 + `Capacitor.convertFileSrc`）。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
+0.1.8 四项交互收口：阅读页工具栏改五段式单行（返回 / 打卡 / 存进度 / 书签 / 拆分），手机阅读页补双指捏合缩放并保持缩放锚点，弹窗补齐外点关闭且表单有改动才弹放弃确认，系统返回按统一层级栈逐层关闭。新增 `js/services/ui-layer.js` 与 `BackGuard` 的 `setLayerDepth` / `getLayerDepth`，返回键从“只有云同步忙时拦截”改为“有浮层就派发 `gs-back-request`”。`gs_018.py` 在 320 / 360 通过；`gs_015.py`、`gs_016.py` 无回归；release APK `4,365,515` 字节 / `versionCode 108`，已安装 `ca14b16` 并实测阅读页→书架→桌面返回链路、弹窗无改动关闭与脏确认。已提交 `3f98a64`、`d62d652` 并推送 `main`，按用户要求不发布 Release。
+
+### 1.10 0.1.9 原生相册导入（真机验收通过，已推送 main，未发布）
+
+0.1.9 把 Android “从相册选择”从 WebView 文件选择器改为系统 Photo Picker：新增 `GalleryPickerPlugin`，Android 13+ 使用 `ACTION_PICK_IMAGES` + `EXTRA_PICK_IMAGES_MAX=20`，12 以下依次回退 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`，不申请存储权限。选中 URI 流式复制到 `cache/gallery-picker`，返回路径 / 名称 / MIME / 大小；JS 新服务 `gallery-picker.js` 用 `Capacitor.convertFileSrc` + `fetch` 转成 `File`，复用 `handleFiles`，不经过 base64。动作面板改为真实按钮，原生不可用或没有 Photo Picker 时回退隐藏 input；Web 一次超过 20 张只取前 20 并提示。纯数字的 Photo Picker 显示名改为 `照片-yyyyMMdd-HHmmss-*.jpg`，缓存文件超过 24 小时自动清理。新增 `gs_019.py` 覆盖 Web 回退、20 张截断、原生取消、缓存路径转 File 与无 base64；320 / 360 通过，`gs_015/016/018` 无回归。真机确认打开 `PhotoPickerActivity`、单张 / 5 张多选、20 张上限提示、取消无提示、无存储权限弹窗；release APK `4,370,166` 字节 / `versionCode 109`，证书指纹不变。已提交并推送 `main`，按要求未创建 tag / GitHub Release。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
 ## 2. 演进路线
 

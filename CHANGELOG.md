@@ -3,6 +3,42 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.9 — 原生相册导入（开发完成，真机验收通过，未发布，2026-11-23）
+
+> 版本号已同步为 `0.1.9` / `versionCode 109`。只做一件事：把 Android “从相册选择”从 WebView 文件选择器改为系统 Photo Picker，最多 20 张；不碰相机、PDF 文件选择与阅读页交互。
+
+**原生 `GalleryPickerPlugin`**
+
+- 新增 `android/app/src/main/java/com/guitarshell/GalleryPickerPlugin.java`，`@CapacitorPlugin(name = "GalleryPicker")`，在 `MainActivity.onCreate()` 注册。
+- Android 13+ 使用 `MediaStore.ACTION_PICK_IMAGES` + `MediaStore.EXTRA_PICK_IMAGES_MAX`；系统没有可处理 Activity 时回退 `ACTION_OPEN_DOCUMENT`；12 以下直接走 `ACTION_OPEN_DOCUMENT`（`image/*`、`EXTRA_ALLOW_MULTIPLE`、`CATEGORY_OPENABLE`），再不可用回退 `ACTION_GET_CONTENT`。
+- 不新增运行时权限；Photo Picker / SAF 自带读取授权。`limit` 夹在 `1..20`，结果同时兼容 `ClipData` 多选与单 URI。
+- 选中的 URI 用 `ContentResolver.openInputStream()` 流式复制到 `cache/gallery-picker/`，后台线程执行，避免 20 张时主线程 ANR；返回 `{ path, name, mimeType, size }`，不返回 base64。
+- 文件名优先 `OpenableColumns.DISPLAY_NAME`，清洗路径分隔符与控制字符；Photo Picker 返回纯数字媒体 ID 时改为 `照片-yyyyMMdd-HHmmss-<短 UUID>.<ext>`，避免书架出现 `1000031294-...`。扩展名按原文件名或 MIME 推断。
+- 单个文件复制失败删除半成品并继续其余；全部失败 reject `PICK_COPY_FAILED`；用户取消 reject `PICK_CANCELLED`；没有可用相册 reject `PICK_UNAVAILABLE`。每次选择前清理缓存目录中超过 24 小时的文件。
+
+**JS 接入**
+
+- 新增 `js/services/gallery-picker.js`：`isNativeGalleryAvailable()`、`pickGalleryImages({ limit, onPicked })`、`takeGalleryFiles()`。
+- `pickGalleryImages` 调原生插件拿到缓存路径后，逐个 `Capacitor.convertFileSrc(path)` → `fetch` → `blob`，组装 `File`；串行读取，最多 20 张，单个失败计数，全部失败抛 `GALLERY_FETCH_FAILED`。
+- 阅读页动作面板的“拍照 / 从相册选择 / 选择文件”从 `<label for>` 改为真实按钮，先关面板再触发对应入口；原生不可用、没有 Photo Picker 或 `PICK_UNAVAILABLE` 时回退隐藏 `inputGallery`。
+- 原生取消静默返回，不弹错误 toast；导入仍复用 `handleFiles`，内容哈希、重复检测、标签、书架刷新不变。
+- Web input 一次超过 20 张只取前 20，导入完成 toast 追加“一次最多 20 张，已取前 20 张”。
+
+**测试与真机**
+
+- `npm run check` 通过 `v0.1.9 / 29 个 JS`；`python -m compileall -q tests/browser` 通过。
+- 新增 `gs_019.py`，320 / 360 通过：Web 回退触发 input、21 张截断到 20、原生 `PICK_CANCELLED` 不增卡、mock 原生两路径经 `convertFileSrc` + `fetch` 复用 `handleFiles` 新增两张卡、服务层返回 `File` 且无 base64、失败计数正确。
+- `gs_015.py` / `gs_016.py` / `gs_018.py` 320 / 360 无回归。
+- 真机 `ca14b16`（Android 13）确认点“从相册选择”打开 `com.android.providers.media.photopicker.PhotoPickerActivity`，不再进入文件管理；单张导入成功、卡片可在书架显示；5 张多选显示 `Add (5)`；选满 20 张后点第 21 张提示 `Select up to 20 items`，Add 仍为 20；取消选择不新增卡片、不弹错误；全程无存储权限弹窗。
+- 真机导入测试卡已全部删除，临时推入媒体库的 21 张测试图与测试截图已从设备清理。
+
+**APK**
+
+- release APK `4,370,166` 字节，`versionCode 109` / `versionName 0.1.9`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名通过，证书 SHA-256 仍为 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`；路径 `dist/GuitarShell-0.1.9-release.apk`。
+- 覆盖安装到 `ca14b16`，系统与书架徽标均为 `0.1.9`，原有书架数据保留。
+- 已提交并推送 `main`；按用户要求不创建 tag、不发布 GitHub Release。
+
 ## 0.1.8 — 阅读工具栏、双指缩放与统一返回层级（开发完成，未发布，2026-11-23）
 
 > 版本号已同步为 `0.1.8` / `versionCode 108`。只做四项交互收口：阅读页五段式工具栏、手机双指缩放、弹窗外点关闭 / 表单有改动才确认、系统返回按层级逐层关闭。相册 Photo Picker 单独留给 0.1.9。

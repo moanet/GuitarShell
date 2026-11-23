@@ -16,7 +16,7 @@
   <a href="https://moanet.github.io/GuitarShell/">
     <img src="https://img.shields.io/badge/Open-Web%20App-C7863F" alt="打开网页版">
   </a>
-  <img src="https://img.shields.io/badge/version-0.1.8-8A8075" alt="开发版本 0.1.8">
+  <img src="https://img.shields.io/badge/version-0.1.9-8A8075" alt="开发版本 0.1.9">
   <img src="https://img.shields.io/badge/data-local--first-6B8E23" alt="本地优先">
 </p>
 
@@ -57,7 +57,8 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 - **Android 当前正式版**：前往 [GitHub Releases](https://github.com/moanet/GuitarShell/releases/latest) 下载 `GuitarShell-0.1.6-release.apk`。
 - **当前 Release**：[v0.1.6](https://github.com/moanet/GuitarShell/releases/tag/v0.1.6)，2026-11-23 正式发布；APK 已上传并通过远端 SHA-256 复核。GitHub Pages 已部署 0.1.6。
 - **0.1.6 APK 校验**：SHA-256 `D397762F6A1A19FEEAA29E8BD79D9B74AE4D49BEEAB61329BC9F4E11F18BC76C`，`4,357,120` 字节，`versionCode 106` / `versionName 0.1.6`。
-- **0.1.8 状态**：开发完成并已安装测试机型；阅读页工具栏改为五段式单行，补齐手机双指缩放、弹窗外点关闭 / 表单有改动才弹放弃确认、系统返回键按层级逐层关闭；导入面板外点已修掉点击穿透，模态层会锁住四页导航，阅读页仍可切页并保留状态。双指缩放真机手感待用户复核。按当前节奏只提交 `main`，未要求发布 Release。
+- **0.1.9 状态**：开发完成，真机验收通过；Android “从相册选择”改为系统 Photo Picker，Android 13+ 使用 `ACTION_PICK_IMAGES`，12 以下回退 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`，一次最多 20 张；选中图片复制到缓存后由 JS `convertFileSrc` 读成 File，复用现有导入与去重链路。APK `4,370,166` 字节，SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`，`versionCode 109` / `versionName 0.1.9`。按要求不发布 Release。
+- **0.1.8 状态**：已真机验收并推送 `main`；阅读页工具栏五段式单行、手机双指缩放、弹窗外点关闭 / 表单有改动才弹放弃确认、系统返回键按层级逐层关闭；导入面板外点已修掉点击穿透，模态层会锁住四页导航，阅读页仍可切页并保留状态。按要求未发布 Release。
 - **0.1.7 状态**：真机验收通过，已推送 `main`，按要求未发布 Release；新增云同步中退出确认，以及拆分弹窗起止页缩略图、页码选择与顺序自动纠正。
 - **0.1.5 状态**：已真机验收并推送 `main`，未创建 GitHub Release；功能已并入 0.1.6 正式发布。
 - **上一版**：[v0.1.4](https://github.com/moanet/GuitarShell/releases/tag/v0.1.4)，2026-11-23 发布；SHA-256 `56CF329C0F9EC0873D47BC179C4FA94D14A937F7167732A608B20BA4C3BD32D7`。

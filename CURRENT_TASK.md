@@ -1,172 +1,196 @@
-# CURRENT TASK — 0.1.8 阅读工具栏、双指缩放与统一返回层级
+# CURRENT TASK — 0.1.9 原生相册导入
 
-> 状态：开发完成；浏览器 320 / 360 回归通过；release APK 已安装到测试设备，返回层级、弹窗行为、导入面板外点与四页导航锁已实机验证；双指缩放的真机手感待用户手动确认；已提交 `main`，按用户要求不发布 Release
+> 状态：开发完成，真机验收通过，已推送 `main`；按用户要求未创建 tag / GitHub Release
 > 更新时间：2026-11-23
-> 版本基线：线上 Release 为 0.1.6；0.1.7 已提交 main，未发布
+> 版本基线：线上 Release 为 `0.1.6`；`0.1.7` / `0.1.8` 已提交 `main`，未发布 Release
 > 关联：[TASK.md](TASK.md)（项目总账） / [CHANGELOG.md](CHANGELOG.md)（发布历史）
 
 本文件只记录当前版本的“做什么、怎么做、怎么验收”。发布后把结果压缩进 `CHANGELOG.md`，再重写本文件进入下一版。
 
-0.1.7 的完整记录已归档到 [docs/archive/CURRENT_TASK-0.1.7.md](docs/archive/CURRENT_TASK-0.1.7.md)。
+0.1.8 的完整记录已归档到 [docs/archive/CURRENT_TASK-0.1.8.md](docs/archive/CURRENT_TASK-0.1.8.md)。
 
 ## 1. 目标
 
-0.1.8 只做用户确认过的四项交互收口，不改其他功能：
+0.1.9 只做一件事：**把 Android 手机“从相册选择”从 WebView 文件选择器改为系统照片选择器**，一次最多 20 张，选中的图片复制到应用缓存，再由 JS 用 `Capacitor.convertFileSrc` 取回 Blob 复用现有导入链路。
 
-1. **阅读页工具栏**：改成单行五段式操作条，`返回书架` 改名 `返回`，统一视觉，320/360 宽不换行、不溢出。
-2. **双指缩放**：手机阅读页补上双指捏合缩放，保持缩放锚点，避免谱面跳回左上角。
-3. **弹窗外点关闭**：补齐缺失的遮罩点击关闭；表单有改动时先确认“放弃本次编辑”。
-4. **返回层级**：系统返回键/手势按层级关闭弹窗、抽屉、子页面，只有四个顶层 Tab 且无子层时才退出应用。
+必须解决：
 
-相册导入的原生 Photo Picker 方案单独放到 0.1.9，本版不实现。
+1. 点“从相册选择”不再落到文件管理 / 文档选择器。
+2. Android 13+ 使用系统 Photo Picker；Android 12 及以下回退到 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`。
+3. 一次最多 20 张；不请求存储权限。
+4. 原生只返回缓存文件路径与元信息，不返回 base64。
+5. 导入仍复用 `handleFiles`，内容哈希、重复检测、标签、书架刷新行为不变。
+6. 网页 / PWA 无原生插件时回退现有 `<input type=file>`，并同样限制相册一次最多 20 张。
+
+不包含：
+
+- 相机拍照改造。
+- PDF 文件选择改造。
+- 图片裁剪、压缩、旋转、批量编辑。
+- 相册权限长期持有或后台访问。
+- 0.1.8 已完成的阅读工具栏、双指缩放、返回层级改动。
 
 ## 2. 方案
 
-### 2.1 阅读页工具栏：单行五段式
+### 2.1 原生 `GalleryPickerPlugin`
 
-- 工具栏改 `display:flex; flex-wrap:nowrap`，5 个按钮等宽 `flex:1 1 0`，禁止换行。
-- 每个按钮改为“图标在上、短标签在下”的竖向结构，高度约 46–48px，标签 11–12px。
-- 文案固定为：`返回 / 打卡 / 存进度 / 书签 / 拆分`。
-- `拆分` 只在 `.pdf` 时显示；图片谱 4 个按钮自动等宽，不保留空位。
-- 统一视觉：同一套透明/细描边底、图标和标签同一颜色体系；按下态只做轻微背景变化，不再混用灰底、绿底、棕橙渐变、透明描边四种样式。
-- 图标使用统一线性 SVG，不再使用 emoji。
-- 320 宽按左右各 12px、按钮间距 6px 计算，单按钮约 54px，3 字标签可放下。
+新增 `android/app/src/main/java/com/guitarshell/GalleryPickerPlugin.java`，`@CapacitorPlugin(name = "GalleryPicker")`，在 `MainActivity.onCreate()` 注册。
 
-### 2.2 双指缩放
+对外方法：
 
-- `viewer` 增加 `touchmove` 监听，`passive:false`。
-- 两指时 `preventDefault()`，按当前距离/初始距离计算缩放比例，`scale` 限制在 `1..6`，调用现有 `applyScale()`。
-- 缩放锚点取双指中点对应的内容坐标，缩放后调整 `scrollLeft/scrollTop`，保持手指下的谱面位置。
-- `touchend/touchcancel` 清空初始距离与初始缩放；单指不进入缩放分支。
-- PDF 位图重渲继续依赖现有 `refreshPdfResolution()` 防抖，不在 `touchmove` 每帧强制同步重渲。
-- 320 / 360 宽均需验证缩放值变化、滚动位置稳定、单指拖动不回归。
-
-### 2.3 统一遮罩与层级栈
-
-新增 `js/services/ui-layer.js`，作为所有浮层的唯一注册中心：
-
-- `registerLayer({ id, close, isDirty? })`：打开时注册，返回取消注册函数。
-- `closeTopLayer()`：关闭最上层；`close` 必须复用各弹窗已有的关闭函数。
-- `getLayerDepth()`：当前层数。
-- 每次层数变化调用原生 `BackGuard.setLayerDepth({ depth })`。
-- `bindBackdrop(mask, close)`：统一外点关闭；`pointerdown` 记录起点是否在遮罩上，`pointerup` 仍在遮罩才关闭，避免从弹窗内部拖到遮罩误关。
-
-层级顺序（从顶层到底层）：
-
-1. 全局确认框
-2. 拆分页码选择器
-3. 拆分弹窗
-4. 导入动作面板 / 记录练习 / 编辑信息 / 标签 / 云同步 / 节拍器设置
-5. 设置抽屉
-6. 阅读全屏
-7. 阅读页
-8. 书架管理模式
-9. 四个顶层 Tab
+```ts
+GalleryPicker.pickImages({ limit?: number })
+→ { files: Array<{ path: string, name: string, mimeType: string, size: number }>, failed: number }
+```
 
 规则：
 
-- 外点关闭、取消按钮、系统返回、`Esc` 共用同一个 `close`。
-- 嵌套弹窗只关最上层；拆分页码选择器打开时先关 picker。
-- 表单脏状态：
-  - 记录练习、编辑乐谱信息、拆分建卡：检测到输入改动时，外点/返回先弹一次“放弃本次编辑？”；未改动直接关闭。
-  - 标签、云同步等短表单：直接关闭，不额外确认。
-- 云同步弹窗外点关闭只隐藏弹窗，不取消后台任务；浮动状态胶囊继续保留。
-- `splitBusy` 时关闭拆分弹窗被拒绝，返回键应被吞掉，不退出应用。
+- `limit` 夹在 `1..20`，默认 20。
+- Android 13+（API 33）：
+  - `Intent(MediaStore.ACTION_PICK_IMAGES)`，`type = "image/*"`。
+  - `putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, limit)`。
+  - 若系统没有可处理 Activity，回退 `ACTION_OPEN_DOCUMENT`。
+- Android 12 及以下：
+  - `ACTION_OPEN_DOCUMENT`，`type = "image/*"`，`EXTRA_ALLOW_MULTIPLE = true`，`CATEGORY_OPENABLE`。
+  - 若不可用，回退 `ACTION_GET_CONTENT`。
+- 不新增运行时权限；Photo Picker / SAF 自带读取授权。
+- 结果支持 `ClipData` 多选与单 URI；最多处理 `limit` 个。
+- 取消选择：`call.reject('已取消选择', 'PICK_CANCELLED')`；JS 不弹错误提示。
+- 没有可处理 Activity：`call.reject('系统相册不可用', 'PICK_UNAVAILABLE')`。
 
-### 2.4 原生返回拦截
+### 2.2 缓存文件
 
-- `BackGuardPlugin` 增加 `setLayerDepth` / `getLayerDepth`，维护 `layerDepth`。
-- `MainActivity.onBackPressed()` 逻辑：
-  1. `layerDepth > 0`：向 WebView 派发 `gs-back-request`，不退出应用。
-  2. `layerDepth == 0 && busy`：派发 `gs-cloud-exit-request`，保持 0.1.7 的云同步退出确认。
-  3. 其他：`super.onBackPressed()`，退出应用。
-- `main.js` 监听 `gs-back-request`，调用 `closeTopLayer()`；若层栈为空则把原生 depth 归零，避免状态卡死。
-- 阅读页返回复用现有 `btnBack` 的保存进度逻辑；全屏先退出全屏；管理模式返回只退出多选。
+- 复制到 `context.getCacheDir()/gallery-picker/`。
+- 每个文件用 `ContentResolver.openInputStream(uri)` 流式复制，不整文件读进内存。
+- 文件名：
+  - 优先 `OpenableColumns.DISPLAY_NAME`，去掉路径分隔符与控制字符，限制长度。
+  - 扩展名优先原文件名；缺失时按 MIME 用 `MimeTypeMap` 补 `jpg/png/webp/...`。
+  - 加短 UUID 前缀/后缀避免重名。
+- 返回 `path` 为缓存文件绝对路径，`name` 为可读文件名，`mimeType` 为 `ContentResolver.getType(uri)`，`size` 为复制后字节数。
+- 单个文件复制失败：删除半成品，继续处理其余；全部失败则 reject `PICK_COPY_FAILED`。
+- 每次开始选择前清理该目录下超过 24 小时的文件，避免缓存无限增长。
 
-### 2.5 0.1.9 预留
+### 2.3 JS 服务 `js/services/gallery-picker.js`
 
-- 原生 `GalleryPickerPlugin`：Android 13+ `ACTION_PICK_IMAGES`，12 以下回退 `ACTION_OPEN_DOCUMENT`/`ACTION_GET_CONTENT`。
-- 一次最多 20 张；选中 URI 复制到缓存，返回路径，JS 用 `Capacitor.convertFileSrc` 取 Blob 后复用 `handleFiles`。
-- 0.1.8 不做，避免和返回层级、手势改动混在一起。
+- `isNativeGalleryAvailable()`：检查 `window.Capacitor.isNativePlatform()` 与 `window.Capacitor.Plugins.GalleryPicker`。
+- `pickGalleryImages({ limit = 20 } = {})`：
+  1. 调 `GalleryPicker.pickImages({ limit })`。
+  2. 对每个 `path` 执行 `Capacitor.convertFileSrc(path)`。
+  3. `fetch(url)` → `blob()`。
+  4. 组装 `File([blob], info.name, { type: info.mimeType || blob.type })`。
+  5. 最多返回 20 个；单个 fetch 失败跳过并计入失败数；全部失败抛 `GALLERY_FETCH_FAILED`。
+- 不把 base64 写进插件返回值，也不在 JS 里做 base64 转换。
+- 如果 `convertFileSrc` 或 `fetch` 不可用，抛出 `GALLERY_UNAVAILABLE`，由调用方回退 input。
+
+### 2.4 阅读页动作面板接入
+
+- `sheet-reader.js` 的“从相册选择”从 `<label for="inputGallery">` 改为真实按钮 `#btnGallery`。
+- 点击：
+  - 原生可用：先 `closeActionSheet()`，再 `pickGalleryImages({ limit: 20 })`，得到 File 后直接 `handleFiles(files)`。
+  - 原生不可用：先 `closeActionSheet()`，再触发隐藏的 `inputGallery.click()`，沿用 Web 文件选择。
+- 取消：
+  - 原生 `PICK_CANCELLED` 静默返回，不显示 toast。
+  - Web input 取消不产生文件，不导入。
+- 导入中仍显示现有 `loading` 遮罩与“正在导入 N 个文件...”。
+- `handleFiles` 的内容哈希、重复检测、失败计数、书架刷新不改。
+- 相册一次超过 20 张：
+  - 原生选择器本身限制 20。
+  - Web input 若仍返回超过 20，截取前 20 并提示“一次最多选择 20 张，已取前 20 张”。
+
+### 2.5 版本与测试
+
+- `package.json`、`package-lock.json`、`sw.js`、`js/services/version.js`、`android/app/build.gradle` 同步为 `0.1.9` / `versionCode 109`。
+- `sw.js` 缓存清单加入 `./js/services/gallery-picker.js`。
+- 新增 `tests/browser/gs_019.py`：
+  - 在 Web 模式下打开移动端导入面板，点“从相册选择”走 input 回退。
+  - 伪造 21 个图片 File，验证只导入前 20 个。
+  - 验证取消不导入、动作面板关闭、书架数量不变。
+  - 用 mock `GalleryPicker` + mock `convertFileSrc` 验证 JS 服务把路径转成 File、不产生 base64。
+- 真机验收以 Android 13 设备 `ca14b16` 为准。
 
 ## 3. 改动范围
 
-- `js/services/ui-layer.js`：新增层级注册、外点关闭、原生深度同步。
-- `js/main.js`：监听 `gs-back-request`，初始化层级状态。
-- `js/components/app-dialog.js`：注册全局确认框层级；busy 时禁止关闭。
-- `js/components/settings.js`：设置抽屉注册层级，外点关闭复用 `close()`。
-- `js/components/metronome.js`：节拍器设置面板注册层级，补外点关闭。
-- `js/components/sheet-reader.js`：工具栏、双指缩放、全部弹窗层级、外点关闭、脏确认、阅读页/管理模式返回。
-- `android/.../BackGuardPlugin.java`：`setLayerDepth` / `getLayerDepth`。
-- `android/.../MainActivity.java`：按层级派发 `gs-back-request`。
-- `tests/browser/gs_018.py`：0.1.8 交互回归。
-- 版本号同步为 `0.1.8`，`versionCode 108`；不创建 tag、不发布 Release。
+- 新增 `android/app/src/main/java/com/guitarshell/GalleryPickerPlugin.java`。
+- `android/app/src/main/java/com/guitarshell/MainActivity.java`：注册 `GalleryPickerPlugin`。
+- 新增 `js/services/gallery-picker.js`。
+- `js/components/sheet-reader.js`：动作面板按钮、原生 / Web 分支、20 张限制。
+- `sw.js`：缓存清单与版本。
+- 版本文件 5 处：`package.json`、`package-lock.json`、`sw.js`、`js/services/version.js`、`android/app/build.gradle`。
+- 新增 `tests/browser/gs_019.py`；更新 `tests/browser/README.md`。
+- 更新 `CHANGELOG.md`、`TASK.md`、`README.md`、`CURRENT_TASK.md`。
 
 ## 4. 验收标准
 
-### 4.1 阅读页工具栏
+### 4.1 原生选择器
 
-- [x] 320 / 360 宽下 5 个按钮单行显示，不换行、不横向溢出。
-- [x] 文案为 `返回 / 打卡 / 存进度 / 书签 / 拆分`。
-- [x] 图片谱隐藏 `拆分`，其余 4 项等宽。
-- [x] 5 个按钮视觉统一，无灰/绿/棕橙/透明四种底色混用。
-- [x] 按钮可点，阅读页打开/返回不回归。
+- [ ] Android 13 真机点“从相册选择”，打开系统照片选择器，不再进入文件管理。
+- [ ] 可选 1 张、5 张、20 张，返回后书架出现对应数量卡片。
+- [ ] 选满 20 张时无法再选第 21 张。
+- [ ] 取消选择不新增卡片、不弹错误 toast。
+- [ ] 不弹存储权限申请。
 
-### 4.2 双指缩放
+### 4.2 文件与导入
 
-- [x] 两指捏合可放大/缩小，缩放值限制在 `1..6`。
-- [x] 缩放时手指中点下的谱面位置保持稳定，不跳回左上角。
-- [x] 单指拖动、翻页热区、滚轮缩放不回归。
-- [x] `touchend/touchcancel` 后再次捏合可重新开始。
+- [ ] 返回的是缓存文件路径，不是 base64；JS 用 `convertFileSrc` 成功取到 Blob。
+- [ ] 文件名、扩展名、MIME 正确；图片可在阅读页打开。
+- [ ] 内容相同的图片仍被识别为重复并跳过。
+- [ ] 部分文件复制 / fetch 失败时，其余图片仍能导入，并提示失败数量。
+- [ ] 导入完成后书架数量、标签、排序与既有逻辑一致。
 
-> 双指缩放已由 `gs_018.py` 合成双指事件验证；测试机未开放 `/dev/input` 写入，无法脚本模拟真实双指，手感需用户在设备上再捏合确认。
+### 4.3 Web 回退与边界
 
-### 4.3 外点关闭与脏确认
+- [ ] 浏览器 / PWA 无插件时，“从相册选择”仍打开文件选择器。
+- [ ] Web 一次选超过 20 张时只导入前 20 张，并提示。
+- [ ] 动作面板外点 / 返回键行为不回归 0.1.8。
+- [ ] 20 张大图导入时 loading 不消失、无白屏、无内存崩溃。
 
-- [x] 导入动作面板、记录练习、编辑信息、云同步、节拍器设置均支持点遮罩关闭。
-- [x] 从弹窗内部拖到遮罩不会误关。
-- [x] 记录练习、编辑信息、拆分建卡有改动时，外点先弹“放弃本次编辑？”；未改动直接关闭。
-- [x] 取消确认后弹窗保持，输入内容不丢。
-- [x] 云同步弹窗外点关闭不取消后台任务。
-- [x] 拆分 `busy` 时外点/返回不会强行关闭。
+### 4.4 工程检查
 
-### 4.4 返回层级
-
-- [x] 阅读页按系统返回回书架，不退出应用；返回前保存进度。
-- [x] 阅读全屏按返回先退出全屏，再回书架。
-- [x] 管理模式按返回退出多选，不回书架。
-- [x] 设置抽屉、节拍器设置、导入动作面板、各弹窗按返回关闭最上层。
-- [x] 拆分页码选择器打开时，返回先关 picker，不关拆分弹窗。
-- [x] 云同步弹窗打开时，返回先关弹窗；再按一次才按 0.1.7 逻辑处理同步中退出确认。
-- [x] 四个顶层 Tab 且无任何子层时，返回才退出应用。
-- [x] 连续快速返回不会误退出、不会卡死层级。
-
-### 4.5 工程检查
-
-- [x] `npm run check` 通过。
-- [x] `python -m compileall -q tests/browser` 通过。
-- [x] `python tests/browser/gs_018.py` 通过；`GS_WIDTH=360` 同样通过。
-- [x] release APK 构建通过，包名、版本、签名、SHA-256 校验通过。
-- [x] APK 覆盖安装到测试设备，版本显示 `0.1.8`。
-- [x] 真机验收通过后提交 main；不创建 tag、不发布 GitHub Release。
-
-### 4.6 验收记录（2026-11-23）
-
-- `npm run check`：`检查通过：v0.1.8，28 个 JS 文件，SW 缓存与版本一致`。
-- `python -m compileall -q tests/browser` 通过；`gs_015.py`、`gs_016.py` 复跑通过。
-- `gs_018.py` 在 320 / 360 宽通过：工具栏 5 项同排、高 46、宽 54 / 62；双指合成事件缩放 `1.83`，滚动锚点生效；无改动外点关闭、脏确认与取消保留、详情空白框修复、书签/拆分 picker/阅读页/管理模式返回层级全部符合；导入面板打开时点四页 Tab 不切页，真实触摸落在搜索框坐标只关面板且 `searchClicks=0`；阅读页切到节拍器时层级归 0，切回恢复 1。
-- release APK：`4,365,515` 字节，`versionCode 108` / `versionName 0.1.8`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名通过，证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
-- SHA-256 `89086CAFC05D5402E04ED94F0AABF59AB455A5F3EF817498F4734DC95FD5C7E3`；本地路径 `dist/GuitarShell-0.1.8-release.apk`；APK 内 `assets/public/sw.js` 为 `APP_VERSION = '0.1.8'`。
-- 设备 `ca14b16` 覆盖安装成功，系统显示 `versionCode=108` / `versionName=0.1.8`，书架徽标 `v0.1.8`。
-- 实机返回：阅读页 → 书架、书架 → 桌面均正确；打卡弹窗无改动时返回只关弹窗，填写时长后返回弹「放弃本次记录？」，放弃后回阅读页。
-- 实机导入面板：打开后点节拍器页签，仍停留乐谱并提示「先关闭当前窗口」；点搜索框区域只关面板，搜索框未聚焦；再打开点管理按钮区域只关面板，未进入管理模式。
-- 实机截图复核：五段式工具栏单行等宽；修复后的放弃确认框不再出现空白详情横框。
-- 双指缩放真机手势未脚本化（`sendevent` 被系统权限拒绝），以浏览器合成双指事件 + 代码审查作为本轮证据，保留用户手动捏合复核。
+- [ ] `npm run check` 通过。
+- [ ] `python -m compileall -q tests/browser` 通过。
+- [ ] `gs_019.py` 通过。
+- [ ] `gs_015.py` / `gs_016.py` / `gs_018.py` 无回归。
+- [ ] release APK 构建通过，`versionCode 109` / `versionName 0.1.9`，签名与 SHA-256 核对。
+- [ ] APK 覆盖安装到 `ca14b16`，书架徽标显示 `v0.1.9`。
+- [ ] 真机验收通过后提交 `main`；tag / Release 等用户确认。
 
 ## 5. 风险与边界
 
-- 原生层数只反映“JS 注册的浮层”，不直接检查 shadow DOM；JS 关闭失败时层数可能保持，返回键表现为“吞掉”，不会误退出。
-- 表单脏确认会多一步，但只在检测到实际改动时出现；未改动仍是一点即关。
-- 双指缩放依赖 JS 接管，`touch-action` 仍保留 `pan-x pan-y`，不能改成 `none`，否则单指拖动会失效。
-- 相册导入仍保持 0.1.7 现状：Android WebView 可能把 `image/*` 落到文件选择器；0.1.9 才修。
-- 不新增权限、不改云同步协议、不改 PDF 渲染虚拟化策略。
+- 部分 OEM 的 `ACTION_PICK_IMAGES` 可能不可用，必须有 `ACTION_OPEN_DOCUMENT` 回退。
+- 20 张大图同时 fetch 可能占用较多内存；JS 串行读取、逐个交给 `handleFiles`，避免一次性并发 20 个 Blob。
+- 缓存目录由系统可能随时清理；导入必须在选择返回后立即读取。
+- `convertFileSrc` 依赖 Capacitor 本地文件服务；网页端没有该通道，只能走 input 回退。
+- 不改变现有图片格式支持范围；HEIC 等格式仍取决于 WebView 能否解码。
+- Android 12 以下的 SAF 选择器 UI 与 Photo Picker 不同，但返回结果与导入链路一致。
+
+## 6. 实施结果（2026-11-23）
+
+### 6.1 代码
+
+- 新增 `GalleryPickerPlugin.java`，已注册到 `MainActivity`；支持 Android 13+ Photo Picker、`ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT` 回退、`ClipData` 多选、后台流式复制、24 小时缓存清理、纯数字显示名替换为 `照片-yyyyMMdd-HHmmss-*`。
+- 新增 `js/services/gallery-picker.js`；动作面板改为按钮，原生路径 `convertFileSrc` + `fetch` → `File`，Web 回退 input；20 张截断与取消静默处理已接入。
+- 版本同步为 `0.1.9` / `versionCode 109`，`sw.js` 缓存加入 `gallery-picker.js`。
+
+### 6.2 浏览器验收
+
+- `npm run check`：通过，`v0.1.9 / 29 个 JS`。
+- `python -m compileall -q tests/browser`：通过。
+- `gs_019.py` 320 / 360：通过。Web 回退 input 1 次；21 张截断到 20 且 toast 提示；原生取消不增卡；mock 原生两路径导入 2 张；服务层返回 `File`、MIME / size 正确、无 base64、失败计数 2。
+- `gs_015.py` / `gs_016.py` / `gs_018.py` 320 / 360：全部通过，无回归。
+
+### 6.3 真机验收（`ca14b16`，Android 13）
+
+- 点“从相册选择”打开 `PhotoPickerActivity`，不再进入文件管理。
+- 单张导入成功，书架出现图片卡；5 张多选显示 `Add (5)`。
+- 选满 20 张后点第 21 张提示 `Select up to 20 items`，Add 保持 20。
+- 取消选择不新增卡片、不弹错误 toast。
+- 全程无存储权限弹窗。
+- 测试卡、临时测试图与截图均已从设备清理，原有 6 张乐谱保留。
+
+### 6.4 APK
+
+- `dist/GuitarShell-0.1.9-release.apk`，`4,370,166` 字节。
+- SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`。
+- `versionCode 109` / `versionName 0.1.9`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`。
+- v1 / v2 签名通过，证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- 覆盖安装到 `ca14b16`，书架徽标与系统版本均为 `0.1.9`。

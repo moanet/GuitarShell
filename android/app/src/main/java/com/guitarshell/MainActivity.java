@@ -34,6 +34,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SaveBackupPlugin.class);
         registerPlugin(ThemeBarsPlugin.class);
         registerPlugin(BackGuardPlugin.class);
+        registerPlugin(GalleryPickerPlugin.class);
         super.onCreate(savedInstanceState);
         applyThemeSystemBars("deep");
         if (savedInstanceState == null) showSplashOverlay();

@@ -14,6 +14,7 @@ import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import { parseTagInput, uniqueTags, toggleTag, hasTag, applyTagChanges, collectTagStats } from '../services/tag-utils.js';
 import { saveBackupFile } from '../services/backup.js';
 import { splitPdfPages } from '../services/pdf-split.js';
+import { isNativeGalleryAvailable, pickGalleryImages, takeGalleryFiles } from '../services/gallery-picker.js';
 
 let pdfjsLib = null;
 
@@ -526,9 +527,9 @@ const readerHTML = `
 
   <div class="action-sheet-mask" id="actionSheetMask">
     <div class="action-sheet">
-      <label class="action-btn" for="inputCamera">📷 拍照</label>
-      <label class="action-btn" for="inputGallery">🖼️ 从相册选择</label>
-      <label class="action-btn" for="inputMobileFile">📁 选择文件</label>
+      <button class="action-btn" id="btnCamera" type="button">📷 拍照</button>
+      <button class="action-btn" id="btnGallery" type="button">🖼️ 从相册选择</button>
+      <button class="action-btn" id="btnMobileFile" type="button">📁 选择文件</button>
       <button class="action-btn cancel" id="btnCancel">取消</button>
     </div>
   </div>
@@ -2462,7 +2463,7 @@ class SheetReader extends HTMLElement {
     bindBackdrop(cloudModalMask, closeCloudModal);
 
     // 🌟 核心修复：极其宽容的文件过滤逻辑
-    const handleFiles = async (filesArray) => {
+    const handleFiles = async (filesArray, { extraNotice = '' } = {}) => {
       if (!filesArray || filesArray.length === 0) return;
       loading.textContent = `正在导入 ${filesArray.length} 个文件...`; loading.classList.add('show');
       
@@ -2512,9 +2513,9 @@ class SheetReader extends HTMLElement {
         if (failCount > 0) msg += `, 失败/不支持 ${failCount} 本`;
         
         if (addedCount > 0 || dupCount > 0) {
-          showToast(msg);
+          showToast(msg + extraNotice);
         } else {
-          showToast('没有找到支持的格式或全部导入失败');
+          showToast('没有找到支持的格式或全部导入失败' + extraNotice);
         }
         
         this.loadShelf();
@@ -2528,9 +2529,17 @@ class SheetReader extends HTMLElement {
 
     // 🌟 核心修复：先将 FileList 转为真正的 Array 拷贝，然后再清空 input 的值，防止异步操作中文件被浏览器销毁！
     const handleInputChange = (e) => {
-      const files = Array.from(e.target.files);
-      e.target.value = ''; 
+      const input = e.target;
+      const files = Array.from(input.files);
+      input.value = ''; 
       closeActionSheet();
+      if (input.id === 'inputGallery') {
+        const { files: limited, truncated } = takeGalleryFiles(files);
+        handleFiles(limited, {
+          extraNotice: truncated ? '，一次最多 20 张，已取前 20 张' : ''
+        });
+        return;
+      }
       handleFiles(files); 
     };
 
@@ -2550,6 +2559,50 @@ class SheetReader extends HTMLElement {
     };
     $('btnFolderMain').onclick = () => $('inputFolder').click();
     $('btnCancel').onclick = closeActionSheet;
+    $('btnCamera').onclick = () => {
+      closeActionSheet();
+      $('inputCamera').click();
+    };
+    $('btnMobileFile').onclick = () => {
+      closeActionSheet();
+      $('inputMobileFile').click();
+    };
+    $('btnGallery').onclick = async () => {
+      closeActionSheet();
+
+      if (!isNativeGalleryAvailable()) {
+        $('inputGallery').click();
+        return;
+      }
+
+      try {
+        const result = await pickGalleryImages({
+          limit: 20,
+          onPicked: () => {
+            loading.textContent = '正在读取照片...';
+            loading.classList.add('show');
+          }
+        });
+
+        const notices = [];
+        if (result.failed > 0) notices.push(`${result.failed} 张读取失败`);
+        if (result.truncated > 0) notices.push(`已取前 20 张`);
+        await handleFiles(result.files, {
+          extraNotice: notices.length ? `，${notices.join('，')}` : ''
+        });
+      } catch (err) {
+        if (err && err.code === 'PICK_CANCELLED') return;
+        if (err && err.code === 'PICK_UNAVAILABLE') {
+          loading.classList.remove('show');
+          $('inputGallery').click();
+          return;
+        }
+        console.error('[相册导入]', err);
+        showToast(`相册导入失败：${err && err.message ? err.message : '请重试'}`);
+      } finally {
+        loading.classList.remove('show');
+      }
+    };
     bindBackdrop(actionSheetMask, closeActionSheet);
 
     // 🌟 打包：本地导出与云端上传共用同一份数据（含阅读进度与打卡记录）

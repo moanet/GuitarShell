@@ -16,6 +16,7 @@ pip install websocket-client
 python tests/browser/gs_015.py
 python tests/browser/gs_016.py
 python tests/browser/gs_018.py
+python tests/browser/gs_019.py
 ```
 
 脚本会：
@@ -28,8 +29,8 @@ python tests/browser/gs_018.py
 
 - `GS_BROWSER`：浏览器可执行文件路径。
 - `GS_BASE_URL`：默认 `http://127.0.0.1:8123/`。
-- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`。
-- `GS_WIDTH`：`gs_016.py` / `gs_018.py` 视口宽度，默认 `320`；可设 `360` 复跑宽屏。
+- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`。
+- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` 视口宽度，默认 `320`；可设 `360` 复跑宽屏。
 
 ## 当前覆盖
 
@@ -66,5 +67,14 @@ python tests/browser/gs_018.py
 - 阅读页返回书架、管理模式返回退出多选，两者层级深度均回到 0。
 - 导入面板打开时点节拍器 Tab 不切页；真实触摸落在搜索框坐标时只关面板，搜索框不聚焦、不进入下层控件。
 - 320 / 360 宽均通过；脚本最后重开阅读页并截图，便于人工复核工具栏。
+
+`gs_019.py`：
+
+- Web 模式无原生插件时，导入面板点「从相册选择」触发隐藏 input 回退，不报错。
+- 伪造 21 个图片 File 走 Web input：只导入前 20 张，toast 追加「一次最多 20 张，已取前 20 张」。
+- mock 原生 `GalleryPicker` 返回 `PICK_CANCELLED`：静默关闭面板、不新增卡片、不显示失败。
+- mock 原生返回两个缓存路径，经 `convertFileSrc` + `fetch` 转成 File，复用 `handleFiles` 新增两张卡。
+- 直接验证服务层：返回 `File`、MIME / 大小正确、无 base64 字段、失败计数递增、`limit` 夹在 20。
+- 320 / 360 宽均通过；截图用于人工复核书架导入结果。
 
 CI 只做 Python 语法编译；浏览器交互需要本机浏览器，仍在本地执行。
