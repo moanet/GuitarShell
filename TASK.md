@@ -3,7 +3,7 @@
 > 项目总账：记录长期路线、版本时间线、任务队列、冒烟清单、构建发布、技术债与避坑指南。
 > 当前迭代：见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 > 已发布版本的完整改动与验收证据：见 [CHANGELOG.md](CHANGELOG.md)。
-> 当前基线：Android 正式 Release 为 `0.1.11`；`0.1.5`–`0.1.10` 的改动与发布记录见 `CHANGELOG.md`；`0.1.11` 已完成 WebDAV 可恢复写入，代码、浏览器回归、APK、真机测试路径上传均通过，已推送 `main`、Pages 部署网页版并发布 GitHub Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
+> 当前基线：Android 正式 Release 为 `0.1.11b`；`0.1.5`–`0.1.11` 的改动与发布记录见 `CHANGELOG.md`；`0.1.11b` 完成日间模式启动动画、界面图标与 favicon 主题联动、顶部导航浅细分割线，已推送 `main`、Pages 部署网页版并发布 GitHub Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
 
 ## 1. 当前阶段
 
@@ -95,6 +95,10 @@
 
 0.1.11 收口最后一条数据可靠性技术债。坚果云实测普通 `MOVE` 可用、覆盖目标 `MOVE` 返回 409，不能单次原子替换；上传改为 `PUT <path>.uploading → PROPFIND 校验大小 → DELETE 正式文件 → MOVE 临时文件`，任何一步失败都保留临时文件。实测自定义域名 / Worker 的 CORS 只允许 `GET,PUT,DELETE,PROPFIND,OPTIONS`，MOVE 会被预检拦截；因此 MOVE 失败时自动回退 `PUT 正式文件 → PROPFIND 校验`，下载在正式文件缺失或不是完整 JSON 时回退临时文件。仓库内本地 Node 代理已放开 MOVE 并重写 `Destination`；自定义域名 Worker 参考源码补在 `proxy/cloudflare-worker.js`，用户已手动部署，真机日志确认 `MOVE .../backup.json.uploading` 返回 `201`，自建域名已走原子替换。新增 `gs_021.py` 覆盖正常序列、大小失败、MOVE 409 回退、CORS TypeError 回退、回退 PUT 失败、下载回退、半截 JSON 回退、无备份与端点回退锁定；`gs_015.py` mock 适配新序列；`gs_015/016/018/019/020` 全部通过。`npm run check` 通过 `v0.1.11 / 29 个 JS`；release APK `4,373,460` 字节 / SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`，已覆盖安装 `ca14b16`，书架徽标 `0.1.11`。真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次成功，测试连接显示云端已有备份；未触碰正式 `backup.json`，测试文件与遗留测试目录已由用户删除。自定义域名 Worker 的参考源码补在 `proxy/cloudflare-worker.js`（放开 MOVE + 重写 Destination），用户已手动部署并验证 MOVE `201`。已推送 `main`，CI 与 Pages 工作流成功，网页版自动部署 `0.1.11`；已发布 GitHub Release `v0.1.11`（tag `4aa7358`），APK 上传并完成远端 SHA-256 复核。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
+### 1.13 0.1.11b 双主题 UI 联动与顶部导航分割线（已发布 v0.1.11b）
+
+0.1.11b 汇总 `0.1.11` 之后的两轮 UI 收口。启动屏合并为单文件双主题版本，原生按 `gs_native/gs_theme` 冷启动加载 `#deep` / `#light` 并同步系统栏；日间中心同心圆对齐浅色图标的三层结构。页头品牌图标、全局设置「关于」图标与 favicon 随主题切换，新增浅色 `32 / 192 / 512` PNG 并接入构建与 SW 缓存。顶部导航去掉渐变底色、`box-shadow` 与 `backdrop-filter`，改为透明背景 + `1px var(--line)` 分割线，选中标签去掉外投影、只留内高光，与全局设置标题栏统一。README 下载与安装只保留最新 Release 信息。`0.1.11a` 仅本地真机试用、不单独发布。`npm run check` 通过 `v0.1.11b / 29 个 JS`；Edge 360 宽双主题通过；release APK `4,417,334` 字节 / SHA-256 `E858F6ED95CB8BBB6DCC3C1C4001B8FF4E8E06E21E3C8E33CC23B8B0E4DEDDA7`，`versionCode 113`，已覆盖安装 `ca14b16`，书架 6 张乐谱与练习数据保留，日间冷启动浅色动画验证正常。已推送 `main`、发布 GitHub Release `v0.1.11b`。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.11b 段。
+
 ## 2. 演进路线
 
 
@@ -170,6 +174,7 @@ flowchart LR
 | 0.1.9             | 原生相册 Photo Picker / 20 张上限 / Android 12 以下 SAF 回退 | 已并入 v0.1.10；12 以下真机验证跳过 |
 | 0.1.10            | 节拍器设置五卡分组 / 8 组拍号 / 细分说明 / 定时快捷档 | 已正式发布，GitHub Release `v0.1.10` |
 | 0.1.11            | WebDAV 可恢复写入：临时文件 + 校验 + MOVE / PUT 回退 | 已正式发布，GitHub Release `v0.1.11` |
+| 0.1.11b           | 日间模式启动动画 / 界面图标与 favicon 联动 / 顶部导航浅细分割线 | 已正式发布，GitHub Release `v0.1.11b` |
 
 ### 2.1 永久非目标（不进入任务队列）
 
@@ -199,7 +204,7 @@ flowchart LR
 
 * 数据管理归拢 / 原生备份 0.0.8.7 已验收推送：数据操作全部收进设置抽屉；读谱书架只留导入 / 搜索 / 排序 / 标签 / 书架；Android 备份写入 `Download/GuitarShell/`。
 
-* UI 终版 0.0.8.8 已真机验收：书架标题单行省略；启动动画接入 `splash-preview/splash-final.html`；系统栏同步深色启动层。
+* UI 终版 0.0.8.8 已真机验收：书架标题单行省略；启动动画接入 `splash-preview/splash-final-dark.html`；系统栏同步深色启动层。
 
 * 启动动画提速 0.0.8.9 已验收推送：显示 1.2 秒 + 260ms 淡出，总时长约 1.46 秒；蜗牛随机起点。
 
@@ -264,6 +269,7 @@ flowchart LR
 | 21 | 0.1.9：原生相册 Photo Picker，一次最多 20 张 | 已并入 v0.1.10 | 20         | Android 13+ `ACTION_PICK_IMAGES`，低版本回退；缓存文件 + `Capacitor.convertFileSrc`，不返回 base64 |
 | 22 | 0.1.10：节拍器设置卡片分组 / 拍号 8 组 / 细分说明 / 定时快捷档 | 已发布 | 21         | GitHub Release `v0.1.10`；汇总 0.1.7–0.1.10；`gs_020.py` 覆盖 320 / 360 与深浅色；不改引擎与存档 |
 | 23 | 0.1.11：WebDAV 可恢复写入 / MOVE 回退 / 下载 JSON 校验 | 已发布 | 22 | GitHub Release `v0.1.11`；`gs_021.py` 九组；自定义域名 Worker 源码补在 `proxy/cloudflare-worker.js` |
+| 24 | 0.1.11b：日间启动动画 / 图标联动 / 顶部导航分割线 | 已发布 | 23 | GitHub Release `v0.1.11b`；`0.1.11a` 仅本地试用；证书指纹不变；详见 [CHANGELOG.md](CHANGELOG.md) 0.1.11b 段 |
 
 ## 7. 冒烟清单
 

@@ -1,5 +1,5 @@
 // 改版本时两处同步：这里 + js/services/version.js（SW 是 classic script，无法 import）
-const APP_VERSION = '0.1.11';
+const APP_VERSION = '0.1.11b';
 const CACHE_NAME = 'guitar-shell-v' + APP_VERSION;
 
 const ASSETS_TO_CACHE = [
@@ -40,7 +40,10 @@ const ASSETS_TO_CACHE = [
   './manifest.json',
   './icon-gShell-32.png',
   './icon-gShell-192.png',
-  './icon-gShell-512.png'
+  './icon-gShell-512.png',
+  './icon-gShell-light-32.png',
+  './icon-gShell-light-192.png',
+  './icon-gShell-light-512.png'
 ];
 
 // 1. 安装 Service Worker 并缓存文件

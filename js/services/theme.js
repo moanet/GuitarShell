@@ -14,6 +14,17 @@ const META_COLORS = {
   [THEME_LIGHT]: '#F3EDE3'
 };
 
+const FAVICON_PATHS = {
+  [THEME_DEEP]: {
+    32: './icon-gShell-32.png',
+    192: './icon-gShell-192.png'
+  },
+  [THEME_LIGHT]: {
+    32: './icon-gShell-light-32.png',
+    192: './icon-gShell-light-192.png'
+  }
+};
+
 const isTheme = (value) => value === THEME_DEEP || value === THEME_LIGHT;
 
 export function readStoredTheme() {
@@ -48,6 +59,20 @@ function syncNativeSystemBars(theme) {
 function paintBrowserChrome(theme) {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', META_COLORS[theme]);
+
+  document.querySelectorAll('link[data-theme-favicon]').forEach((link) => {
+    const href = FAVICON_PATHS[theme] && FAVICON_PATHS[theme][link.dataset.size];
+    if (href && link.getAttribute('href') !== href) link.setAttribute('href', href);
+  });
+}
+
+// 品牌图标：同一张图准备深/浅两份，切主题时只换 src
+export function syncThemeImages(root = document) {
+  const theme = getTheme();
+  root.querySelectorAll('[data-theme-icon]').forEach((img) => {
+    const next = theme === THEME_LIGHT ? img.getAttribute('data-light-src') : img.getAttribute('data-dark-src');
+    if (next && img.getAttribute('src') !== next) img.setAttribute('src', next);
+  });
 }
 
 export function applyTheme(theme, options = {}) {
@@ -56,6 +81,7 @@ export function applyTheme(theme, options = {}) {
   root.dataset.theme = next;
   root.style.colorScheme = next === THEME_LIGHT ? 'light' : 'dark';
   paintBrowserChrome(next);
+  syncThemeImages();
 
   try { localStorage.setItem(THEME_KEY, next); } catch (err) {}
 
@@ -69,8 +95,10 @@ export function applyTheme(theme, options = {}) {
 export function setTheme(theme) {
   const next = isTheme(theme) ? theme : DEFAULT_THEME;
   if (next === getTheme()) {
-    // 主题未变时也同步一次原生系统栏，覆盖冷启动后插件就绪较晚的情况
+    // 主题未变时也同步一次原生系统栏与图标，覆盖冷启动后插件就绪较晚的情况
     syncNativeSystemBars(next);
+    paintBrowserChrome(next);
+    syncThemeImages();
     return next;
   }
   applyTheme(next);

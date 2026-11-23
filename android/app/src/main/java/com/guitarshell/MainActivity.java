@@ -1,5 +1,6 @@
 package com.guitarshell;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,6 +21,12 @@ public class MainActivity extends BridgeActivity {
     private static final long SPLASH_HOLD_MS = 800;
     private static final long SPLASH_FADE_MS = 200;
 
+    // 原生侧只需知道当前主题，供冷启动启动层与系统栏使用
+    private static final String PREFS_NAME = "gs_native";
+    private static final String KEY_THEME = "gs_theme";
+    private static final String THEME_LIGHT = "light";
+    private static final String THEME_DEEP = "deep";
+
     private WebView splashOverlay;
     private final Runnable splashFadeRunnable = new Runnable() {
         @Override
@@ -36,8 +43,21 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BackGuardPlugin.class);
         registerPlugin(GalleryPickerPlugin.class);
         super.onCreate(savedInstanceState);
-        applyThemeSystemBars("deep");
-        if (savedInstanceState == null) showSplashOverlay();
+        String theme = readStoredTheme(this);
+        applyThemeSystemBars(theme);
+        if (savedInstanceState == null) showSplashOverlay(theme);
+    }
+
+    public static String readStoredTheme(Context context) {
+        String theme = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_THEME, THEME_DEEP);
+        return THEME_LIGHT.equals(theme) ? THEME_LIGHT : THEME_DEEP;
+    }
+
+    public static void saveStoredTheme(Context context, String theme) {
+        String next = THEME_LIGHT.equals(theme) ? THEME_LIGHT : THEME_DEEP;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().putString(KEY_THEME, next).apply();
     }
 
     public void applyThemeSystemBars(String theme) {
@@ -63,13 +83,14 @@ public class MainActivity extends BridgeActivity {
         getWindow().getDecorView().setSystemUiVisibility(flags);
     }
 
-    private void showSplashOverlay() {
+    private void showSplashOverlay(String theme) {
         if (splashOverlay != null) return;
         FrameLayout root = findViewById(android.R.id.content);
         if (root == null) return;
 
+        boolean light = THEME_LIGHT.equals(theme);
         WebView splash = new WebView(this);
-        splash.setBackgroundColor(Color.rgb(14, 16, 19));
+        splash.setBackgroundColor(light ? Color.rgb(243, 237, 227) : Color.rgb(14, 16, 19));
         splash.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         splash.setVerticalScrollBarEnabled(false);
         splash.setHorizontalScrollBarEnabled(false);
@@ -86,7 +107,7 @@ public class MainActivity extends BridgeActivity {
         settings.setMediaPlaybackRequiresUserGesture(true);
 
         splash.setWebViewClient(new WebViewClient());
-        splash.loadUrl("file:///android_asset/splash.html");
+        splash.loadUrl("file:///android_asset/splash.html#" + (light ? "light" : "deep"));
 
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,

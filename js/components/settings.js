@@ -7,7 +7,7 @@
 import { APP_VERSION } from '../services/version.js';
 import { showToast } from '../services/toast.js';
 import { dbService } from '../services/db.js';
-import { getTheme, setTheme, onThemeChange } from '../services/theme.js';
+import { getTheme, setTheme, onThemeChange, syncThemeImages } from '../services/theme.js';
 import { getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
 import { showConfirm } from './app-dialog.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
@@ -198,7 +198,7 @@ const settingsHTML = `
         <section class="card about">
           <div class="card-head"><span class="ico">◎</span><h3>关于</h3></div>
           <div class="about-brand">
-            <img src="./icon-gShell-192.png" alt="">
+            <img src="./icon-gShell-192.png" data-theme-icon data-dark-src="./icon-gShell-192.png" data-light-src="./icon-gShell-light-192.png" alt="">
             <div class="about-copy"><b>Guitar Shell</b><small>吉他手的一站式练琴工作站</small></div>
             <span class="ver" id="appVer">v…</span>
           </div>
@@ -249,6 +249,7 @@ class GuitarSettings extends HTMLElement {
       btn.classList.toggle('active', active);
       btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+    syncThemeImages(this.shadowRoot);
   }
 
   bind() {

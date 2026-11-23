@@ -176,10 +176,8 @@ body { display: flex; flex-direction: column; }
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 8px;
   padding: calc(10px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 10px calc(20px + env(safe-area-inset-left));
-  background: linear-gradient(180deg, rgba(var(--bg1-rgb), .98), rgba(var(--bg2-rgb), .98));
+  background: transparent;
   border-bottom: 1px solid var(--line);
-  box-shadow: 0 8px 28px rgba(var(--shadow-rgb), .28);
-  backdrop-filter: blur(10px);
   position: relative; z-index: 20;
 }
 .brand { flex: 1 1 100%; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 9px; color: var(--heading); letter-spacing: .3px; }
@@ -223,7 +221,7 @@ body { display: flex; flex-direction: column; }
 .tab-btn.active {
   color: var(--heading); border-color: var(--primary);
   background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.18), rgba(var(--primary-rgb), 0.10));
-  box-shadow: inset 0 1px 0 rgba(var(--secondary-rgb), 0.08), 0 4px 14px rgba(var(--shadow-rgb), 0.22);
+  box-shadow: inset 0 1px 0 rgba(var(--secondary-rgb), 0.08);
 }
 @media (max-width: 380px) {
   .tabs { gap: 6px; }

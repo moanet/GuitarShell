@@ -28,8 +28,8 @@
 
   <!-- 样式与图标（全部相对路径，Pages 子目录 / 本地根目录都能用） -->
   <link rel="stylesheet" href="./css/layout.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="./icon-gShell-32.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icon-gShell-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icon-gShell-32.png" data-theme-favicon data-size="32">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-gShell-192.png" data-theme-favicon data-size="192">
   <link rel="apple-touch-icon" href="./icon-gShell-192.png">
   <link rel="manifest" href="./manifest.json">
 </head>
@@ -37,7 +37,7 @@
 <body>
   <!-- 顶部导航栏 -->
   <header class="app-header">
-    <div class="brand"><img class="brand-icon" src="./icon-gShell-192.png" alt=""> Guitar Shell <button class="version-chip" id="appVersion" type="button" title="点按检查线上版本">v…</button><button class="settings-chip" id="btnGlobalSettings" type="button" aria-label="全局设置" title="全局设置">⚙</button></div>
+    <div class="brand"><img class="brand-icon" src="./icon-gShell-192.png" data-theme-icon data-dark-src="./icon-gShell-192.png" data-light-src="./icon-gShell-light-192.png" alt=""> Guitar Shell <button class="version-chip" id="appVersion" type="button" title="点按检查线上版本">v…</button><button class="settings-chip" id="btnGlobalSettings" type="button" aria-label="全局设置" title="全局设置">⚙</button></div>
     <nav class="tabs">
       <button class="tab-btn active" data-target="view-reader">乐谱</button>
       <button class="tab-btn" data-target="view-metronome">节拍器</button>

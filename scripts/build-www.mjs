@@ -15,7 +15,10 @@ const items = [
   'js',
   'icon-gShell-32.png',
   'icon-gShell-192.png',
-  'icon-gShell-512.png'
+  'icon-gShell-512.png',
+  'icon-gShell-light-32.png',
+  'icon-gShell-light-192.png',
+  'icon-gShell-light-512.png'
 ];
 
 for (const item of items) {

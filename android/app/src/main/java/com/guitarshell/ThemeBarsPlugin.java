@@ -16,12 +16,14 @@ public class ThemeBarsPlugin extends Plugin {
 
     @PluginMethod
     public void setTheme(PluginCall call) {
-        String theme = call.getString("theme", "deep");
+        String theme = "light".equals(call.getString("theme", "deep")) ? "light" : "deep";
         Activity activity = getActivity();
         if (!(activity instanceof MainActivity)) {
             call.reject("ThemeBars requires MainActivity");
             return;
         }
+        // 冷启动时原生启动层要先于 WebView 读主题，因此这里同步落一份原生偏好
+        MainActivity.saveStoredTheme(getContext(), theme);
         activity.runOnUiThread(() -> ((MainActivity) activity).applyThemeSystemBars(theme));
         call.resolve();
     }

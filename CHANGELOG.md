@@ -3,6 +3,44 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.11b — 双主题 UI 联动与顶部导航分割线（已发布 v0.1.11b，2026-11-23）
+
+> `0.1.11a` 仅作为本地真机试用标记，不单独发布；`v0.1.11b` 汇总 `0.1.11` 之后的两轮 UI 收口。版本号 `0.1.11b` / `versionCode 113`。
+
+**日间模式启动动画**
+
+- `android/app/src/main/assets/splash.html` 合并为单文件双主题版本：原生通过 URL hash `#deep` / `#light` 选择主题，页面在 head 最前面读取 hash 落 `html[data-theme]`，避免先闪错色。
+- 深色沿用原生产版；日间模式使用暖纸底色、棕色轨道与浅色文字，中心同心圆对齐 `icon-gShell-flat-light.svg` 的黑 / 棕 / 黑三层结构。
+- 几何、随机起点、10 秒一圈、16 段拖尾、80° 实体段、0.45 不透明度与三点闪烁均未改；保留 `prefers-reduced-motion` 降级。
+- `MainActivity` 新增原生主题偏好 `gs_native/gs_theme`，冷启动读取主题后加载对应启动层，并同步状态栏、导航栏；`ThemeBarsPlugin.setTheme()` 负责持久化，保证下次冷启动跟随当前主题。
+
+**界面图标联动**
+
+- `js/services/theme.js` 新增 `FAVICON_PATHS` 与 `syncThemeImages()`；切换主题时同步页头品牌图标、全局设置「关于」图标与 32 / 192 favicon。
+- 新增浅色图标 `icon-gShell-light-32.png` / `-192.png` / `-512.png`，已接入 `scripts/build-www.mjs` 与 `sw.js` 缓存清单。
+- Android 桌面启动图标保持静态；系统启动窗口仍为固定深色底，日间模式冷启动可能有极短深色系统层。
+
+**顶部导航分割线**
+
+- `css/layout.css` 的 `.app-header` 去掉渐变底色、`box-shadow` 与 `backdrop-filter`，改为透明背景 + `border-bottom: 1px solid var(--line)`，与全局设置标题栏的分割线一致。
+- 选中态标签去掉向外的 `0 4px 14px` 投影，只保留内高光，让四个标签与下方内容连成同一平面，不再有浮起的分割感。
+
+**README**
+
+- 「下载与安装」删掉历史版本与版本更新描述，只保留最新 Release 下载、安装说明、网页版入口与校验值指引。
+
+**验证**
+
+- `npm run check` 通过：`v0.1.11b，29 个 JS 文件，SW 缓存与版本一致`。
+- Edge 360 宽双主题实测：日间 / 深色顶部均只保留 1px 分割线，选中标签无外投影；全局设置标题栏风格一致。
+- release APK `4,417,334` 字节，SHA-256 `E858F6ED95CB8BBB6DCC3C1C4001B8FF4E8E06E21E3C8E33CC23B8B0E4DEDDA7`；包名 `com.guitarshell`，`versionCode 113` / `versionName 0.1.11b`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名通过，证书 SHA-256 保持 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- 已覆盖安装 `ca14b16`，书架 6 张乐谱与练习数据保留，书架徽标 `0.1.11b`；日间模式冷启动浅色启动动画与浅色状态栏正常。
+
+**状态**
+
+- 已推送 `main`；GitHub Pages 随 `main` 部署网页版。
+- 已发布 GitHub Release `v0.1.11b`，APK 已上传并以 Release 页面为准。
+
 ## 0.1.11 — WebDAV 可恢复写入（已发布 v0.1.11，2026-11-23）
 
 > 版本号已同步为 `0.1.11` / `versionCode 111`。只收口 WebDAV 写入技术债，不新增用户功能，不改备份格式与同步 UI。
@@ -560,7 +598,7 @@
 
 - **书架标题单行省略**：`js/components/sheet-reader.js` 的 `.score-name` 从两行 clamp / `word-break: break-all` 改为 `display: block` + `width: 100%` + `white-space: nowrap` + `overflow: hidden` + `text-overflow: ellipsis`。超长文件名只占一行，尾部显示省略号；完整名称继续放在卡片 `title` 属性里，长按 / 悬浮可看全名。
 - **书架验收**：390×844 下标题宽 `147px`、高 `17px`、`scrollWidth=504`、`clientWidth=147`，`whiteSpace=nowrap` / `textOverflow=ellipsis`；360×800 下宽 `132px`、高 `17px`，同为单行省略；卡片标签与书架布局不变。
-- **启动动画终稿接入**：把 `splash-preview/splash-final.html` 复制为 `android/app/src/main/assets/splash.html`，保留轨道 G（`#A46B40`）、奶白蜗牛、16 段线性渐隐拖尾、10 秒一圈、从七点钟方向顺时针爬行、三点闪烁；布局改成全屏，适配安全区，不再显示 300×540 手机外框。
+- **启动动画终稿接入**：把 `splash-preview/splash-final-dark.html` 复制为 `android/app/src/main/assets/splash.html`，保留轨道 G（`#A46B40`）、奶白蜗牛、16 段线性渐隐拖尾、10 秒一圈、从七点钟方向顺时针爬行、三点闪烁；布局改成全屏，适配安全区，不再显示 300×540 手机外框。
 - **原生启动层**：`MainActivity` 在 Capacitor 加载应用的同时叠加全屏 WebView 动画层，显示 2.3 秒后以 380ms 淡出并销毁；动画层拦截触摸，加载期间不会误触底层页面；系统状态栏 / 导航栏同步 `#0E1013`，`AppTheme.NoActionBarLaunch` 背景改为深色，原 Capacitor 蓝色 X 启动图不再出现。
 - **启动页验收**：390×844 下 `.phone` 为 390×844、SVG 226×226、`scrollWidth=390` / `scrollHeight=844`，无滚动溢出；蜗牛在 0.9 秒与 1.8 秒的 `transform` 不同，拖尾 16 条 path 正常；360×800 下 SVG 209×209、`scrollWidth=360`，无横向溢出；JS 错误列表为空。
 - **Android 构建**：`npm run cap:sync` → `gradlew assembleDebug` BUILD SUCCESSFUL；`aapt` 确认 `versionCode 18` / `versionName 0.0.8.8`；APK 内含 `assets/splash.html`、`assets/public/js/components/sheet-reader.js` 与 `assets/public/sw.js`；`classes4.dex` 已含 `MainActivity` 与 `splash.html` 字符串。

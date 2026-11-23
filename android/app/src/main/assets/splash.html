@@ -1,25 +1,28 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="deep">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Guitar Shell · Splash</title>
 <!--
-  GuitarShell 启动屏 Loading 动画 · 终稿（F1 · 线性平滑渐隐）
+  GuitarShell 启动屏 Loading 动画 · 双主题全屏版
+  深色沿用 splash-preview/splash-final-dark.html；
+  日间模式对齐 splash-preview/splash-final-light.html 与 docs/icon/icon-gShell-flat-light.svg。
+  两套只换颜色与中心同心圆结构，几何 / 时长 / 文案 / 动画逻辑完全一致。
+
   定稿参数（供后续封装 Web Component 时复用）：
-  - 轨道/字母 G 原色：#A46B40；蜗牛身体/圆心：#FBEACE；蜗牛壳/背景：#0E1013
-  - 轨道圈 r=78，stroke #A46B40 width 16 opacity .9
+  - 轨道圈 r=78，stroke var(--icon-g) width 16 opacity .9
   - 蜗牛每次启动从轨道随机角度出发，顺时针爬行
   - 速度：10 秒一圈（DURATION = 10000ms）
   - 拖尾上限三分之一圈（120° = 2π/3）；第一圈仅覆盖已爬路段，第二圈起跨圈连续不重置
   - 拖尾 16 段细分；贴近蜗牛实体段 80°（SOLID_ANG = 4π/9），其后线性渐隐至尾端
-  - 实体不透明度 0.45；stroke #FBEACE width 3 stroke-linecap butt（接缝不可见）
+  - 实体不透明度 0.45；stroke var(--trail) width 3 stroke-linecap butt（接缝不可见）
   - 动画驱动：setInterval 30fps（该 WebView 下 rAF 会被节流）
   - 文案：品牌 Guitar Shell；副标题斜体 All in one shell.；状态 正在爬行 + 三点闪烁
-  - 接入正式组件时需处理 prefers-reduced-motion 降级（减速或静态/极简动画）
 -->
 <style>
-  :root {
+  :root, html[data-theme="deep"] {
+    color-scheme: dark;
     --icon-bg: #0E1013;
     --icon-g: #A46B40;
     --icon-cream: #FBEACE;
@@ -29,12 +32,68 @@
     --txt: #EAE3D9;
     --muted: #8A8075;
     --accent: #D99E6A;
+    --brand: #FBEACE;
+
+    --snail-body: #FBEACE;
+    --snail-line: #FBEACE;
+    --snail-eye: #FBEACE;
+    --snail-head-dot: #1E1B18;
+    --snail-shell: #0E1013;
+    --snail-shell-line: #FBEACE;
+    --snail-shadow: #000;
+    --snail-shadow-op: .22;
+
+    --trail: #FBEACE;
+    --pulse: #D99E6A;
+    --pulse-min: .18;
+    --pulse-max: .5;
+    --pulse-scale: 1.06;
+
+    --page-glow: rgba(164,107,64,.12);
+    --phone-glow: rgba(164,107,64,.10);
+    --phone-shadow: 0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+    --phone-inset: rgba(255,255,255,.04);
   }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+    --icon-bg: #F3EDE3;
+    --icon-g: #8F552C;
+    --icon-cream: #F3E8D6;
+    --panel: #FCF8F1;
+    --bg2: #F7F1E8;
+    --line: #E5DAC8;
+    --txt: #2A2520;
+    --muted: #7C7165;
+    --accent: #C7863F;
+    --brand: #2A2520;
+
+    --snail-body: #F3E8D6;
+    --snail-line: #2A2520;
+    --snail-eye: #2A2520;
+    --snail-head-dot: #2A2520;
+    --snail-shell: #2A2520;
+    --snail-shell-line: #F3E8D6;
+    --snail-shadow: #2A2520;
+    --snail-shadow-op: .18;
+
+    --trail: #F3E8D6;
+    --pulse: #C7863F;
+    --pulse-min: .06;
+    --pulse-max: .16;
+    --pulse-scale: 1.05;
+
+    --page-glow: rgba(143,85,44,.10);
+    --phone-glow: rgba(143,85,44,.08);
+    --phone-shadow: 0 18px 44px rgba(120,84,48,.16), inset 0 1px 0 rgba(255,255,255,.7);
+    --phone-inset: rgba(255,255,255,.7);
+  }
+
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; }
   body {
     background:
-      radial-gradient(1100px 620px at 78% -12%, rgba(164,107,64,0.12), transparent 62%),
+      radial-gradient(1100px 620px at 78% -12%, var(--page-glow), transparent 62%),
       var(--icon-bg);
     color: var(--txt);
     font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif;
@@ -53,12 +112,12 @@
   .phone::before {
     content: ""; position: absolute; inset: 0; pointer-events: none;
     background:
-      radial-gradient(300px 220px at 50% 30%, rgba(164,107,64,.10), transparent 70%),
-      radial-gradient(900px 520px at 78% -12%, rgba(164,107,64,.10), transparent 66%);
+      radial-gradient(300px 220px at 50% 30%, var(--phone-glow), transparent 70%),
+      radial-gradient(900px 520px at 78% -12%, var(--page-glow), transparent 66%);
   }
   .splash-svg { width: clamp(200px, 58vw, 260px); height: clamp(200px, 58vw, 260px); display: block; }
   .brand-line { display: flex; flex-direction: column; align-items: center; gap: 7px; position: relative; z-index: 1; }
-  .brand-name { font-size: 18px; font-weight: 700; color: var(--icon-cream); letter-spacing: .6px; }
+  .brand-name { font-size: 18px; font-weight: 700; color: var(--brand); letter-spacing: .6px; }
   .brand-sub { font-size: 12px; color: var(--muted); letter-spacing: .4px; font-style: italic; }
   .brand-status { font-size: 12px; color: var(--muted); letter-spacing: .3px; min-height: 16px; margin-top: 4px; }
   .dots { display: inline-flex; gap: 4px; margin-left: 2px; }
@@ -69,13 +128,45 @@
 
   .pulse-ring { transform-origin: 120px 120px; animation: pulse 3.6s infinite ease-in-out; }
   @keyframes pulse {
-    0%, 100% { opacity: .18; transform: scale(1); }
-    50% { opacity: .5; transform: scale(1.06); }
+    0%, 100% { opacity: var(--pulse-min); transform: scale(1); }
+    50% { opacity: var(--pulse-max); transform: scale(var(--pulse-scale)); }
   }
+
+  /* SVG 主题色：用 CSS 控制，切主题时无需重绘脚本 */
+  .track { fill: none; stroke: var(--icon-g); stroke-width: 16; opacity: .9; }
+  .trail { fill: none; stroke: var(--trail); stroke-width: 3; stroke-linecap: butt; }
+  .pulse-ring { fill: none; stroke: var(--pulse); stroke-width: 2; }
+
+  .medallion-deep { display: inline; }
+  .medallion-light { display: none; }
+  .medallion-deep .ring { fill: none; stroke: var(--icon-g); stroke-width: 5; }
+  .medallion-deep .well { fill: var(--bg2); stroke: var(--line); stroke-width: 1; }
+  .medallion-deep .core { fill: var(--icon-cream); }
+  .medallion-light .outer { fill: none; stroke: var(--txt); stroke-width: 9.6; }
+  .medallion-light .ring { fill: none; stroke: var(--icon-g); stroke-width: 4.6; }
+  .medallion-light .core { fill: var(--txt); }
+  html[data-theme="light"] .medallion-deep { display: none; }
+  html[data-theme="light"] .medallion-light { display: inline; }
+
+  .snail-shadow { fill: var(--snail-shadow); opacity: var(--snail-shadow-op); }
+  .snail-body { fill: var(--snail-body); }
+  .snail-line { fill: none; stroke: var(--snail-line); stroke-width: 2; stroke-linecap: round; }
+  .snail-eye { fill: var(--snail-eye); }
+  .snail-head-dot { fill: var(--snail-head-dot); }
+  .snail-shell { fill: var(--snail-shell); stroke: var(--snail-shell-line); stroke-opacity: .35; stroke-width: 1; }
+  html[data-theme="light"] .snail-shell { stroke-opacity: .45; }
+  .snail-shell-ring { fill: none; stroke: var(--snail-shell-line); stroke-width: 1.6; stroke-linecap: round; }
+
   @media (prefers-reduced-motion: reduce) {
     .pulse-ring, .dots i { animation: none; }
   }
 </style>
+<script>
+  (function () {
+    var theme = location.hash.replace('#', '') === 'light' ? 'light' : 'deep';
+    document.documentElement.dataset.theme = theme;
+  })();
+</script>
 </head>
 <body>
 
@@ -83,27 +174,34 @@
   <svg class="splash-svg" viewBox="0 0 240 240" aria-label="Guitar Shell 启动屏">
     <defs>
       <g id="snail">
-        <ellipse cx="0" cy="5" rx="14" ry="3" fill="#000" opacity=".22"/>
-        <path d="M -17 3 Q -18 -2 -11 -3 Q -7 -9 0 -9 Q 8 -9 12 -3 Q 17 -1 18 2 Q 18 4 14 4 L -13 4 Q -17 4 -17 3 Z" fill="#FBEACE"/>
-        <g stroke="#FBEACE" stroke-width="2" stroke-linecap="round" fill="none">
+        <ellipse class="snail-shadow" cx="0" cy="5" rx="14" ry="3"/>
+        <path class="snail-body" d="M -17 3 Q -18 -2 -11 -3 Q -7 -9 0 -9 Q 8 -9 12 -3 Q 17 -1 18 2 Q 18 4 14 4 L -13 4 Q -17 4 -17 3 Z"/>
+        <g class="snail-line">
           <path d="M 11 -6 L 15 -14"/>
           <path d="M 7 -7 L 7.5 -15"/>
         </g>
-        <circle cx="15" cy="-14" r="1.4" fill="#FBEACE"/>
-        <circle cx="7.5" cy="-15" r="1.4" fill="#FBEACE"/>
-        <circle cx="13" cy="-4" r="1" fill="#1E1B18"/>
-        <circle cx="-4" cy="-8" r="7.5" fill="#0E1013" stroke="#FBEACE" stroke-opacity=".35" stroke-width="1"/>
-        <path d="M -4 -8 m 0 -3.6 a 3.6 3.6 0 1 1 -3.6 3.6" fill="none" stroke="#FBEACE" stroke-width="1.6" stroke-linecap="round"/>
+        <circle class="snail-eye" cx="15" cy="-14" r="1.4"/>
+        <circle class="snail-eye" cx="7.5" cy="-15" r="1.4"/>
+        <circle class="snail-head-dot" cx="13" cy="-4" r="1"/>
+        <circle class="snail-shell" cx="-4" cy="-8" r="7.5"/>
+        <path class="snail-shell-ring" d="M -4 -8 m 0 -3.6 a 3.6 3.6 0 1 1 -3.6 3.6"/>
       </g>
     </defs>
 
-    <circle cx="120" cy="120" r="78" fill="none" stroke="#A46B40" stroke-width="16" opacity=".9"/>
-    <g id="trail" fill="none" stroke="#FBEACE" stroke-width="3" stroke-linecap="butt"></g>
+    <circle class="track" cx="120" cy="120" r="78"/>
+    <g id="trail" class="trail"></g>
 
-    <circle class="pulse-ring" cx="120" cy="120" r="30" fill="none" stroke="#D99E6A" stroke-width="2"/>
-    <circle cx="120" cy="120" r="30" fill="none" stroke="#A46B40" stroke-width="5"/>
-    <circle cx="120" cy="120" r="21" fill="#171411" stroke="#2C2622" stroke-width="1"/>
-    <circle cx="120" cy="120" r="11" fill="#FBEACE"/>
+    <circle class="pulse-ring" cx="120" cy="120" r="30"/>
+    <g class="medallion-deep">
+      <circle class="ring" cx="120" cy="120" r="30"/>
+      <circle class="well" cx="120" cy="120" r="21"/>
+      <circle class="core" cx="120" cy="120" r="11"/>
+    </g>
+    <g class="medallion-light">
+      <circle class="outer" cx="120" cy="120" r="25.2"/>
+      <circle class="ring" cx="120" cy="120" r="15.5"/>
+      <circle class="core" cx="120" cy="120" r="13.2"/>
+    </g>
 
     <use id="snailUse" href="#snail" transform="translate(81 187.5) scale(1)"/>
   </svg>
