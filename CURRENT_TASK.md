@@ -25,12 +25,12 @@
 6. 任何一步失败都保留 `.uploading`，下次上传继续处理；
 7. 正式文件缺失、或正式文件不是完整 JSON 时，下载回退读取 `.uploading`，避免另一台设备取到半截备份。
 
-补充实测：自定义域名 `dav.noamet.ccwu.cc` 与 `workers.dev` 的 `OPTIONS` 只返回 `Access-Control-Allow-Methods: GET,PUT,DELETE,PROPFIND,OPTIONS`，MOVE 会在浏览器预检阶段被拦。仓库内本地 Node 代理已同步放开 MOVE 并重写 `Destination`；自定义域名 Worker 的重新部署不在本版本内，因此生产路径必须有 PUT 回退。
+补充实测：自定义域名 `dav.noamet.ccwu.cc` 与 `workers.dev` 的初始 `OPTIONS` 只返回 `Access-Control-Allow-Methods: GET,PUT,DELETE,PROPFIND,OPTIONS`，MOVE 会在浏览器预检阶段被拦。仓库内本地 Node 代理已同步放开 MOVE 并重写 `Destination`；自定义域名 Worker 参考源码补在 `proxy/cloudflare-worker.js`。用户已于 2026-11-23 手动部署该源码，真机上传日志确认 `MOVE .../backup.json.uploading` 返回 `201`，自建域名已走原子替换；PUT 回退仍保留作为兜底。
 
 不包含：
 
 - 云同步自动 / 定时触发、退出前自动上传；
-- 自定义域名 Worker 的重新部署（需要完全原子 MOVE 时再单独处理）；
+- 自定义域名 Worker 的重新部署（版本范围外；后续已由用户手动部署完成）；
 - `.bak` 旧版本副本方案（保留复杂度，暂不做）；
 - 备份格式、备份内容、云同步 UI 布局改动。
 
@@ -180,7 +180,8 @@
 - `apksigner verify --print-certs`：v1 / v2 通过，证书 SHA-256 仍为 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
 - 真机 `ca14b16` 覆盖安装成功；书架徽标 `v0.1.11`，原有 6 张乐谱与 10 条练习记录保留。
 - 真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次：上传完成、状态变为“本机已是最新”，测试连接返回“连接正常 · 自定义端点 · 云端已有备份”。未触碰正式 `GuitarShell/backup.json`；测试文件与遗留测试目录已由用户删除。
-- 该测试路径的实际链路走的是 MOVE 失败后的 `PUT` 回退（自定义域名 CORS 仍不含 MOVE），证明回退路径在真机可用。
+- 部署 Worker 前，测试路径的实际链路走的是 MOVE 失败后的 `PUT` 回退（当时自定义域名 CORS 仍不含 MOVE），证明回退路径在真机可用。
+- 用户部署 `proxy/cloudflare-worker.js` 后再次上传：Cloudflare Worker Logs 显示 `MOVE https://dav.noamet.ccwu.cc/dav/GuitarShell/backup.json.uploading`，状态 `201`，说明自建域名已走原子 `MOVE`，不再回退。
 
 ### 4.5 版本与状态
 
@@ -189,3 +190,4 @@
 - APK：`dist/GuitarShell-0.1.11-release.apk`，4,373,460 字节，SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`。
 - 已推送 `main`；CI 与 Pages 工作流成功，网页版已部署 `0.1.11`。
 - 已发布 GitHub Release `v0.1.11`（Release ID `455427768`，tag 指向 `4aa7358`）；APK asset ID `782951194`，远端下载大小与 SHA-256 复核一致。
+- 自定义域名 Worker 已由用户手动部署 `proxy/cloudflare-worker.js`；2026-11-23 21:13 真机上传日志确认 `MOVE .../backup.json.uploading` 返回 `201`，自定义通道已走原子替换。

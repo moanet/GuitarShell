@@ -93,7 +93,7 @@
 
 ### 1.12 0.1.11 WebDAV 可恢复写入（已发布 v0.1.11）
 
-0.1.11 收口最后一条数据可靠性技术债。坚果云实测普通 `MOVE` 可用、覆盖目标 `MOVE` 返回 409，不能单次原子替换；上传改为 `PUT <path>.uploading → PROPFIND 校验大小 → DELETE 正式文件 → MOVE 临时文件`，任何一步失败都保留临时文件。实测自定义域名 / Worker 的 CORS 只允许 `GET,PUT,DELETE,PROPFIND,OPTIONS`，MOVE 会被预检拦截；因此 MOVE 失败时自动回退 `PUT 正式文件 → PROPFIND 校验`，下载在正式文件缺失或不是完整 JSON 时回退临时文件。仓库内本地 Node 代理已放开 MOVE 并重写 `Destination`，自定义域名 Worker 未重新部署。新增 `gs_021.py` 覆盖正常序列、大小失败、MOVE 409 回退、CORS TypeError 回退、回退 PUT 失败、下载回退、半截 JSON 回退、无备份与端点回退锁定；`gs_015.py` mock 适配新序列；`gs_015/016/018/019/020` 全部通过。`npm run check` 通过 `v0.1.11 / 29 个 JS`；release APK `4,373,460` 字节 / SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`，已覆盖安装 `ca14b16`，书架徽标 `0.1.11`。真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次成功，测试连接显示云端已有备份；未触碰正式 `backup.json`，测试文件与遗留测试目录已由用户删除。自定义域名 Worker 的参考源码补在 `proxy/cloudflare-worker.js`（放开 MOVE + 重写 Destination），用户可手动替换后走原子 MOVE。已推送 `main`，CI 与 Pages 工作流成功，网页版自动部署 `0.1.11`；已发布 GitHub Release `v0.1.11`（tag `4aa7358`），APK 上传并完成远端 SHA-256 复核。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
+0.1.11 收口最后一条数据可靠性技术债。坚果云实测普通 `MOVE` 可用、覆盖目标 `MOVE` 返回 409，不能单次原子替换；上传改为 `PUT <path>.uploading → PROPFIND 校验大小 → DELETE 正式文件 → MOVE 临时文件`，任何一步失败都保留临时文件。实测自定义域名 / Worker 的 CORS 只允许 `GET,PUT,DELETE,PROPFIND,OPTIONS`，MOVE 会被预检拦截；因此 MOVE 失败时自动回退 `PUT 正式文件 → PROPFIND 校验`，下载在正式文件缺失或不是完整 JSON 时回退临时文件。仓库内本地 Node 代理已放开 MOVE 并重写 `Destination`；自定义域名 Worker 参考源码补在 `proxy/cloudflare-worker.js`，用户已手动部署，真机日志确认 `MOVE .../backup.json.uploading` 返回 `201`，自建域名已走原子替换。新增 `gs_021.py` 覆盖正常序列、大小失败、MOVE 409 回退、CORS TypeError 回退、回退 PUT 失败、下载回退、半截 JSON 回退、无备份与端点回退锁定；`gs_015.py` mock 适配新序列；`gs_015/016/018/019/020` 全部通过。`npm run check` 通过 `v0.1.11 / 29 个 JS`；release APK `4,373,460` 字节 / SHA-256 `C6BAA0E6F4B3B437F399EB232DDB24643566B26179B42B9163CA87F82795CAAE`，已覆盖安装 `ca14b16`，书架徽标 `0.1.11`。真机用测试路径 `GuitarShell/backup-cors-test.json` 实际上传一次成功，测试连接显示云端已有备份；未触碰正式 `backup.json`，测试文件与遗留测试目录已由用户删除。自定义域名 Worker 的参考源码补在 `proxy/cloudflare-worker.js`（放开 MOVE + 重写 Destination），用户已手动部署并验证 MOVE `201`。已推送 `main`，CI 与 Pages 工作流成功，网页版自动部署 `0.1.11`；已发布 GitHub Release `v0.1.11`（tag `4aa7358`），APK 上传并完成远端 SHA-256 复核。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
 ## 2. 演进路线
 
@@ -130,7 +130,7 @@ flowchart LR
 | 读谱器      | 96% | 书架 / 标签 AND / 拼音搜索、PDF 虚拟化、手势缩放、进度双轨、页级书签、迷你节拍器同步、全屏与控件渐隐、页段拆分建卡、拆分起止页缩略图 / 页码选择 | 全页面预览与按目录自动识别为永久非目标 |
 | 练琴记录     | 92% | 打卡（时长 / BPM / 页码）、累计统计、SVG 趋势、TOP5、实时刷新                                                                      | 按曲目下钻、连续打卡等彩蛋指标                    |
 | 调音器      | 95% | 麦克风采集、YIN 基频、指针仪表、自动 / 手动选弦、A4 步进校准、音名 / 音分换算、低音尾音折叠、离页自动关麦、提示音 / 震动反馈、标准音试听、10 秒音分曲线                        | 麦克风 / 震动权限已确认正常；真机长时稳定性未专门验证             |
-| 数据 / 服务层 | 82% | IndexedDB v3、全量备份、WebDAV 多通道、冲突检测、密码本机加密、统一音频引擎、常亮服务、内容哈希去重、同步状态提示、同步中退出确认、WebDAV 临时文件 + MOVE / PUT 回退 | 云同步自动定时上传（永久非目标）；自定义域名 Worker 尚未放开 MOVE（当前走 PUT 回退） |
+| 数据 / 服务层 | 82% | IndexedDB v3、全量备份、WebDAV 多通道、冲突检测、密码本机加密、统一音频引擎、常亮服务、内容哈希去重、同步状态提示、同步中退出确认、WebDAV 临时文件 + MOVE / PUT 回退、自建域名 MOVE 已验证 | 云同步自动定时上传（永久非目标） |
 | 壳 / 真机层  | 核心已验收 | B1-spike 0.0.7.2 / 0.0.7.3 真机验收；后台 / 锁屏节拍器续响；0.0.8.1 常亮；0.0.8.7 原生备份写盘；0.1.0 release 签名包                     | 长时 Doze 专项测试不做（非实际练琴场景）；Android 12 及以下真机验证已明确跳过              |
 
 ## 4. 版本时间线
@@ -358,7 +358,7 @@ npm run apk:release
 
 * [x] Android Home / 上滑杀进程无法阻止，属于系统底层行为，不按 bug 处理；云同步退出确认只覆盖返回键与网页关闭。
 
-* [x] WebDAV 写入加固：坚果云实测 `OPTIONS` 返回 `Allow` 含 `MOVE`，普通 `MOVE` 返回 `201`，覆盖已有目标返回 `409`；因此不能用单次 `MOVE` 做严格原子替换。0.1.11 已改为 `PUT <path>.uploading` → `PROPFIND` 校验大小 → `DELETE` 正式文件 → `MOVE .uploading` 到正式文件；首次 PUT 成功后锁定同一端点，失败保留临时文件。实测自定义域名 / Worker 的 CORS 不含 `MOVE`，MOVE 失败时回退 `PUT 正式文件 → PROPFIND 校验`；下载在正式文件缺失或不是完整 JSON 时回退临时文件。新增 `gs_021.py`，九组用例通过；`gs_015/016/018/019/020` 全部通过；真机用测试路径实际上传成功。自定义域名 Worker 若要使用原子 MOVE，需要单独在代理层放开 `MOVE` 并重写 `Destination`；参考源码见 `proxy/cloudflare-worker.js`，用户可手动替换部署。
+* [x] WebDAV 写入加固：坚果云实测 `OPTIONS` 返回 `Allow` 含 `MOVE`，普通 `MOVE` 返回 `201`，覆盖已有目标返回 `409`；因此不能用单次 `MOVE` 做严格原子替换。0.1.11 已改为 `PUT <path>.uploading` → `PROPFIND` 校验大小 → `DELETE` 正式文件 → `MOVE .uploading` 到正式文件；首次 PUT 成功后锁定同一端点，失败保留临时文件。实测自定义域名 / Worker 的 CORS 不含 `MOVE`，MOVE 失败时回退 `PUT 正式文件 → PROPFIND 校验`；下载在正式文件缺失或不是完整 JSON 时回退临时文件。新增 `gs_021.py`，九组用例通过；`gs_015/016/018/019/020` 全部通过；真机用测试路径实际上传成功。自定义域名 Worker 参考源码见 `proxy/cloudflare-worker.js`；用户已手动部署，2026-11-23 真机上传日志确认 `MOVE .../backup.json.uploading` 返回 `201`，自建域名已走原子替换。PUT 回退保留作为兜底。
 
 * [x] Android 12 及以下相册 SAF 回退按用户决定永久跳过真机验证；`ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT` 代码保留，不作为验收缺口。
 
