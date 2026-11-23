@@ -56,7 +56,7 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 
 - **Android 当前正式版**：前往 [GitHub Releases](https://github.com/moanet/GuitarShell/releases/latest) 下载 `GuitarShell-0.1.4-release.apk`。
 - **当前 Release**：[v0.1.4](https://github.com/moanet/GuitarShell/releases/tag/v0.1.4)，2026-11-23 正式发布；APK 已上传并通过远端 SHA-256 复核。
-- **0.1.5 状态**：内部迭代，已真机验收并推送 `main`，未单独发布；正式下载仍为 `0.1.4`，后续跨版本发布时统一更新。
+- **0.1.5 状态**：内部迭代，已真机验收并推送 `main`；GitHub Pages 自动部署为 0.1.5 开发预览，未创建 GitHub Release；正式 APK 下载仍为 `0.1.4`，后续跨版本发布时统一更新。
 - **0.1.4 APK 校验**：SHA-256 `56CF329C0F9EC0873D47BC179C4FA94D14A937F7167732A608B20BA4C3BD32D7`。
 - **上一版**：[v0.1.3](https://github.com/moanet/GuitarShell/releases/tag/v0.1.3)，2026-11-22 发布，乐谱去重与云同步状态提示。
 - **网页版**：打开 [https://moanet.github.io/GuitarShell/](https://moanet.github.io/GuitarShell/)。

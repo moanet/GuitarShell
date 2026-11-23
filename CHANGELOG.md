@@ -37,6 +37,7 @@
 - `npm run check` 通过：`v0.1.5`，25 个 JS 文件，SW 缓存与版本一致。
 - release APK 已构建：`4,147,309` 字节，`versionCode 105` / `versionName 0.1.5`，SHA-256 `5D9B313A25933B642995AA6918E00116427192D0E3E15D7FE8CEF52DA01534D9`，v1 / v2 签名通过。
 - 真机验收通过；按计划不单独发布 0.1.5，不打 tag、不创建 GitHub Release，与后续功能一起跨版本发布。
+- GitHub Actions CI 首次运行通过：`static-checks` 成功；GitHub Pages 随 `main` 自动部署 0.1.5 作为开发预览，正式 APK 下载仍为 0.1.4。
 
 ## 0.1.4 — 书架管理收口（已发布，2026-11-23）
 

@@ -121,9 +121,12 @@
 - v1 / v2 签名通过，证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
 - APK 内 `assets/public` 已复核：`version.js` / `sw.js` 为 `0.1.5`，`sheet-reader.js` 含取消按钮，`webdav.js` 上传超时 `60s`。
 - 2026-11-23 真机验收通过；按发布策略未单独发布。
+- GitHub Actions CI 首次运行通过：`static-checks` 成功。
 
 ## 8. 发布策略
 
 0.1.5 作为内部迭代版本随 `main` 推送，不打 `v0.1.5` tag，不创建 GitHub Release，也不更新 README 的正式下载入口。
 
 后续继续累积功能，到下一个跨版本节点再统一构建、验收、打 tag 并发布 Release；届时 README 下载入口与版本说明一并切换。
+
+GitHub Pages 会随 `main` 自动部署，因此线上网页当前显示 0.1.5 源码。它只作为开发预览，不替代 GitHub Release；正式 APK 下载入口仍指向 0.1.4。
