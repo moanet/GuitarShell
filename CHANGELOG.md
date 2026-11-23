@@ -3,9 +3,9 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
-## 0.1.6 — 乐谱拆分建卡（真机验收通过，准备发布，2026-11-23）
+## 0.1.6 — 乐谱拆分建卡（已发布，2026-11-23）
 
-> 版本号已同步为 `0.1.6`；补读谱器最后一个硬缺口：多曲 PDF 选中页段生成独立新卡，原谱保留。
+> 版本号已同步为 `0.1.6`；补读谱器最后一个硬缺口：多曲 PDF 选中页段生成独立新卡，原谱保留。0.1.5 未单独发布，本版是 0.1.4 之后的首个正式 Release。
 
 **拆分核心**
 
@@ -37,7 +37,10 @@
 - 图片卡不显示拆分按钮；损坏 PDF 拆分报错，记录数未增加。
 - release APK 已构建：`4,357,120` 字节，`versionCode 106` / `versionName 0.1.6`，SHA-256 `D397762F6A1A19FEEAA29E8BD79D9B74AE4D49BEEAB61329BC9F4E11F18BC76C`，v1 / v2 签名通过，证书 SHA-256 仍为 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
 - APK 内已确认包含 `assets/public/js/lib/pdf-lib.esm.min.js`、`assets/public/js/services/pdf-split.js` 与新版 `sw.js`。
-- 真机验收通过：用户确认拆分建卡流程、新卡阅读与数据操作正常；准备提交 `main` 并创建 `v0.1.6` Release。
+- 真机验收通过：用户确认拆分建卡流程、新卡阅读与数据操作正常。
+- 已发布：功能提交 `de69c1b`，annotated tag `v0.1.6`；GitHub Release ID `455078757`，APK asset ID `781883921`。
+- 发布地址：`https://github.com/moanet/GuitarShell/releases/tag/v0.1.6`；远端资产 `4,357,120` 字节，digest `sha256:d397762f6a1a19feeaa29e8bd79d9b74ae4d49beeab61329bc9f4e11f18bc76c`，下载复核一致。
+- GitHub Pages 已随 `main` 自动部署 0.1.6，线上 `sw.js` 的 `APP_VERSION` 已确认为 `0.1.6`；GitHub 最新 Release 为 `v0.1.6`，含 1 个 APK 资产。
 
 **已知边界**
 
