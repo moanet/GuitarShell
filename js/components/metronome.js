@@ -5,6 +5,7 @@ import { audioEngine } from '../services/audio.js';
 import { analyzeAudioBuffer, decodeAudioBuffer } from '../services/audio-analysis.js';
 import { wakeLock } from '../services/wakelock.js';
 import { showConfirm } from './app-dialog.js';
+import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import { themeColor, onThemeChange } from '../services/theme.js';
 import { dbService } from '../services/db.js';
 
@@ -431,6 +432,7 @@ class GuitarMetronome extends HTMLElement {
     
     this.isRunning = false;
     this.metronomeHandle = null;
+    this._settingsLayerOff = null;
     this.queue = [];
     this.slotQueue = [];
     this.dotEls = [];
@@ -498,6 +500,7 @@ class GuitarMetronome extends HTMLElement {
 
   disconnectedCallback() {
     this.stop();
+    if (this._settingsLayerOff) { this._settingsLayerOff(); this._settingsLayerOff = null; }
     // 🌟 移除监听
     window.removeEventListener('bpm-changed', this.handleGlobalBpmChange);
     window.removeEventListener('app-tab-changed', this.handleTabChange);
@@ -1810,8 +1813,22 @@ class GuitarMetronome extends HTMLElement {
       }
     };
 
-    btnSettings.onclick = () => { renderSettings(); settingsMask.classList.add('show'); };
-    btnCloseSettings.onclick = () => settingsMask.classList.remove('show');
+    const closeSettings = () => {
+      if (this._settingsLayerOff) { this._settingsLayerOff(); this._settingsLayerOff = null; }
+      settingsMask.classList.remove('show');
+    };
+    btnSettings.onclick = () => {
+      renderSettings();
+      settingsMask.classList.add('show');
+      if (!this._settingsLayerOff) {
+        this._settingsLayerOff = registerLayer({
+          id: 'metronome-settings',
+          close: closeSettings
+        });
+      }
+    };
+    btnCloseSettings.onclick = closeSettings;
+    bindBackdrop(settingsMask, closeSettings);
 
     playBtn.onclick = () => this.isRunning ? this.stop() : this.start();
     

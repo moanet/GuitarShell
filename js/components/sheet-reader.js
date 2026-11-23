@@ -10,6 +10,7 @@ import { findDuplicateScore } from '../services/score-dedup.js';
 import { readSyncState, writeSyncState, formatSyncTime as fmtTime, getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
 import { themeColor, onThemeChange } from '../services/theme.js';
 import { showConfirm, showAlert } from './app-dialog.js';
+import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import { parseTagInput, uniqueTags, toggleTag, hasTag, applyTagChanges, collectTagStats } from '../services/tag-utils.js';
 import { saveBackupFile } from '../services/backup.js';
 import { splitPdfPages } from '../services/pdf-split.js';
@@ -36,14 +37,27 @@ const readerCSS = `
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host, * { -webkit-tap-highlight-color: transparent !important; }
   
-  .toolbar { display: none; gap: 10px; padding: 10px 16px; background: var(--bg1); border-bottom: 1px solid var(--line); align-items: center; z-index: 10; flex-wrap: wrap; min-height: 54px; }
+  .toolbar { display: none; gap: 6px; padding: 8px 12px; background: var(--bg1); border-bottom: 1px solid var(--line); align-items: center; z-index: 10; flex-wrap: nowrap; min-height: 54px; box-sizing: border-box; }
   :host(.reading) .toolbar { display: flex; }
-  .btn { background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border: 1px solid rgba(var(--secondary-rgb),.10); padding: 9px 16px; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(var(--primary-rgb),.18); }
-  .btn.outline { background: transparent; color: var(--accent-text); border: 1px solid var(--line-warm); box-shadow: none; }
-  .btn.outline:hover { background: rgba(var(--primary-rgb), 0.12); }
-  .btn-back { background: var(--line-strong); color: var(--txt); display: none; }
-  .btn-log { background: var(--success); color: var(--on-success); display: none; }
-  .btn-split { background: transparent; color: var(--accent-text); border: 1px solid var(--line-warm); box-shadow: none; }
+  .tool-btn {
+    flex: 1 1 0; min-width: 0; height: 46px; padding: 0 2px; box-sizing: border-box;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    border: 1px solid var(--line-strong); border-radius: 12px;
+    background: var(--surface-raised); color: var(--txt-soft); box-shadow: none;
+    font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .tool-btn:active { background: var(--surface-hover); border-color: var(--line-warm); }
+  .tool-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+  .tool-btn .ti { width: 18px; height: 18px; display: grid; place-items: center; flex: none; position: relative; pointer-events: none; }
+  .tool-btn .ti svg { display: block; width: 18px; height: 18px; }
+  .tool-btn .tl { pointer-events: none; }
+  .tool-badge {
+    position: absolute; top: -6px; right: -8px; min-width: 13px; height: 13px; padding: 0 3px;
+    box-sizing: border-box; border-radius: 7px; background: var(--primary); color: var(--on-primary);
+    font-size: 9px; font-weight: 800; line-height: 13px; text-align: center;
+  }
+  .tool-btn .tl { font-size: 11px; font-weight: 700; line-height: 1.1; white-space: nowrap; letter-spacing: .2px; }
+  .tool-btn.accent { color: var(--accent-text); border-color: var(--line-warm); }
 
   .filter-bar { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; background: var(--surface-deep); border-bottom: 1px solid var(--line); }
   .search-row { display: flex; gap: 8px; align-items: center; }
@@ -395,11 +409,26 @@ const readerCSS = `
 
 const readerHTML = `
   <div class="toolbar" id="readerToolbar">
-    <button class="btn btn-back" id="btnBack">← 返回书架</button>
-    <button class="btn btn-log" id="btnLog">📝 打卡</button>
-    <button class="btn btn-save-pos" id="btnSavePos" style="display:none;">📍 存进度</button>
-    <button class="btn btn-bookmark" id="btnBookmarks" style="display:none;">🔖 书签</button>
-    <button class="btn btn-split" id="btnSplit" style="display:none;">✂ 拆分</button>
+    <button class="tool-btn" id="btnBack" type="button" aria-label="返回书架">
+      <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></span>
+      <span class="tl">返回</span>
+    </button>
+    <button class="tool-btn accent" id="btnLog" type="button" aria-label="记录本次练习">
+      <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+      <span class="tl">打卡</span>
+    </button>
+    <button class="tool-btn" id="btnSavePos" type="button" style="display:none;" aria-label="保存阅读进度">
+      <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+      <span class="tl">存进度</span>
+    </button>
+    <button class="tool-btn" id="btnBookmarks" type="button" style="display:none;" aria-label="本书书签">
+      <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-4-6 4Z"/></svg><span class="tool-badge" id="bookmarkBadge" hidden></span></span>
+      <span class="tl">书签</span>
+    </button>
+    <button class="tool-btn accent" id="btnSplit" type="button" style="display:none;" aria-label="拆分 PDF 页段">
+      <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1 20 20"/><path d="M8.1 15.9 20 4"/></svg></span>
+      <span class="tl">拆分</span>
+    </button>
   </div>
   
   <input type="file" id="inputSingleFile" accept="image/*,application/pdf" multiple style="display:none">
@@ -669,6 +698,7 @@ class SheetReader extends HTMLElement {
     this.currentScoreId = null;
     this.currentFileBlob = null;
     this.currentTags = [];
+    this.closingReader = false;
     this.mmKnob = { ctx: null, size: 0, cx: 0, cy: 0, r: 0, dragging: false };
 
     // 🌟 阅读进度状态
@@ -805,12 +835,48 @@ class SheetReader extends HTMLElement {
     const tagModeAdd = $('tagModeAdd');
     const tagModeRemove = $('tagModeRemove');
     const cloudModalMask = $('cloudModalMask');
+    const actionSheetMask = $('actionSheetMask');
     
     const showToast = (msg) => {
       toastEl.textContent = msg;
       toastEl.classList.add('show');
       clearTimeout(this.toastTimer);
       this.toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
+    };
+
+    // 浮层层级：同一 id 只保留一个注册；关闭时必须调用对应 untrack
+    const layerOffs = new Map();
+    const trackLayer = (id, close) => {
+      const old = layerOffs.get(id);
+      if (old) old();
+      const off = registerLayer({ id, close });
+      layerOffs.set(id, off);
+    };
+    const untrackLayer = (id) => {
+      const off = layerOffs.get(id);
+      if (off) { off(); layerOffs.delete(id); }
+    };
+    const formChanged = (before, now) => {
+      if (!before) return false;
+      return Object.keys(before).some((key) => String(before[key] ?? '') !== String(now[key] ?? ''));
+    };
+
+    const confirmDiscard = async (title, message) => showConfirm({
+      title,
+      message,
+      cancelText: '继续编辑',
+      confirmText: '放弃',
+      danger: true
+    });
+
+    const closeCloudModal = () => {
+      untrackLayer('cloud-modal');
+      cloudModalMask.classList.remove('show');
+    };
+
+    const closeActionSheet = () => {
+      untrackLayer('import-sheet');
+      actionSheetMask.classList.remove('show');
     };
 
     const isCloudCancel = (err) => !!(err && err.code === 'CLOUD_CANCELLED');
@@ -949,6 +1015,11 @@ class SheetReader extends HTMLElement {
       sortSel.disabled = this.manageMode;
       tagBar.classList.toggle('disabled', this.manageMode);
       this.renderList();
+      if (this.manageMode) {
+        trackLayer('reader-manage', () => setManageMode(false));
+      } else {
+        untrackLayer('reader-manage');
+      }
     };
     this.setManageMode = setManageMode;
 
@@ -963,6 +1034,7 @@ class SheetReader extends HTMLElement {
     this.toggleSelected = toggleSelected;
 
     const closeTagModal = () => {
+      untrackLayer('tag-modal');
       tagModalMask.classList.remove('show');
       this.tagModalState = null;
     };
@@ -1021,6 +1093,23 @@ class SheetReader extends HTMLElement {
       });
     };
 
+    let editInitial = null;
+    const readEditForm = () => ({
+      name: $('editName').value,
+      tags: editTags.value
+    });
+    const closeEditModal = async (opts = {}) => {
+      if (!editModalMask.classList.contains('show')) return;
+      if (!opts.force && editInitial && formChanged(editInitial, readEditForm())) {
+        const ok = await confirmDiscard('放弃本次编辑？', '修改后的名称或标签不会保存。');
+        if (!ok) return;
+      }
+      untrackLayer('edit-modal');
+      this.editModalState = null;
+      editInitial = null;
+      editModalMask.classList.remove('show');
+    };
+
     const openEditModal = (score) => {
       // 打开时只回填内容，不自动聚焦；键盘等用户真正点输入框时再出
       $('editName').blur();
@@ -1029,8 +1118,10 @@ class SheetReader extends HTMLElement {
       this.editModalState = { scoreId: score.id, draft: tags };
       $('editName').value = score.name;
       editTags.value = tags.join(', ');
+      editInitial = readEditForm();
       renderEditQuick();
       editModalMask.classList.add('show');
+      trackLayer('edit-modal', closeEditModal);
     };
 
     const openBatchTagModal = () => {
@@ -1051,6 +1142,7 @@ class SheetReader extends HTMLElement {
       tagModalInput.value = '';
       renderTagQuick();
       tagModalMask.classList.add('show');
+      trackLayer('tag-modal', closeTagModal);
     };
 
     const confirmDeleteScore = async (score) => {
@@ -1250,9 +1342,7 @@ class SheetReader extends HTMLElement {
       renderTagQuick();
     };
     $('tagModalCancel').onclick = closeTagModal;
-    tagModalMask.onclick = (e) => {
-      if (e.target === tagModalMask) closeTagModal();
-    };
+    bindBackdrop(tagModalMask, closeTagModal);
     $('tagModalSave').onclick = async () => {
       const state = this.tagModalState;
       if (!state) return;
@@ -1297,6 +1387,7 @@ class SheetReader extends HTMLElement {
     };
 
     const applyScale = () => {
+      this.scale = Math.max(1, Math.min(6, Number(this.scale) || 1));
       container.style.width = `${this.scale * 100}%`;
       // 缩放改变的是 CSS 宽度，位图要按新宽度重渲才不糊（防抖，滚轮连续缩放不卡）
       if (this.refreshPdfResolution) this.refreshPdfResolution();
@@ -1587,7 +1678,12 @@ class SheetReader extends HTMLElement {
     const bmList = $('bmList');
 
     const updateBookmarkBadge = () => {
-      btnBookmarks.textContent = this.bookmarks.length ? `🔖 书签 ${this.bookmarks.length}` : '🔖 书签';
+      const badge = $('bookmarkBadge');
+      if (!badge) return;
+      const count = this.bookmarks.length;
+      badge.textContent = count > 9 ? '9+' : String(count);
+      badge.hidden = count === 0;
+      btnBookmarks.setAttribute('aria-label', count ? `本书书签，共 ${count} 个` : '本书书签');
     };
 
     const persistBookmarks = async () => {
@@ -1615,7 +1711,7 @@ class SheetReader extends HTMLElement {
         `;
         row.onclick = (e) => {
           if (e.target.closest('.bm-del')) return;
-          bookmarkMask.classList.remove('show');
+          closeBookmarks();
           scrollToPage(bm.page, 0);
         };
         row.querySelector('.bm-del').onclick = async (e) => {
@@ -1649,10 +1745,18 @@ class SheetReader extends HTMLElement {
       showToast(`已收藏第 ${page} 页`);
     };
 
-    btnBookmarks.onclick = () => { renderBookmarkList(); bookmarkMask.classList.add('show'); };
-    $('bmClose').onclick = () => bookmarkMask.classList.remove('show');
+    const closeBookmarks = () => {
+      untrackLayer('bookmarks');
+      bookmarkMask.classList.remove('show');
+    };
+    btnBookmarks.onclick = () => {
+      renderBookmarkList();
+      bookmarkMask.classList.add('show');
+      trackLayer('bookmarks', closeBookmarks);
+    };
+    $('bmClose').onclick = closeBookmarks;
     $('bmAdd').onclick = addBookmark;
-    bookmarkMask.onclick = (e) => { if (e.target === bookmarkMask) bookmarkMask.classList.remove('show'); };
+    bindBackdrop(bookmarkMask, closeBookmarks);
 
     // ==================== ✂ 拆分建卡（独立 PDF） ====================
     const splitModalMask = $('splitModalMask');
@@ -1681,6 +1785,7 @@ class SheetReader extends HTMLElement {
     let splitPreviewTimer = null;
     let splitPreviewToken = 0;
     let splitPickerTarget = 'start';
+    let splitInitial = null;
 
     const splitTotalPages = () => (this.pdfDoc && this.pdfDoc.numPages) || 0;
     const splitDefaultName = (start, end) => {
@@ -1809,7 +1914,10 @@ class SheetReader extends HTMLElement {
       if (refreshPreview && splitModalMask.classList.contains('show')) scheduleSplitPreview();
     };
 
-    const closeSplitPicker = () => splitPickerMask.classList.remove('show');
+    const closeSplitPicker = () => {
+      untrackLayer('split-picker');
+      splitPickerMask.classList.remove('show');
+    };
 
     const openSplitPicker = (target) => {
       const total = splitTotalPages();
@@ -1835,6 +1943,7 @@ class SheetReader extends HTMLElement {
         splitPickerGrid.appendChild(btn);
       }
       splitPickerMask.classList.add('show');
+      trackLayer('split-picker', closeSplitPicker);
       requestAnimationFrame(() => {
         const selectedBtn = splitPickerGrid.querySelector('.split-page-btn.selected');
         if (selectedBtn) selectedBtn.scrollIntoView({ block: 'center' });
@@ -1857,10 +1966,22 @@ class SheetReader extends HTMLElement {
       updateSplitRange();
     };
 
-    const closeSplitModal = () => {
+    const readSplitForm = () => ({
+      start: splitStart.value,
+      end: splitEnd.value,
+      name: splitName.value
+    });
+
+    const closeSplitModal = async (opts = {}) => {
       if (splitBusy) return;
+      if (!opts.force && splitInitial && formChanged(splitInitial, readSplitForm())) {
+        const ok = await confirmDiscard('放弃本次拆分？', '已修改的页码或名称不会保存。');
+        if (!ok) return;
+      }
       closeSplitPicker();
       clearSplitPreview();
+      untrackLayer('split-modal');
+      splitInitial = null;
       splitModalMask.classList.remove('show');
     };
 
@@ -1887,8 +2008,11 @@ class SheetReader extends HTMLElement {
         : '新卡暂无标签，可建卡后在书架编辑';
       closeSplitPicker();
       clearSplitPreview();
+      splitInitial = null;
       splitModalMask.classList.add('show');
       updateSplitRange();
+      splitInitial = readSplitForm();
+      trackLayer('split-modal', closeSplitModal);
       scheduleSplitPreview(0);
     };
 
@@ -1904,9 +2028,9 @@ class SheetReader extends HTMLElement {
     };
     splitPickerCurrent.onclick = () => applySplitPage(Number(splitPickerCurrent.dataset.page));
     splitPickerCancel.onclick = closeSplitPicker;
-    splitPickerMask.onclick = (e) => { if (e.target === splitPickerMask) closeSplitPicker(); };
+    bindBackdrop(splitPickerMask, closeSplitPicker);
     splitCancel.onclick = closeSplitModal;
-    splitModalMask.onclick = (e) => { if (e.target === splitModalMask) closeSplitModal(); };
+    bindBackdrop(splitModalMask, closeSplitModal);
 
     splitConfirm.onclick = async () => {
       if (splitBusy) return;
@@ -1939,12 +2063,16 @@ class SheetReader extends HTMLElement {
         await dbService.addScore(fileName, result.blob, { tags: this.currentTags.slice(), fileHash });
         created = true;
         try { await this.loadShelf(); } catch (err) { console.warn('建卡后刷新书架失败', err); }
+        untrackLayer('split-modal');
+        splitInitial = null;
         splitModalMask.classList.remove('show');
         clearSplitPreview();
         showToast(`已建卡：${name} · ${result.pageCount} 页（原谱保留）`);
       } catch (err) {
         console.error(err);
         if (created) {
+          untrackLayer('split-modal');
+          splitInitial = null;
           splitModalMask.classList.remove('show');
           clearSplitPreview();
           showToast('已建卡，但书架刷新失败');
@@ -2061,8 +2189,12 @@ class SheetReader extends HTMLElement {
       this.currentScoreId = fileId;
       this.currentFileBlob = fileBlob;
       this.currentTags = Array.isArray(tags) ? tags.slice() : [];
+      this.closingReader = false;
       const isPdf = fileName.toLowerCase().endsWith('.pdf');
-      btnSplit.style.display = isPdf ? 'block' : 'none';
+      btnSplit.style.display = isPdf ? 'flex' : 'none';
+      untrackLayer('split-modal');
+      untrackLayer('split-picker');
+      untrackLayer('bookmarks');
       $('splitModalMask').classList.remove('show');
 
       // 🔖 载入这份谱已有的书签（存于乐谱记录里，随备份 / 云同步一起走）
@@ -2077,10 +2209,11 @@ class SheetReader extends HTMLElement {
       shelfView.style.display = 'none';
       filterBar.style.display = 'none';
       this.classList.add('reading');
+      trackLayer('reader', () => this.closeReader());
       
-      btnBack.style.display = 'block'; btnLog.style.display = 'block'; viewer.style.display = 'block'; miniMetronome.style.display = 'flex'; 
-      $('btnSavePos').style.display = 'block';
-      $('btnBookmarks').style.display = 'block';
+      btnBack.style.display = 'flex'; btnLog.style.display = 'flex'; viewer.style.display = 'block'; miniMetronome.style.display = 'flex'; 
+      $('btnSavePos').style.display = 'flex';
+      $('btnBookmarks').style.display = 'flex';
       $('navPrev').classList.add('show'); $('navNext').classList.add('show');
       
       if (miniMetronome.classList.contains('advanced')) miniMetronome.classList.remove('advanced');
@@ -2157,7 +2290,9 @@ class SheetReader extends HTMLElement {
       wakeLock.acquire('reader');
     };
 
-    btnBack.onclick = async () => {
+    const closeReader = async () => {
+      if (!this.classList.contains('reading') || this.closingReader) return;
+      this.closingReader = true;
       // 🌟 弱自动兜底之一：返回书架时强制保存一次，防止意外退出丢位置
       if (this.currentScoreId) {
         try { await saveReadingProgress(false); } catch (e) { console.warn('返回时保存进度失败', e); }
@@ -2181,16 +2316,41 @@ class SheetReader extends HTMLElement {
       miniMetronome.classList.remove('faded');
       zoomControls.classList.remove('faded');
       clearTimeout(this.mmAutoCollapseTimer);
-      
+
       btnBack.style.display = 'none'; shelfView.style.display = 'grid'; filterBar.style.display = 'flex';
       this.classList.remove('reading');
       if (this.observer) this.observer.disconnect();
       if (this.destroyPdf) this.destroyPdf();
       this.currentFileBlob = null;
       this.currentTags = [];
+      untrackLayer('split-modal');
+      untrackLayer('split-picker');
+      untrackLayer('bookmarks');
+      untrackLayer('reader');
+      this.closingReader = false;
     };
+    this.closeReader = closeReader;
+    btnBack.onclick = () => closeReader();
 
-    $('logCancel').onclick = () => logModalMask.classList.remove('show');
+    let logInitial = null;
+    const readLogForm = () => ({
+      name: $('logName').value,
+      time: $('logTime').value,
+      bpm: $('logBpm').value,
+      saveProgress: $('logSaveProgress').checked ? '1' : '0'
+    });
+    const closeLogModal = async (opts = {}) => {
+      if (!logModalMask.classList.contains('show')) return;
+      if (!opts.force && logInitial && formChanged(logInitial, readLogForm())) {
+        const ok = await confirmDiscard('放弃本次记录？', '已填写的练习内容不会保存。');
+        if (!ok) return;
+      }
+      untrackLayer('log-modal');
+      logInitial = null;
+      logModalMask.classList.remove('show');
+    };
+    $('logCancel').onclick = closeLogModal;
+    bindBackdrop(logModalMask, closeLogModal);
 
     // 🌟 手动档：一键存进度（与「打卡」互补——只想存位置时不用编练习时长）
     $('btnSavePos').onclick = async () => {
@@ -2207,7 +2367,9 @@ class SheetReader extends HTMLElement {
       // 🌟 打开弹窗时快照当前阅读位置并展示出来
       const pos = getReadingPosition();
       $('logProgressText').textContent = (pos.total > 1) ? `第 ${pos.page} 页 / 共 ${pos.total} 页` : '第 1 页';
+      logInitial = readLogForm();
       logModalMask.classList.add('show');
+      trackLayer('log-modal', closeLogModal);
     };
     $('logConfirm').onclick = async () => {
       const name = $('logName').value.trim(), time = $('logTime').value.trim(), bpm = $('logBpm').value.trim();
@@ -2242,6 +2404,8 @@ class SheetReader extends HTMLElement {
           window.dispatchEvent(new CustomEvent('log-updated'));
         }
 
+        untrackLayer('log-modal');
+        logInitial = null;
         logModalMask.classList.remove('show');
         if (hasTime && saveProgress) showToast(`打卡完成，已记到第 ${pos.page} 页`);
         else if (hasTime) showToast('打卡成功！');
@@ -2261,7 +2425,9 @@ class SheetReader extends HTMLElement {
       if (!newName) return showToast('名称不能为空');
       const newTags = uniqueTags(state.draft || []);
       await dbService.updateScore(state.scoreId, { name: newName, tags: newTags });
+      untrackLayer('edit-modal');
       this.editModalState = null;
+      editInitial = null;
       showToast('修改成功');
       editModalMask.classList.remove('show');
       this.loadShelf();
@@ -2274,7 +2440,9 @@ class SheetReader extends HTMLElement {
       if (!score) return;
       const deleted = await confirmDeleteScore(score);
       if (deleted) {
+        untrackLayer('edit-modal');
         this.editModalState = null;
+        editInitial = null;
         editModalMask.classList.remove('show');
         showToast('已删除');
         this.loadShelf();
@@ -2288,11 +2456,10 @@ class SheetReader extends HTMLElement {
       renderEditQuick();
     };
 
-    $('editCancel').onclick = () => {
-      this.editModalState = null;
-      editModalMask.classList.remove('show');
-    };
-    $('cloudCancel').onclick = () => cloudModalMask.classList.remove('show');
+    $('editCancel').onclick = closeEditModal;
+    bindBackdrop(editModalMask, closeEditModal);
+    $('cloudCancel').onclick = closeCloudModal;
+    bindBackdrop(cloudModalMask, closeCloudModal);
 
     // 🌟 核心修复：极其宽容的文件过滤逻辑
     const handleFiles = async (filesArray) => {
@@ -2363,6 +2530,7 @@ class SheetReader extends HTMLElement {
     const handleInputChange = (e) => {
       const files = Array.from(e.target.files);
       e.target.value = ''; 
+      closeActionSheet();
       handleFiles(files); 
     };
 
@@ -2373,11 +2541,16 @@ class SheetReader extends HTMLElement {
     $('inputMobileFile').onchange = handleInputChange;
     
     btnImportMain.onclick = () => {
-      if (this.isMobile) $('actionSheetMask').classList.add('show');
-      else $('inputSingleFile').click();
+      if (this.isMobile) {
+        actionSheetMask.classList.add('show');
+        trackLayer('import-sheet', closeActionSheet);
+      } else {
+        $('inputSingleFile').click();
+      }
     };
     $('btnFolderMain').onclick = () => $('inputFolder').click();
-    $('btnCancel').onclick = () => $('actionSheetMask').classList.remove('show');
+    $('btnCancel').onclick = closeActionSheet;
+    bindBackdrop(actionSheetMask, closeActionSheet);
 
     // 🌟 打包：本地导出与云端上传共用同一份数据（含阅读进度与打卡记录）
     const buildBackupPayload = async ({ showLoading = true } = {}) => {
@@ -2522,6 +2695,7 @@ class SheetReader extends HTMLElement {
         }).catch(() => {});
       }
       cloudModalMask.classList.add('show');
+      trackLayer('cloud-modal', closeCloudModal);
       cloudModalMask.scrollTop = 0;
       refreshCloudStatus();
     };
@@ -2602,7 +2776,7 @@ class SheetReader extends HTMLElement {
     $('cloudUpload').onclick = async () => {
       if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
-      cloudModalMask.classList.remove('show');
+      closeCloudModal();
       webdavService.beginTask();
       try {
         setCloudBusy('正在检查云端状态...');
@@ -2671,7 +2845,7 @@ class SheetReader extends HTMLElement {
     $('cloudDownload').onclick = async () => {
       if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
-      cloudModalMask.classList.remove('show');
+      closeCloudModal();
       webdavService.beginTask();
       try {
         setCloudBusy('正在检查云端状态...');
@@ -2867,16 +3041,54 @@ class SheetReader extends HTMLElement {
       this.isDragging = true; this.startX = e.clientX; this.startY = e.clientY; this.scrollLeftStart = viewer.scrollLeft; this.scrollTopStart = viewer.scrollTop; viewer.style.cursor = 'grabbing';
     });
 
-    // 触屏按下谱面同样虚化
+    // 触屏按下谱面同样虚化；两指捏合缩放由 touchmove 接管
+    let pinchState = null;
+    const pinchDistance = (touches) => {
+      const a = touches[0], b = touches[1];
+      return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    };
     viewer.addEventListener('touchstart', (e) => {
       fadeReaderChrome();
       if (e.touches.length === 2) {
         this.isDragging = false;
         const t1 = e.touches[0], t2 = e.touches[1];
-        initialDistance = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-        initialScale = this.scale;
+        const rect = viewer.getBoundingClientRect();
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+        pinchState = {
+          startDistance: Math.max(1, pinchDistance(e.touches)),
+          startScale: this.scale,
+          anchorX: (midX - rect.left) + viewer.scrollLeft,
+          anchorY: (midY - rect.top) + viewer.scrollTop
+        };
       }
     }, { passive: false });
+
+    viewer.addEventListener('touchmove', (e) => {
+      if (!pinchState || e.touches.length !== 2) return;
+      e.preventDefault();
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const nextScale = Math.max(1, Math.min(6,
+        pinchState.startScale * (pinchDistance(e.touches) / pinchState.startDistance)));
+      if (Math.abs(nextScale - this.scale) < 0.001) return;
+
+      this.scale = nextScale;
+      applyScale();
+
+      // 保持双指中点下的谱面内容不跳动
+      const rect = viewer.getBoundingClientRect();
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+      const ratio = nextScale / pinchState.startScale;
+      viewer.scrollLeft = pinchState.anchorX * ratio - (midX - rect.left);
+      viewer.scrollTop = pinchState.anchorY * ratio - (midY - rect.top);
+    }, { passive: false });
+
+    const endPinch = (e) => {
+      if (!e.touches || e.touches.length < 2) pinchState = null;
+    };
+    viewer.addEventListener('touchend', endPinch, { passive: true });
+    viewer.addEventListener('touchcancel', () => { pinchState = null; }, { passive: true });
 
     viewer.addEventListener('pointermove', (e) => { if (!this.isDragging) return; e.preventDefault(); viewer.scrollLeft = this.scrollLeftStart - (e.clientX - this.startX); viewer.scrollTop = this.scrollTopStart - (e.clientY - this.startY); });
     const onPointerUp = () => { this.isDragging = false; viewer.style.cursor = 'grab'; };

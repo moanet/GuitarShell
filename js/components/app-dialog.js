@@ -4,6 +4,8 @@
 // 挂载到 document.body，跨组件 Shadow DOM 共用
 // ==========================================
 
+import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
+
 const dialogCSS = `
   :host {
     position: fixed; inset: 0; z-index: 1400; display: block;
@@ -26,6 +28,7 @@ const dialogCSS = `
   h3 { margin: 0; text-align: center; color: var(--accent-text); font-size: 18px; line-height: 1.4; }
   .message { margin: 0; font-size: 13px; line-height: 1.7; color: var(--txt-soft); white-space: pre-line; text-align: center; }
   .details { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--surface-deep); border: 1px solid var(--line); }
+  .details[hidden], .extra[hidden], .message[hidden] { display: none !important; }
   .detail-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; font-size: 12px; line-height: 1.5; }
   .detail-row .k { color: var(--muted); flex: none; }
   .detail-row .v { color: var(--txt); text-align: right; min-width: 0; overflow-wrap: anywhere; }
@@ -72,6 +75,7 @@ class GuitarDialog extends HTMLElement {
     this._opts = {};
     this._busy = false;
     this._prevFocus = null;
+    this._layerOff = null;
     this._keyHandler = (e) => {
       if (!this._opened) return;
       if (e.key === 'Escape') {
@@ -93,9 +97,7 @@ class GuitarDialog extends HTMLElement {
     this._cancel = this.shadowRoot.querySelector('#dlgCancel');
     this._confirm = this.shadowRoot.querySelector('#dlgConfirm');
 
-    this._mask.addEventListener('click', (e) => {
-      if (e.target === this._mask && !this._busy) this.close(false);
-    });
+    bindBackdrop(this._mask, () => this.close(false));
     this._cancel.addEventListener('click', () => this.close(false));
     this._confirm.addEventListener('click', () => this.close(true));
     this._extra.addEventListener('click', () => this._runExtra());
@@ -137,6 +139,10 @@ class GuitarDialog extends HTMLElement {
     this._confirm.classList.toggle('danger', !!options.danger);
 
     this._opened = true;
+    this._layerOff = registerLayer({
+      id: 'app-dialog',
+      close: () => this.close(false)
+    });
     document.addEventListener('keydown', this._keyHandler);
     this.dispatchEvent(new CustomEvent('dialog-open', { bubbles: true }));
     requestAnimationFrame(() => this._mask.classList.add('show'));
@@ -170,9 +176,10 @@ class GuitarDialog extends HTMLElement {
   }
 
   close(result = false) {
-    if (!this._opened) return;
+    if (!this._opened || this._busy) return;
     this._opened = false;
     document.removeEventListener('keydown', this._keyHandler);
+    if (this._layerOff) { this._layerOff(); this._layerOff = null; }
     this._mask.classList.remove('show');
     this._cancel.disabled = true;
     this._confirm.disabled = true;

@@ -3,6 +3,7 @@ import { showToast } from './services/toast.js';
 import { initTheme } from './services/theme.js';
 import { dbService } from './services/db.js';
 import { showConfirm } from './components/app-dialog.js';
+import { closeTopLayer, syncNativeLayerDepth } from './services/ui-layer.js';
 
 // 主题只认 html[data-theme]；冷启动时再同步一次浏览器与原生系统栏
 initTheme();
@@ -145,6 +146,13 @@ window.addEventListener('gs-cloud-task', (event) => {
   }
 });
 syncNativeBackGuard();
+syncNativeLayerDepth(true);
+
+// Android 返回键/手势：有浮层时由前端关闭最上层，不退出应用
+window.addEventListener('gs-back-request', () => {
+  const handled = closeTopLayer();
+  if (!handled) syncNativeLayerDepth(true);
+});
 
 // 网页关闭 / 刷新：交给浏览器原生离开确认，文案由浏览器决定
 window.addEventListener('beforeunload', (event) => {

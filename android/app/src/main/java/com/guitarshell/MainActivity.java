@@ -122,14 +122,30 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onBackPressed() {
         PluginHandle handle = getBridge() != null ? getBridge().getPlugin("BackGuard") : null;
-        if (handle != null && handle.getInstance() instanceof BackGuardPlugin
-                && ((BackGuardPlugin) handle.getInstance()).isBusy()) {
-            getBridge().getWebView().post(() ->
-                getBridge().getWebView().evaluateJavascript(
-                    "window.dispatchEvent(new CustomEvent('gs-cloud-exit-request'))", null));
+        BackGuardPlugin guard = null;
+        if (handle != null && handle.getInstance() instanceof BackGuardPlugin) {
+            guard = (BackGuardPlugin) handle.getInstance();
+        }
+
+        // 有浮层时先交给前端关闭最上层；只有层栈为空才考虑退出应用或云同步确认
+        if (guard != null && guard.getLayerDepth() > 0) {
+            dispatchBackRequest("gs-back-request");
             return;
         }
+
+        if (guard != null && guard.isBusy()) {
+            dispatchBackRequest("gs-cloud-exit-request");
+            return;
+        }
+
         super.onBackPressed();
+    }
+
+    private void dispatchBackRequest(String eventName) {
+        if (getBridge() == null) return;
+        getBridge().getWebView().post(() ->
+            getBridge().getWebView().evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('" + eventName + "'))", null));
     }
 
     @Override

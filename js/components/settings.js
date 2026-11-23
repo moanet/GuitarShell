@@ -10,6 +10,7 @@ import { dbService } from '../services/db.js';
 import { getTheme, setTheme, onThemeChange } from '../services/theme.js';
 import { getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
 import { showConfirm } from './app-dialog.js';
+import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import {
   buildBackupPayload, getDataStats, parseBackupFile, restoreBackup, saveBackupFile
 } from '../services/backup.js';
@@ -220,6 +221,7 @@ class GuitarSettings extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this.busy = false;
+    this._layerOff = null;
   }
 
   connectedCallback() {
@@ -236,6 +238,7 @@ class GuitarSettings extends HTMLElement {
   disconnectedCallback() {
     window.removeEventListener('open-global-settings', this.handleOpen);
     document.removeEventListener('keydown', this.handleKey);
+    if (this._layerOff) { this._layerOff(); this._layerOff = null; }
     if (this.offTheme) { this.offTheme(); this.offTheme = null; }
   }
 
@@ -250,9 +253,7 @@ class GuitarSettings extends HTMLElement {
 
   bind() {
     this.$('btnClose').onclick = () => this.close();
-    this.$('mask').addEventListener('click', (e) => {
-      if (e.target === this.$('mask')) this.close();
-    });
+    bindBackdrop(this.$('mask'), () => this.close());
     this.handleKey = (e) => { if (e.key === 'Escape') this.close(); };
     document.addEventListener('keydown', this.handleKey);
 
@@ -286,11 +287,18 @@ class GuitarSettings extends HTMLElement {
 
   open() {
     this.$('mask').classList.add('show');
+    if (!this._layerOff) {
+      this._layerOff = registerLayer({
+        id: 'settings-drawer',
+        close: () => this.close()
+      });
+    }
     this.refreshStats();
     this.refreshCloudStatus();
   }
 
   close() {
+    if (this._layerOff) { this._layerOff(); this._layerOff = null; }
     this.$('mask').classList.remove('show');
   }
 

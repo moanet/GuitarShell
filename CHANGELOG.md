@@ -3,6 +3,59 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.8 — 阅读工具栏、双指缩放与统一返回层级（开发完成，未发布，2026-11-23）
+
+> 版本号已同步为 `0.1.8` / `versionCode 108`。只做四项交互收口：阅读页五段式工具栏、手机双指缩放、弹窗外点关闭 / 表单有改动才确认、系统返回按层级逐层关闭。相册 Photo Picker 单独留给 0.1.9。
+
+**统一层级栈**
+
+- 新增 `js/services/ui-layer.js`：`registerLayer({ id, close })`、`closeTopLayer()`、`getLayerDepth()`、`syncNativeLayerDepth(force)`、`bindBackdrop(mask, close)`。
+- 同 id 再次注册会替换旧层并返回取消函数；层数变化时同步原生 `BackGuard.setLayerDepth({ depth })`。
+- `bindBackdrop` 在 `pointerdown` 记录起点是否落在遮罩，`pointerup` 仍在遮罩才关闭，避免从弹窗内部拖到遮罩误关。
+- `BackGuardPlugin.java` 新增 `layerDepth`、`setLayerDepth`、`getLayerDepth`；`MainActivity.onBackPressed()` 在 `layerDepth > 0` 时通过 `evaluateJavascript` 派发 `gs-back-request`，层数为 0 且云同步 busy 时保留 `gs-cloud-exit-request`，其余才退出。
+- `js/main.js` 初始化同步一次层级深度，监听 `gs-back-request` 调 `closeTopLayer()`；未消费时把原生深度归零。
+
+**阅读页工具栏**
+
+- `.toolbar` 改 `flex-wrap:nowrap`、`gap:6px`、`padding:8px 12px`；新增 `.tool-btn`，`flex:1 1 0`、`min-width:0`、高 46px、竖排图标 + 11px 标签。
+- 五个按钮统一细描边 + 表面底，文案固定 `返回 / 打卡 / 存进度 / 书签 / 拆分`；拆分仅 PDF 显示，图片谱其余 4 项等宽。
+- 图标改为内联线性 SVG；`打卡` / `拆分` 只保留强调色，不再混用灰底、绿底、棕橙渐变、透明描边。
+- 书签角标独立为 `bookmarkBadge`，`updateBookmarkBadge()` 只更新角标与 `aria-label`，不覆盖按钮文字；图标/标签 `pointer-events:none`，保证 `elementFromPoint` 命中按钮本身。
+
+**双指缩放**
+
+- 删除未声明的 `initialDistance` / `initialScale` 赋值，改为 `pinchState` + `pinchDistance()`。
+- `touchstart` 两指时记录初始距离、初始缩放与双指中点内容坐标；`touchmove` 使用 `passive:false`，两指时 `preventDefault()`，按距离比计算 `1..6` 的缩放，调用 `applyScale()` 后按当前双指中点修正 `scrollLeft/scrollTop`，保持手指下谱面不跳。
+- `touchend` 剩余触点少于 2 时清空，`touchcancel` 直接清空；`applyScale()` 增加 1..6 夹取；PDF 位图仍依赖 `refreshPdfResolution()` 防抖重渲。
+
+**弹窗外点与表单脏确认**
+
+- 应用确认框、设置抽屉、节拍器设置、导入动作面板、记录练习、编辑信息、云同步、标签、书签、拆分弹窗、拆分页码选择器全部注册层级并接 `bindBackdrop`。
+- 记录练习、编辑信息、拆分建卡记录表单初始值，只有实际改动时才在关闭前弹「放弃本次…？」；未改动直接关闭；取消确认保留弹窗和输入。
+- `splitBusy` 时关闭被拒绝；云同步外点只隐藏弹窗，不取消后台任务。
+- 修复 `guitar-app-dialog` 无详情时仍显示空白横框：`.details` 的 `display:flex` 覆盖了 `hidden`，新增 `.details[hidden], .extra[hidden], .message[hidden] { display:none !important; }`。
+
+**浏览器验收**
+
+- `npm run check` 通过 `v0.1.8 / 28 个 JS`；`python -m compileall -q tests/browser` 通过。
+- `gs_015.py`、`gs_016.py` 复跑通过，云同步退出确认、拆分缩略图 / picker / 自动纠正无回归。
+- 新增 `gs_018.py`，320 / 360 宽通过：五个按钮同排、高 46、宽 54 / 62；双指 120→220 得 `scale 1.83`、`scrollLeft 133` / `scrollTop 122`；无改动外点关闭、脏确认与取消保留、详情空白框隐藏；书签、picker、阅读页、管理模式的层级深度序列与预期一致。
+
+**APK 与真机**
+
+- release APK `4,364,875` 字节，`versionCode 108` / `versionName 0.1.8`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名通过，证书 SHA-256 仍为 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- SHA-256 `5A1538181F9B90A7C2B0F2F66752C287958C5C40D4C27A8E5A6C9C924F0699A4`；路径 `dist/GuitarShell-0.1.8-release.apk`；APK 内 `assets/public/sw.js` 为 `APP_VERSION = '0.1.8'`。
+- 覆盖安装到 `ca14b16`，系统显示 0.1.8，书架徽标 `v0.1.8`；阅读页 → 书架 → 桌面返回链路正确，打卡弹窗无改动只关弹窗、有改动弹放弃确认。
+- 双指缩放的实机手势未脚本化（系统拒绝 `sendevent` 写 `/dev/input`），本轮以浏览器合成双指事件 + 代码审查为证据，保留用户手动捏合确认。
+- 已提交 `main`；按用户要求不创建 tag、不发布 GitHub Release。
+
+**已知边界**
+
+- 相册导入仍维持 0.1.7 行为，Android WebView 的 `image/*` 可能落到文件选择器；0.1.9 用原生 Photo Picker 一次最多 20 张，缓存文件 + `Capacitor.convertFileSrc`。
+- 返回层级只覆盖 JS 已注册的浮层；Home / 上滑杀进程无法拦截。
+- `touch-action` 仍保留 `pan-x pan-y`，否则单指拖动会失效；双指缩放依赖 JS 接管。
+- 本轮只提交 `main`，按用户要求不创建 tag、不发布 GitHub Release。
+
 ## 0.1.7 — 同步退出保护与拆分页预览（真机验收通过，未发布，2026-11-23）
 
 > 版本号已同步为 `0.1.7`；只做两项收口：云同步进行中的退出确认，以及拆分弹窗的起止页缩略图、页码选择与顺序自动纠正。

@@ -3,7 +3,7 @@
 > 项目总账：记录长期路线、版本时间线、任务队列、冒烟清单、构建发布、技术债与避坑指南。
 > 当前迭代：见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 > 已发布版本的完整改动与验收证据：见 [CHANGELOG.md](CHANGELOG.md)。
-> 当前基线：线上 Release 为 `0.1.6`；`0.1.5` 已真机验收并推送 `main`，未单独发布；`0.1.6` 已正式发布，APK 已上传并复核；`0.1.7` 真机验收通过并推送 `main`，按要求未发布 Release。
+> 当前基线：线上 Release 为 `0.1.6`；`0.1.5` 已真机验收并推送 `main`，未单独发布；`0.1.6` 已正式发布，APK 已上传并复核；`0.1.7` 真机验收通过并推送 `main`，按要求未发布 Release；`0.1.8` 开发完成并安装真机，待用户复核双指缩放手感后提交 `main`。
 
 ## 1. 当前阶段
 
@@ -79,6 +79,10 @@
 
 0.1.7 做两项任务保护与操作顺滑收口：一是云同步上传 / 下载进行中，按 Android 返回键或关闭网页先弹确认，确认后先取消任务再退出，避免误关应用中断上传；二是拆分弹窗增加起止页缩略图、轻量页码选择器，起止页顺序输反自动纠正，非法页码仍禁用建卡。新增原生 `BackGuardPlugin` 拦截返回键，未引入 `@capacitor/app`；缩略图复用已加载的 pdf.js，不新增依赖。`npm run check` 通过；`gs_015.py` 与 320 / 360 宽 `gs_016.py` 全部通过。release APK 已构建并安装，真机验收通过；按要求只推送 `main`，未创建 tag / GitHub Release。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
+### 1.9 0.1.8 阅读工具栏、双指缩放与统一返回层级（开发完成，未发布）
+
+0.1.8 四项交互收口：阅读页工具栏改五段式单行（返回 / 打卡 / 存进度 / 书签 / 拆分），手机阅读页补双指捏合缩放并保持缩放锚点，弹窗补齐外点关闭且表单有改动才弹放弃确认，系统返回按统一层级栈逐层关闭。新增 `js/services/ui-layer.js` 与 `BackGuard` 的 `setLayerDepth` / `getLayerDepth`，返回键从“只有云同步忙时拦截”改为“有浮层就派发 `gs-back-request`”。`gs_018.py` 在 320 / 360 通过；`gs_015.py`、`gs_016.py` 无回归；release APK `4,364,875` 字节 / `versionCode 108`，已安装 `ca14b16` 并实测阅读页→书架→桌面返回链路、弹窗无改动关闭与脏确认。双指缩放真机手势待用户手动复核。按用户要求不发布 Release，0.1.9 再做原生 Photo Picker（最多 20 张，缓存文件 + `Capacitor.convertFileSrc`）。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
+
 ## 2. 演进路线
 
 
@@ -150,6 +154,7 @@ flowchart LR
 | 0.1.5             | 交互一致性：批量标签焦点 / 云同步超时、取消、重试 / 回归脚本与 CI | 真机验收通过，未发布                     |
 | 0.1.6             | 乐谱拆分建卡：PDF 页段选中、独立 PDF 新卡、标签继承、浏览器回归 | 已正式发布，GitHub Release `v0.1.6` |
 | 0.1.7             | 同步退出保护：返回键 / 网页关闭确认；拆分页预览：起止缩略图 / 页码选择 / 自动纠正 | 真机验收通过，未发布 Release |
+| 0.1.8             | 阅读工具栏五段式 / 双指缩放 / 弹窗外点与脏确认 / 系统返回层级栈 | 开发完成并安装真机，待用户复核双指缩放手感，未发布 Release |
 
 ### 2.1 永久非目标（不进入任务队列）
 
@@ -205,6 +210,8 @@ flowchart LR
 
 * `0.1.7` 真机验收通过，已推送 `main`，按要求未发布 Release：云同步进行中按返回键 / 关闭网页先确认，确认后取消任务再退出；拆分弹窗增加起止页缩略图、页码选择器与起止顺序自动纠正。`gs_015.py` 与 320 / 360 宽 `gs_016.py` 已通过；版本 `0.1.7` / `versionCode 107`。release APK `4,361,030` 字节，SHA-256 `0C9F698950F06B5B364B1C1784E1F03300324F89DD913D745AE9F934DEBE4953`，已安装到测试设备。详见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
+* `0.1.8` 开发完成并安装真机，待用户复核双指缩放手感后提交 `main`，按要求不发布 Release：阅读页工具栏改五段式单行，手机阅读页补双指缩放锚点；弹窗统一外点关闭，记录练习 / 编辑信息 / 拆分建卡有改动才弹放弃确认；新增 `ui-layer` 层级栈与 `BackGuard.setLayerDepth`，系统返回逐层关闭阅读页、管理、抽屉、弹窗与 picker。`npm run check` 通过 `v0.1.8 / 28 个 JS`；`gs_018.py` 在 320 / 360 通过；`gs_015.py` / `gs_016.py` 无回归。release APK `4,364,875` 字节，SHA-256 `5A1538181F9B90A7C2B0F2F66752C287958C5C40D4C27A8E5A6C9C924F0699A4`，`versionCode 108`，已覆盖安装 `ca14b16`。详见 [CURRENT_TASK.md](CURRENT_TASK.md)。
+
 ## 6. 任务队列
 
 
@@ -234,6 +241,8 @@ flowchart LR
 | 17 | 0.1.5：批量标签焦点 / 云同步超时取消重试 / 回归脚本与 CI | 真机验收通过，未发布 | 16         | 不铺新功能；不单独 Release，随后续跨版本发布；详见 [CURRENT\_TASK.md](CURRENT_TASK.md)       |
 | 18 | 0.1.6：PDF 页段拆分建卡 / 独立 PDF / 浏览器回归与 APK | 已正式发布 | 17         | GitHub Release `v0.1.6`；`pdf-lib` 动态加载；原谱保留、新卡独立；详见 [CHANGELOG.md](CHANGELOG.md) 0.1.6 段       |
 | 19 | 0.1.7：同步中退出确认 / 拆分起止页缩略图 / 页码选择 / 自动纠正 | 真机验收通过，未发布 | 18         | 原生 `BackGuard` 拦截返回键；缩略图复用 pdf.js；详见 [CURRENT_TASK.md](CURRENT_TASK.md)       |
+| 20 | 0.1.8：五段式阅读工具栏 / 双指缩放 / 弹窗外点与脏确认 / 返回层级栈 | 开发完成，待用户复核双指缩放 | 19         | 新增 `ui-layer.js` 与 `setLayerDepth`；`gs_018.py` 覆盖 320 / 360；不发布 Release |
+| 21 | 0.1.9：原生相册 Photo Picker，一次最多 20 张 | 待开工 | 20         | Android 13+ `ACTION_PICK_IMAGES`，低版本回退；缓存文件 + `Capacitor.convertFileSrc`，不返回 base64 |
 
 ## 7. 冒烟清单
 
@@ -319,6 +328,10 @@ npm run apk:release
 * [x] 0.1.3 已新增 `js/services/file-hash.js` 与 `score-dedup.js`：优先 SHA-256，回退 FNV-1a 64；改名后的同一文件不再重复入库，旧记录按同尺寸候选惰性回填哈希。
 
 * [x] 0.1.6 已新增 `js/services/pdf-split.js`：PDF 页段复制为独立 PDF，原谱保留；入口只对 PDF 显示，非法页段禁用建卡；已真机验收并正式发布。
+
+* [x] 0.1.8 已新增 `js/services/ui-layer.js`：浮层注册 / 层级关闭 / 遮罩外点统一收口；`BackGuard` 增加 `setLayerDepth`，系统返回按层派发 `gs-back-request`，不再只有云同步忙时拦截。
+
+* [ ] 0.1.8 双指缩放的实机手感待用户手动确认：测试机 SELinux 拒绝 shell 写 `/dev/input`，无法脚本注入真实双指；浏览器合成 `TouchEvent` 已覆盖距离比、1..6 夹取与中点锚定。
 
 * [ ] 0.1.7 云同步退出保护仍有边界：Android Home / 上滑杀进程无法阻止；WebDAV `PUT` 覆盖上传在进程被强杀时仍可能留下不完整远端文件；临时文件 + MOVE 方案未实施，需在后续版本评估。
 
