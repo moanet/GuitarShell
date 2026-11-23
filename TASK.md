@@ -3,7 +3,7 @@
 > 项目总账：记录长期路线、版本时间线、任务队列、冒烟清单、构建发布、技术债与避坑指南。
 > 当前迭代：见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 > 已发布版本的完整改动与验收证据：见 [CHANGELOG.md](CHANGELOG.md)。
-> 当前基线：线上 Release 为 `0.1.6`；`0.1.5` 已真机验收并推送 `main`，未单独发布；`0.1.6` 已正式发布，APK 已上传并复核；`0.1.7` 真机验收通过并推送 `main`，按要求未发布 Release；`0.1.8` 已真机验收并推送 `main`；`0.1.9` 原生相册导入已真机验收并推送 `main`。
+> 当前基线：线上 Release 为 `0.1.10`；`0.1.5` 已真机验收并推送 `main`，未单独发布；`0.1.6` 已正式发布；`0.1.7` / `0.1.8` / `0.1.9` 已推送 `main`，改动汇总进 `0.1.10` Release；`0.1.10` 已发布，APK 已上传并复核。
 
 ## 1. 当前阶段
 
@@ -86,6 +86,10 @@
 ### 1.10 0.1.9 原生相册导入（真机验收通过，已推送 main，未发布）
 
 0.1.9 把 Android “从相册选择”从 WebView 文件选择器改为系统 Photo Picker：新增 `GalleryPickerPlugin`，Android 13+ 使用 `ACTION_PICK_IMAGES` + `EXTRA_PICK_IMAGES_MAX=20`，12 以下依次回退 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`，不申请存储权限。选中 URI 流式复制到 `cache/gallery-picker`，返回路径 / 名称 / MIME / 大小；JS 新服务 `gallery-picker.js` 用 `Capacitor.convertFileSrc` + `fetch` 转成 `File`，复用 `handleFiles`，不经过 base64。动作面板改为真实按钮，原生不可用或没有 Photo Picker 时回退隐藏 input；Web 一次超过 20 张只取前 20 并提示。纯数字的 Photo Picker 显示名改为 `照片-yyyyMMdd-HHmmss-*.jpg`，缓存文件超过 24 小时自动清理。新增 `gs_019.py` 覆盖 Web 回退、20 张截断、原生取消、缓存路径转 File 与无 base64；320 / 360 通过，`gs_015/016/018` 无回归。真机确认打开 `PhotoPickerActivity`、单张 / 5 张多选、20 张上限提示、取消无提示、无存储权限弹窗；release APK `4,370,166` 字节 / `versionCode 109`，证书指纹不变。已提交并推送 `main`，按要求未创建 tag / GitHub Release。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
+
+### 1.11 0.1.10 节拍器设置分组与说明（已发布，2026-11-23）
+
+0.1.10 只调节拍器设置面板：把平铺设置收进 5 张卡片（基础节奏 / 重音与反馈 / 高级练习 / 节奏型 / 音频跟练与测速），拍号快捷格从 9 个减到 8 个并移除 `8/8`（自定义仍可输入），11 个细分按钮补两行小字与完整悬浮说明，倒计时增加 `3 / 5 / 10 / 15 / 20 / 30` 六个一行快捷片，重音模式后紧跟闪光条与震动反馈，关闭重开设置回到顶部。新增 `gs_020.py`，320 / 360 与深浅色通过；既有 `gs_015/016/018/019` 无回归；release APK `4,371,265` 字节 / `versionCode 110`，已覆盖安装 `ca14b16` 并真机点选定时档、`十·休3` 与重开滚动验证。已提交并推送 `main`，创建 tag `v0.1.10` 并发布 GitHub Release，APK 已上传并复核；Release notes 汇总 `0.1.7` / `0.1.8` / `0.1.9` / `0.1.10`。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
 ## 2. 演进路线
 
@@ -245,8 +249,9 @@ flowchart LR
 | 17 | 0.1.5：批量标签焦点 / 云同步超时取消重试 / 回归脚本与 CI | 真机验收通过，未发布 | 16         | 不铺新功能；不单独 Release，随后续跨版本发布；详见 [CURRENT\_TASK.md](CURRENT_TASK.md)       |
 | 18 | 0.1.6：PDF 页段拆分建卡 / 独立 PDF / 浏览器回归与 APK | 已正式发布 | 17         | GitHub Release `v0.1.6`；`pdf-lib` 动态加载；原谱保留、新卡独立；详见 [CHANGELOG.md](CHANGELOG.md) 0.1.6 段       |
 | 19 | 0.1.7：同步中退出确认 / 拆分起止页缩略图 / 页码选择 / 自动纠正 | 真机验收通过，未发布 | 18         | 原生 `BackGuard` 拦截返回键；缩略图复用 pdf.js；详见 [CURRENT_TASK.md](CURRENT_TASK.md)       |
-| 20 | 0.1.8：五段式阅读工具栏 / 双指缩放 / 弹窗外点与脏确认 / 返回层级栈 | 开发完成，待用户复核双指缩放 | 19         | 新增 `ui-layer.js` 与 `setLayerDepth`；`gs_018.py` 覆盖 320 / 360；不发布 Release |
-| 21 | 0.1.9：原生相册 Photo Picker，一次最多 20 张 | 待开工 | 20         | Android 13+ `ACTION_PICK_IMAGES`，低版本回退；缓存文件 + `Capacitor.convertFileSrc`，不返回 base64 |
+| 20 | 0.1.8：五段式阅读工具栏 / 双指缩放 / 弹窗外点与脏确认 / 返回层级栈 | 已推送 main，未发布 | 19         | 新增 `ui-layer.js` 与 `setLayerDepth`；`gs_018.py` 覆盖 320 / 360；不发布 Release |
+| 21 | 0.1.9：原生相册 Photo Picker，一次最多 20 张 | 已推送 main，未发布 | 20         | Android 13+ `ACTION_PICK_IMAGES`，低版本回退；缓存文件 + `Capacitor.convertFileSrc`，不返回 base64 |
+| 22 | 0.1.10：节拍器设置卡片分组 / 拍号 8 组 / 细分说明 / 定时快捷档 | 已发布 | 21         | GitHub Release `v0.1.10`；汇总 0.1.7–0.1.10；`gs_020.py` 覆盖 320 / 360 与深浅色；不改引擎与存档 |
 
 ## 7. 冒烟清单
 

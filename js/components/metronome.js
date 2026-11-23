@@ -109,9 +109,22 @@ const metronomeCSS = `
   .settings-sub { margin-top:3px; font-size:10px; color:var(--muted); }
   .settings-close { flex:0 0 auto; padding:8px 16px; border-radius:10px; border:1px solid var(--primary); background:rgba(var(--primary-rgb),.18); color:var(--heading); font-size:13px; font-weight:700; cursor:pointer; }
   .settings-close:active { transform:scale(.96); }
-  .settings-content { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:16px; display:flex; flex-direction:column; gap:16px; }
+  .settings-content { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+  .settings-card {
+    display: flex; flex-direction: column; gap: 12px;
+    background: var(--card-bg); border: 1px solid var(--line); border-radius: 16px;
+    padding: 12px;
+  }
+  .card-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .card-ico {
+    flex: 0 0 auto; width: 24px; height: 24px; border-radius: 8px;
+    display: grid; place-items: center;
+    background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 13px;
+  }
+  .settings-card h4 { margin: 0; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
   .settings-group { display: flex; flex-direction: column; gap: 8px; }
   .settings-label { font-size: 12px; color: var(--muted); }
+  .label-hint { display: block; margin-top: 3px; font-size: 10px; line-height: 1.4; color: var(--muted); opacity: .82; }
   
   .ts-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   .ts-btn { padding: 8px 0; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 13px; }
@@ -131,8 +144,15 @@ const metronomeCSS = `
   }
 
   .sub-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .sub-btn { padding: 8px 0; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 11px; }
+  .sub-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    padding: 6px 2px 7px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 11.5px;
+  }
+  .sub-btn .sub-name { line-height: 1.25; }
+  .sub-btn .sub-desc { font-size: 8.5px; line-height: 1.25; opacity: .68; white-space: nowrap; }
   .sub-btn.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
+  .sub-btn.on .sub-desc { color: var(--accent-text); opacity: .9; }
 
   .timbre-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .timbre-btn { padding: 8px 0; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 12px; }
@@ -183,7 +203,11 @@ const metronomeCSS = `
   .follow-grid input:focus, .follow-grid select:focus { border-color: var(--primary); }
   .follow-hint { font-size: 10px; color: var(--muted); line-height: 1.4; }
   .meter-guess { color: var(--heading); }
-  .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+  .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); padding: 2px 0; }
+  .switch-row + .switch-row { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 2px; }
+  .switch-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .switch-name { font-size: 13px; color: var(--txt-soft); }
+  .switch-desc { font-size: 9.5px; line-height: 1.35; color: var(--muted); }
   .switch {
     position: relative; flex: 0 0 auto; width: 42px; height: 24px; border-radius: 999px;
     border: 1px solid var(--line-strong); background: var(--surface-raised); cursor: pointer;
@@ -195,6 +219,22 @@ const metronomeCSS = `
   }
   .switch.on { border-color: var(--primary); background: rgba(var(--primary-rgb),.24); }
   .switch.on::after { left: 21px; background: var(--primary); }
+
+  /* 定时快捷档：一行 6 个，下面保留自定义输入 */
+  .timer-presets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .timer-chip {
+    min-width: 0; padding: 7px 0; border-radius: 9px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--muted); cursor: pointer;
+    font-size: 12px; line-height: 1.2; font-variant-numeric: tabular-nums;
+  }
+  .timer-chip.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
+  .timer-custom { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+  .timer-custom input {
+    width: 64px; padding: 6px; border-radius: 8px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--heading); font-size: 12px;
+    text-align: center; outline: none;
+  }
+  .timer-custom input:focus { border-color: var(--primary); }
 
   /* C4 练习工具 */
   .practice-hud {
@@ -314,101 +354,119 @@ const metronomeHTML = `
       </div>
       <button class="settings-close" id="btnCloseSettings">完成</button>
     </div>
-    <div class="settings-content">
-    <div class="settings-group">
-      <div class="settings-label">拍号</div>
-      <div class="ts-grid" id="tsGrid"></div>
-      <div class="ts-custom">
-        <input id="tsNumInput" type="number" inputmode="numeric" min="1" max="32" step="1" value="4" aria-label="拍号分子">
-        <span class="ts-sep">/</span>
-        <input id="tsDenInput" type="number" inputmode="numeric" min="1" max="64" step="1" value="4" aria-label="拍号分母">
-        <button class="ts-apply" id="tsApply">应用</button>
+    <div class="settings-content" id="settingsContent">
+    <section class="settings-card">
+      <div class="card-head"><span class="card-ico">♩</span><h4>基础节奏</h4></div>
+      <div class="settings-group">
+        <div class="settings-label">拍号</div>
+        <div class="ts-grid" id="tsGrid"></div>
+        <div class="ts-custom">
+          <input id="tsNumInput" type="number" inputmode="numeric" min="1" max="32" step="1" value="4" aria-label="拍号分子">
+          <span class="ts-sep">/</span>
+          <input id="tsDenInput" type="number" inputmode="numeric" min="1" max="64" step="1" value="4" aria-label="拍号分母">
+          <button class="ts-apply" id="tsApply">应用</button>
+        </div>
       </div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-label">拍内细分</div>
-      <div class="sub-grid" id="subGrid"></div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-label">音色</div>
-      <div class="timbre-grid" id="timbreGrid"></div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-label">重音模式 · 点按循环：重音 → 次重音 → 普通 → 静音</div>
-      <div class="accent-grid" id="accentGrid"></div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-label">Swing 摇摆 <span id="swingVal">0%</span></div>
-      <input type="range" id="swingRange" class="range" min="0" max="100" step="1" value="0">
-    </div>
-    <div class="settings-group">
-      <label class="check-row"><input type="checkbox" id="rampOn"> 变速练习（到目标后保持 N 小节再停）</label>
-      <div class="num-grid">
-        <label>起始 BPM<input type="number" id="rampStart" min="30" max="250" step="1"></label>
-        <label>目标 BPM<input type="number" id="rampTarget" min="30" max="250" step="1"></label>
-        <label>每次±<input type="number" id="rampStep" min="1" max="20" step="1"></label>
-        <label>每几小节<input type="number" id="rampEvery" min="1" max="16" step="1"></label>
+      <div class="settings-group">
+        <div class="settings-label">拍内细分</div>
+        <div class="sub-grid" id="subGrid"></div>
       </div>
-    </div>
-    <div class="settings-group">
-      <label class="check-row"><input type="checkbox" id="timerOn"> 倒计时自动停</label>
-      <div class="num-grid">
-        <label>分钟<input type="number" id="timerMin" min="1" max="180" step="1"></label>
+      <div class="settings-group">
+        <div class="settings-label">音色</div>
+        <div class="timbre-grid" id="timbreGrid"></div>
       </div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-label">节奏型</div>
-      <div class="pattern-list" id="patternList"></div>
-      <div class="pattern-save-row">
-        <input class="pattern-name" id="patternName" type="text" maxlength="16" placeholder="节奏型名称">
-        <button class="pattern-save" id="patternSave">保存当前</button>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-head"><span class="card-ico">◉</span><h4>重音与反馈</h4></div>
+      <div class="settings-group">
+        <div class="settings-label">重音模式<span class="label-hint">点按拍位循环：重 → 次 → 常 → 静</span></div>
+        <div class="accent-grid" id="accentGrid"></div>
       </div>
-    </div>
-    <div class="settings-group">
-      <div class="settings-label">音频</div>
-      <input id="followAudioFile" type="file" accept="audio/*" hidden>
-      <div class="audio-mode-row">
-        <label class="check-row"><input type="checkbox" id="audioFollowMode"> 音频跟练</label>
-        <label class="check-row"><input type="checkbox" id="audioTempoMode"> 音频测速</label>
+      <div class="settings-group">
+        <div class="switch-row">
+          <span class="switch-copy"><span class="switch-name">节拍闪光条</span><span class="switch-desc">随拍点同步闪烁</span></span>
+          <div class="switch on" id="flashSwitch" role="switch" aria-checked="true" tabindex="0"></div>
+        </div>
+        <div class="switch-row">
+          <span class="switch-copy"><span class="switch-name">震动反馈</span><span class="switch-desc">重音 40ms · 次重音 30ms · 普通 18ms</span></span>
+          <div class="switch" id="vibrationSwitch" role="switch" aria-checked="false" tabindex="0"></div>
+        </div>
       </div>
-      <div class="audio-mode-hint" id="audioModeHint">未启用音频 · 开始仅播放节拍器</div>
-      <div class="settings-label">拍号推测</div>
-      <div class="follow-info meter-guess" id="meterGuess">拍号推测：未分析</div>
-      <div class="follow-row">
-        <button class="follow-btn" id="followAudioPick">选择音频</button>
-        <button class="follow-btn ghost" id="followAudioClear">清除</button>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-head"><span class="card-ico">↗</span><h4>高级练习</h4></div>
+      <div class="settings-group">
+        <div class="settings-label">Swing 摇摆 <span id="swingVal">0%</span></div>
+        <input type="range" id="swingRange" class="range" min="0" max="100" step="1" value="0">
       </div>
-      <div class="follow-info" id="followAudioInfo">未选择音频</div>
-      <div class="follow-grid">
-        <label>首拍偏移（ms）<input id="followAudioOffset" type="number" inputmode="numeric" min="-3000" max="3000" step="10" value="0"></label>
-        <label>预节拍（小节）<select id="followAudioPrebeat">
-          <option value="0">无</option>
-          <option value="1">1 小节</option>
-          <option value="2">2 小节</option>
-          <option value="4">4 小节</option>
-        </select></label>
+      <div class="settings-group">
+        <label class="check-row"><input type="checkbox" id="rampOn"> 变速练习（到目标后保持 N 小节再停）</label>
+        <div class="num-grid">
+          <label>起始 BPM<input type="number" id="rampStart" min="30" max="250" step="1"></label>
+          <label>目标 BPM<input type="number" id="rampTarget" min="30" max="250" step="1"></label>
+          <label>每次±<input type="number" id="rampStep" min="1" max="20" step="1"></label>
+          <label>每几小节<input type="number" id="rampEvery" min="1" max="16" step="1"></label>
+        </div>
       </div>
-      <label class="check-row"><input type="checkbox" id="followAudioLoop"> 单曲循环</label>
-      <div class="follow-grid" id="followAudioPrebeatModeRow" style="grid-template-columns:1fr">
-        <label>预节拍模式<select id="followAudioPrebeatMode">
-          <option value="first">仅第一遍</option>
-          <option value="every">每次循环</option>
-        </select></label>
+      <div class="settings-group">
+        <label class="check-row"><input type="checkbox" id="timerOn"> 倒计时自动停</label>
+        <div class="timer-presets" id="timerPresets"></div>
+        <div class="timer-custom">
+          <span>自定义</span>
+          <input type="number" id="timerMin" min="1" max="180" step="1">
+          <span>分钟</span>
+        </div>
       </div>
-      <div class="follow-hint">跟练：开始播放音频；测速：只分析并调整 BPM，开始不播放音频。分析结果仅供参考，可用 TAP 或手动修正。</div>
-    </div>
-    <div class="settings-group">
-      <div class="switch-row">
-        <span>节拍闪光条（拍点同步）</span>
-        <div class="switch on" id="flashSwitch" role="switch" aria-checked="true" tabindex="0"></div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-head"><span class="card-ico">▤</span><h4>节奏型</h4></div>
+      <div class="settings-group">
+        <div class="pattern-list" id="patternList"></div>
+        <div class="pattern-save-row">
+          <input class="pattern-name" id="patternName" type="text" maxlength="16" placeholder="节奏型名称">
+          <button class="pattern-save" id="patternSave">保存当前</button>
+        </div>
       </div>
-    </div>
-    <div class="settings-group">
-      <div class="switch-row">
-        <span>震动反馈（重音 40ms / 次重音 30ms / 普通 18ms）</span>
-        <div class="switch" id="vibrationSwitch" role="switch" aria-checked="false" tabindex="0"></div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-head"><span class="card-ico">♫</span><h4>音频跟练与测速</h4></div>
+      <div class="settings-group">
+        <input id="followAudioFile" type="file" accept="audio/*" hidden>
+        <div class="audio-mode-row">
+          <label class="check-row"><input type="checkbox" id="audioFollowMode"> 音频跟练</label>
+          <label class="check-row"><input type="checkbox" id="audioTempoMode"> 音频测速</label>
+        </div>
+        <div class="audio-mode-hint" id="audioModeHint">未启用音频 · 开始仅播放节拍器</div>
+        <div class="settings-label">拍号推测</div>
+        <div class="follow-info meter-guess" id="meterGuess">拍号推测：未分析</div>
+        <div class="follow-row">
+          <button class="follow-btn" id="followAudioPick">选择音频</button>
+          <button class="follow-btn ghost" id="followAudioClear">清除</button>
+        </div>
+        <div class="follow-info" id="followAudioInfo">未选择音频</div>
+        <div class="follow-grid">
+          <label>首拍偏移（ms）<input id="followAudioOffset" type="number" inputmode="numeric" min="-3000" max="3000" step="10" value="0"></label>
+          <label>预节拍（小节）<select id="followAudioPrebeat">
+            <option value="0">无</option>
+            <option value="1">1 小节</option>
+            <option value="2">2 小节</option>
+            <option value="4">4 小节</option>
+          </select></label>
+        </div>
+        <label class="check-row"><input type="checkbox" id="followAudioLoop"> 单曲循环</label>
+        <div class="follow-grid" id="followAudioPrebeatModeRow" style="grid-template-columns:1fr">
+          <label>预节拍模式<select id="followAudioPrebeatMode">
+            <option value="first">仅第一遍</option>
+            <option value="every">每次循环</option>
+          </select></label>
+        </div>
+        <div class="follow-hint">跟练：开始播放音频；测速：只分析并调整 BPM，开始不播放音频。分析结果仅供参考，可用 TAP 或手动修正。</div>
       </div>
-    </div>
+    </section>
     </div>
   </div>
 </div>
@@ -530,6 +588,7 @@ class GuitarMetronome extends HTMLElement {
     const settingsMask = $('settingsMask');
     const btnSettings = $('btnSettings');
     const btnCloseSettings = $('btnCloseSettings');
+    const settingsContent = $('settingsContent');
     const tsGrid = $('tsGrid');
     const tsNumInput = $('tsNumInput'), tsDenInput = $('tsDenInput'), tsApply = $('tsApply');
     const subGrid = $('subGrid');
@@ -540,7 +599,7 @@ class GuitarMetronome extends HTMLElement {
     const practiceHud = $('practiceHud');
     const rampOn = $('rampOn'), rampStart = $('rampStart'), rampTarget = $('rampTarget');
     const rampStep = $('rampStep'), rampEvery = $('rampEvery');
-    const timerOn = $('timerOn'), timerMin = $('timerMin');
+    const timerOn = $('timerOn'), timerMin = $('timerMin'), timerPresets = $('timerPresets');
     const patternList = $('patternList'), patternName = $('patternName'), patternSave = $('patternSave');
     const followAudioFile = $('followAudioFile');
     const followAudioPick = $('followAudioPick'), followAudioClear = $('followAudioClear');
@@ -574,21 +633,22 @@ class GuitarMetronome extends HTMLElement {
 
     const TIME_SIGS = [
       { num:2, den:4 }, { num:3, den:4 }, { num:4, den:4 }, { num:5, den:4 },
-      { num:6, den:8 }, { num:7, den:8 }, { num:8, den:8 }, { num:9, den:8 }, { num:12, den:8 }
+      { num:6, den:8 }, { num:7, den:8 }, { num:9, den:8 }, { num:12, den:8 }
     ];
     const SUBDIVISIONS = [
-      { id:'q', short:'四分', slots:[1] },
-      { id:'e', short:'八分', slots:[1,1] },
-      { id:'t', short:'三连', slots:[1,1,1] },
-      { id:'t1', short:'三·休1', slots:[0,1,1] },
-      { id:'t2', short:'三·休2', slots:[1,0,1] },
-      { id:'t3', short:'三·休3', slots:[1,1,0] },
-      { id:'s', short:'十六', slots:[1,1,1,1] },
-      { id:'s1', short:'十·休1', slots:[0,1,1,1] },
-      { id:'s2', short:'十·休2', slots:[1,0,1,1] },
-      { id:'s3', short:'十·休3', slots:[1,1,0,1] },
-      { id:'s4', short:'十·休4', slots:[1,1,1,0] }
+      { id:'q', short:'四分', desc:'每拍 1 个', full:'四分音符，每拍 1 个', slots:[1] },
+      { id:'e', short:'八分', desc:'每拍 2 个', full:'八分音符，每拍 2 个', slots:[1,1] },
+      { id:'t', short:'三连', desc:'每拍 3 个', full:'三连音，每拍 3 个', slots:[1,1,1] },
+      { id:'t1', short:'三·休1', desc:'第 1 位休止', full:'三连音，第 1 位休止', slots:[0,1,1] },
+      { id:'t2', short:'三·休2', desc:'第 2 位休止', full:'三连音，第 2 位休止', slots:[1,0,1] },
+      { id:'t3', short:'三·休3', desc:'第 3 位休止', full:'三连音，第 3 位休止', slots:[1,1,0] },
+      { id:'s', short:'十六', desc:'每拍 4 个', full:'十六分音符，每拍 4 个', slots:[1,1,1,1] },
+      { id:'s1', short:'十·休1', desc:'第 1 位休止', full:'十六分音符，第 1 位休止', slots:[0,1,1,1] },
+      { id:'s2', short:'十·休2', desc:'第 2 位休止', full:'十六分音符，第 2 位休止', slots:[1,0,1,1] },
+      { id:'s3', short:'十·休3', desc:'第 3 位休止', full:'十六分音符，第 3 位休止', slots:[1,1,0,1] },
+      { id:'s4', short:'十·休4', desc:'第 4 位休止', full:'十六分音符，第 4 位休止', slots:[1,1,1,0] }
     ];
+    const TIMER_PRESETS = [3, 5, 10, 15, 20, 30];
     const TIMBRES = [
       { id:'sine', label:'正弦' }, { id:'square', label:'方波' }, { id:'triangle', label:'三角' },
       { id:'woodblock', label:'木鱼' }, { id:'electronic', label:'电子' }, { id:'beep', label:'短促' }
@@ -1663,6 +1723,36 @@ class GuitarMetronome extends HTMLElement {
       if (e.key === 'Enter') { e.preventDefault(); saveCurrentPattern(); }
     };
 
+    const updateTimerPresetUI = () => {
+      timerPresets.querySelectorAll('.timer-chip').forEach(b => {
+        b.classList.toggle('on', Number(b.dataset.min) === this.timer.minutes);
+      });
+    };
+
+    const setTimerMinutes = (minutes, { syncInput = true } = {}) => {
+      this.timer.minutes = Math.min(180, Math.max(1, parseInt(minutes, 10) || 15));
+      if (syncInput) timerMin.value = this.timer.minutes;
+      updateTimerPresetUI();
+      saveSettings();
+      if (this.isRunning && this.timer.enabled) startCountdown();
+      else updateHud();
+    };
+
+    const renderTimerPresets = () => {
+      timerPresets.innerHTML = '';
+      TIMER_PRESETS.forEach(min => {
+        const b = document.createElement('button');
+        b.className = 'timer-chip';
+        b.dataset.min = String(min);
+        b.textContent = String(min);
+        b.title = `${min} 分钟`;
+        b.setAttribute('aria-label', `倒计时 ${min} 分钟`);
+        b.onclick = () => setTimerMinutes(min);
+        timerPresets.appendChild(b);
+      });
+      updateTimerPresetUI();
+    };
+
     const renderSettings = () => {
       tsGrid.innerHTML = '';
       TIME_SIGS.forEach(ts => {
@@ -1677,7 +1767,16 @@ class GuitarMetronome extends HTMLElement {
       SUBDIVISIONS.forEach(s => {
         const b = document.createElement('button');
         b.className = 'sub-btn' + (s.id === this.currentSubId ? ' on' : '');
-        b.textContent = s.short;
+        b.title = s.full;
+        b.setAttribute('aria-label', `${s.short}（${s.full}）`);
+        const name = document.createElement('span');
+        name.className = 'sub-name';
+        name.textContent = s.short;
+        const desc = document.createElement('span');
+        desc.className = 'sub-desc';
+        desc.textContent = s.desc;
+        b.appendChild(name);
+        b.appendChild(desc);
         b.onclick = () => {
           this.currentSubId = s.id;
           updateUI(); renderSettings();
@@ -1739,6 +1838,7 @@ class GuitarMetronome extends HTMLElement {
       rampEvery.value = this.ramp.every;
       timerOn.checked = this.timer.enabled;
       timerMin.value = this.timer.minutes;
+      renderTimerPresets();
 
       renderPatterns();
       updateFollowAudioUI();
@@ -1796,12 +1896,7 @@ class GuitarMetronome extends HTMLElement {
     };
 
     // 倒计时
-    timerMin.oninput = () => {
-      this.timer.minutes = Math.min(180, Math.max(1, parseInt(timerMin.value, 10) || 15));
-      saveSettings();
-      if (this.isRunning && this.timer.enabled) startCountdown();
-      else updateHud();
-    };
+    timerMin.oninput = () => setTimerMinutes(timerMin.value, { syncInput: false });
     timerOn.onchange = () => {
       this.timer.enabled = timerOn.checked;
       saveSettings();
@@ -1820,6 +1915,7 @@ class GuitarMetronome extends HTMLElement {
     btnSettings.onclick = () => {
       renderSettings();
       settingsMask.classList.add('show');
+      if (settingsContent) settingsContent.scrollTop = 0;
       if (!this._settingsLayerOff) {
         this._settingsLayerOff = registerLayer({
           id: 'metronome-settings',

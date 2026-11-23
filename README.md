@@ -16,7 +16,7 @@
   <a href="https://moanet.github.io/GuitarShell/">
     <img src="https://img.shields.io/badge/Open-Web%20App-C7863F" alt="打开网页版">
   </a>
-  <img src="https://img.shields.io/badge/version-0.1.9-8A8075" alt="开发版本 0.1.9">
+  <img src="https://img.shields.io/badge/version-0.1.10-8A8075" alt="开发版本 0.1.10">
   <img src="https://img.shields.io/badge/data-local--first-6B8E23" alt="本地优先">
 </p>
 
@@ -29,7 +29,7 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 | 模块 | 已具备 |
 | --- | --- |
 | 乐谱 | PDF / 图片导入、内容哈希去重、书架与标签、批量管理（批量标签 / 批量删除）、拼音搜索、手势缩放、PDF 页段拆分建卡（起止页缩略图 / 页码选择 / 顺序自动纠正）、页级书签、阅读进度恢复、迷你节拍器、全屏阅读 |
-| 节拍器 | 高精度调度、旋钮 / 长按步进 / TAP、9 组拍号 + 自定义拍号、11 种细分（含休止位）、6 种音色、逐拍重音、Swing 1% 步进、变速练习、倒计时、节奏型、音频跟练 / 音频测速、震动反馈、拍点色块 / 计时变速进度、拍号推测、双行练习 HUD |
+| 节拍器 | 高精度调度、旋钮 / 长按步进 / TAP、8 组拍号 + 自定义拍号、11 种细分（含休止位）、6 种音色、逐拍重音、Swing 1% 步进、变速练习、倒计时、节奏型、音频跟练 / 音频测速、震动反馈、拍点色块 / 计时变速进度、拍号推测、双行练习 HUD |
 | 调音器 | 麦克风采集、YIN 基频检测、自动 / 手动选弦、A4 校准、音名与音分显示、标准音试听、音分曲线 |
 | 练习记录 | 时长 / BPM / 页码打卡、计时 / 变速自然结束自动记录、累计统计、SVG 趋势、TOP5、页面实时刷新 |
 | 数据与同步 | IndexedDB 本地存储、完整备份与恢复、坚果云 WebDAV 手动同步、非阻塞同步状态与取消 / 重试、同步中退出确认、密码本机加密 |
@@ -54,19 +54,18 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 
 ## 下载与安装
 
-- **Android 当前正式版**：前往 [GitHub Releases](https://github.com/moanet/GuitarShell/releases/latest) 下载 `GuitarShell-0.1.6-release.apk`。
-- **当前 Release**：[v0.1.6](https://github.com/moanet/GuitarShell/releases/tag/v0.1.6)，2026-11-23 正式发布；APK 已上传并通过远端 SHA-256 复核。GitHub Pages 已部署 0.1.6。
-- **0.1.6 APK 校验**：SHA-256 `D397762F6A1A19FEEAA29E8BD79D9B74AE4D49BEEAB61329BC9F4E11F18BC76C`，`4,357,120` 字节，`versionCode 106` / `versionName 0.1.6`。
-- **0.1.9 状态**：开发完成，真机验收通过；Android “从相册选择”改为系统 Photo Picker，Android 13+ 使用 `ACTION_PICK_IMAGES`，12 以下回退 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`，一次最多 20 张；选中图片复制到缓存后由 JS `convertFileSrc` 读成 File，复用现有导入与去重链路。APK `4,370,166` 字节，SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`，`versionCode 109` / `versionName 0.1.9`。按要求不发布 Release。
+- **Android 当前正式版**：前往 [GitHub Releases](https://github.com/moanet/GuitarShell/releases/latest) 下载 `GuitarShell-0.1.10-release.apk`。
+- **当前 Release**：[v0.1.10](https://github.com/moanet/GuitarShell/releases/tag/v0.1.10)，2026-11-23 正式发布；汇总 `0.1.7` / `0.1.8` / `0.1.9` / `0.1.10` 的全部改动；APK 已上传并通过远端 SHA-256 复核。GitHub Pages 已部署 0.1.10。
+- **0.1.10 APK 校验**：SHA-256 `311EA1E6C236C0855B74EE63F60B94465CCF6D0825317FB474875691EDB45498`，`4,371,265` 字节，`versionCode 110` / `versionName 0.1.10`。
+- **0.1.10 主要更新**：节拍器设置重排为 5 张卡片；拍号快捷格 8 组并移除 `8/8`（自定义仍可输入），细分按钮补两行说明，倒计时增加 `3 / 5 / 10 / 15 / 20 / 30` 一行快捷档，音频卡片改为“音频跟练与测速”，关闭重开设置回到顶部。
+- **0.1.9 状态**：已真机验收并推送 `main`；Android “从相册选择”改为系统 Photo Picker，Android 13+ 使用 `ACTION_PICK_IMAGES`，12 以下回退 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`，一次最多 20 张；选中图片复制到缓存后由 JS `convertFileSrc` 读成 File，复用现有导入与去重链路。APK `4,370,166` 字节，SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`，`versionCode 109` / `versionName 0.1.9`。按要求不发布 Release。
 - **0.1.8 状态**：已真机验收并推送 `main`；阅读页工具栏五段式单行、手机双指缩放、弹窗外点关闭 / 表单有改动才弹放弃确认、系统返回键按层级逐层关闭；导入面板外点已修掉点击穿透，模态层会锁住四页导航，阅读页仍可切页并保留状态。按要求未发布 Release。
 - **0.1.7 状态**：真机验收通过，已推送 `main`，按要求未发布 Release；新增云同步中退出确认，以及拆分弹窗起止页缩略图、页码选择与顺序自动纠正。
 - **0.1.5 状态**：已真机验收并推送 `main`，未创建 GitHub Release；功能已并入 0.1.6 正式发布。
-- **上一版**：[v0.1.4](https://github.com/moanet/GuitarShell/releases/tag/v0.1.4)，2026-11-23 发布；SHA-256 `56CF329C0F9EC0873D47BC179C4FA94D14A937F7167732A608B20BA4C3BD32D7`。
-- **更早版本**：[v0.1.3](https://github.com/moanet/GuitarShell/releases/tag/v0.1.3)，2026-11-22 发布，乐谱去重与云同步状态提示。
+- **上一版**：[v0.1.6](https://github.com/moanet/GuitarShell/releases/tag/v0.1.6)，2026-11-23 发布；SHA-256 `D397762F6A1A19FEEAA29E8BD79D9B74AE4D49BEEAB61329BC9F4E11F18BC76C`，`4,357,120` 字节，`versionCode 106` / `versionName 0.1.6`。
+- **更早版本**：[v0.1.4](https://github.com/moanet/GuitarShell/releases/tag/v0.1.4)，2026-11-23 发布；SHA-256 `56CF329C0F9EC0873D47BC179C4FA94D14A937F7167732A608B20BA4C3BD32D7`；[v0.1.3](https://github.com/moanet/GuitarShell/releases/tag/v0.1.3)，2026-11-22 发布，乐谱去重与云同步状态提示。
 - **网页版**：打开 [https://moanet.github.io/GuitarShell/](https://moanet.github.io/GuitarShell/)。
 
-> `0.1.0` 起使用新的应用 ID `com.guitarshell`，可以与 `0.0.8.10` 并存，不覆盖旧版数据。
-> 迁移旧数据时，先在旧版「全局设置 > 本地备份」导出 JSON，再在新版「从文件恢复」导入。备份包含乐谱、阅读进度、页级书签与练习记录；WebDAV 密码与主题选择需要重新设置。
 
 ## 快速上手
 

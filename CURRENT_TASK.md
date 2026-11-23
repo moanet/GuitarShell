@@ -1,196 +1,165 @@
-# CURRENT TASK — 0.1.9 原生相册导入
+# CURRENT TASK — 0.1.10 节拍器设置分组与说明
 
-> 状态：开发完成，真机验收通过，已推送 `main`；按用户要求未创建 tag / GitHub Release
+> 状态：已发布 v0.1.10
 > 更新时间：2026-11-23
-> 版本基线：线上 Release 为 `0.1.6`；`0.1.7` / `0.1.8` 已提交 `main`，未发布 Release
+> 版本基线：线上 Release 为 `0.1.6`；`0.1.7` / `0.1.8` / `0.1.9` 已提交 `main`，未发布 Release
 > 关联：[TASK.md](TASK.md)（项目总账） / [CHANGELOG.md](CHANGELOG.md)（发布历史）
 
 本文件只记录当前版本的“做什么、怎么做、怎么验收”。发布后把结果压缩进 `CHANGELOG.md`，再重写本文件进入下一版。
 
-0.1.8 的完整记录已归档到 [docs/archive/CURRENT_TASK-0.1.8.md](docs/archive/CURRENT_TASK-0.1.8.md)。
+0.1.9 的完整记录已归档到 [docs/archive/CURRENT_TASK-0.1.9.md](docs/archive/CURRENT_TASK-0.1.9.md)。
 
 ## 1. 目标
 
-0.1.9 只做一件事：**把 Android 手机“从相册选择”从 WebView 文件选择器改为系统照片选择器**，一次最多 20 张，选中的图片复制到应用缓存，再由 JS 用 `Capacitor.convertFileSrc` 取回 Blob 复用现有导入链路。
+0.1.10 只调整**节拍器设置面板**的视觉分组与说明，不改变节拍算法、存档结构或原生能力：
 
-必须解决：
-
-1. 点“从相册选择”不再落到文件管理 / 文档选择器。
-2. Android 13+ 使用系统 Photo Picker；Android 12 及以下回退到 `ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT`。
-3. 一次最多 20 张；不请求存储权限。
-4. 原生只返回缓存文件路径与元信息，不返回 base64。
-5. 导入仍复用 `handleFiles`，内容哈希、重复检测、标签、书架刷新行为不变。
-6. 网页 / PWA 无原生插件时回退现有 `<input type=file>`，并同样限制相册一次最多 20 张。
+1. 把平铺的设置项收进 5 张卡片，沿用全局设置抽屉的卡片语言。
+2. “拍号”快捷格去掉 `8/8`，从 9 个减到 8 个，排成 4×2；自定义输入仍支持 `8/8`。
+3. “拍内细分”每个按钮增加可读小字说明，并补桌面悬浮全称与 `aria-label`。
+4. “倒计时自动停”增加 `3 / 5 / 10 / 15 / 20 / 30` 分钟快捷片，保持一行。
+5. 重新排序：节拍闪光条、震动反馈紧跟重音模式；Swing / 变速 / 倒计时归入“高级练习”。
 
 不包含：
 
-- 相机拍照改造。
-- PDF 文件选择改造。
-- 图片裁剪、压缩、旋转、批量编辑。
-- 相册权限长期持有或后台访问。
-- 0.1.8 已完成的阅读工具栏、双指缩放、返回层级改动。
+- 节拍引擎、音频调度、Swing 数学、变速 / 倒计时逻辑改动。
+- 新设置项、新音色、新节奏型。
+- 原生插件、相册导入、阅读页、云同步改动。
+- 0.1.9 已完成的 Photo Picker 行为回退。
 
 ## 2. 方案
 
-### 2.1 原生 `GalleryPickerPlugin`
+### 2.1 卡片分组
 
-新增 `android/app/src/main/java/com/guitarshell/GalleryPickerPlugin.java`，`@CapacitorPlugin(name = "GalleryPicker")`，在 `MainActivity.onCreate()` 注册。
+`js/components/metronome.js` 的 `.settings-content` 改为 5 张 `.settings-card`：
 
-对外方法：
+1. **基础节奏**：拍号、拍内细分、音色。
+2. **重音与反馈**：重音模式、节拍闪光条、震动反馈。
+3. **高级练习**：Swing、变速练习、倒计时。
+4. **节奏型**：预设、删除、保存当前。
+5. **音频跟练与测速**：音频跟练 / 测速、拍号推测、文件与预节拍参数。
 
-```ts
-GalleryPicker.pickImages({ limit?: number })
-→ { files: Array<{ path: string, name: string, mimeType: string, size: number }>, failed: number }
-```
+卡片样式对齐 `settings.js`：
 
-规则：
+- `background: var(--card-bg)`、`border: 1px solid var(--line)`、圆角 `16px`、内边距 `12px`。
+- 卡头 24px 小图标 + 13px 粗标题；卡片间距 `10px`。
+- 不把设置面板改成右侧抽屉，仍是居中弹窗。
 
-- `limit` 夹在 `1..20`，默认 20。
-- Android 13+（API 33）：
-  - `Intent(MediaStore.ACTION_PICK_IMAGES)`，`type = "image/*"`。
-  - `putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, limit)`。
-  - 若系统没有可处理 Activity，回退 `ACTION_OPEN_DOCUMENT`。
-- Android 12 及以下：
-  - `ACTION_OPEN_DOCUMENT`，`type = "image/*"`，`EXTRA_ALLOW_MULTIPLE = true`，`CATEGORY_OPENABLE`。
-  - 若不可用，回退 `ACTION_GET_CONTENT`。
-- 不新增运行时权限；Photo Picker / SAF 自带读取授权。
-- 结果支持 `ClipData` 多选与单 URI；最多处理 `limit` 个。
-- 取消选择：`call.reject('已取消选择', 'PICK_CANCELLED')`；JS 不弹错误提示。
-- 没有可处理 Activity：`call.reject('系统相册不可用', 'PICK_UNAVAILABLE')`。
+### 2.2 拍号快捷格
 
-### 2.2 缓存文件
+`TIME_SIGS` 去掉 `8/8`，保留：
 
-- 复制到 `context.getCacheDir()/gallery-picker/`。
-- 每个文件用 `ContentResolver.openInputStream(uri)` 流式复制，不整文件读进内存。
-- 文件名：
-  - 优先 `OpenableColumns.DISPLAY_NAME`，去掉路径分隔符与控制字符，限制长度。
-  - 扩展名优先原文件名；缺失时按 MIME 用 `MimeTypeMap` 补 `jpg/png/webp/...`。
-  - 加短 UUID 前缀/后缀避免重名。
-- 返回 `path` 为缓存文件绝对路径，`name` 为可读文件名，`mimeType` 为 `ContentResolver.getType(uri)`，`size` 为复制后字节数。
-- 单个文件复制失败：删除半成品，继续处理其余；全部失败则 reject `PICK_COPY_FAILED`。
-- 每次开始选择前清理该目录下超过 24 小时的文件，避免缓存无限增长。
+`2/4`、`3/4`、`4/4`、`5/4`、`6/8`、`7/8`、`9/8`、`12/8`
 
-### 2.3 JS 服务 `js/services/gallery-picker.js`
+- 4 列布局，正好 2 行。
+- 自定义输入仍允许 `1..32 / 1..64`，所以 `8/8` 仍可手输。
+- 旧存档 / 旧节奏型中的 `8/8` 正常加载，只是快捷格不高亮。
 
-- `isNativeGalleryAvailable()`：检查 `window.Capacitor.isNativePlatform()` 与 `window.Capacitor.Plugins.GalleryPicker`。
-- `pickGalleryImages({ limit = 20 } = {})`：
-  1. 调 `GalleryPicker.pickImages({ limit })`。
-  2. 对每个 `path` 执行 `Capacitor.convertFileSrc(path)`。
-  3. `fetch(url)` → `blob()`。
-  4. 组装 `File([blob], info.name, { type: info.mimeType || blob.type })`。
-  5. 最多返回 20 个；单个 fetch 失败跳过并计入失败数；全部失败抛 `GALLERY_FETCH_FAILED`。
-- 不把 base64 写进插件返回值，也不在 JS 里做 base64 转换。
-- 如果 `convertFileSrc` 或 `fetch` 不可用，抛出 `GALLERY_UNAVAILABLE`，由调用方回退 input。
+### 2.3 拍内细分说明
 
-### 2.4 阅读页动作面板接入
+`SUBDIVISIONS` 增加 `desc` 与 `full`：
 
-- `sheet-reader.js` 的“从相册选择”从 `<label for="inputGallery">` 改为真实按钮 `#btnGallery`。
-- 点击：
-  - 原生可用：先 `closeActionSheet()`，再 `pickGalleryImages({ limit: 20 })`，得到 File 后直接 `handleFiles(files)`。
-  - 原生不可用：先 `closeActionSheet()`，再触发隐藏的 `inputGallery.click()`，沿用 Web 文件选择。
-- 取消：
-  - 原生 `PICK_CANCELLED` 静默返回，不显示 toast。
-  - Web input 取消不产生文件，不导入。
-- 导入中仍显示现有 `loading` 遮罩与“正在导入 N 个文件...”。
-- `handleFiles` 的内容哈希、重复检测、失败计数、书架刷新不改。
-- 相册一次超过 20 张：
-  - 原生选择器本身限制 20。
-  - Web input 若仍返回超过 20，截取前 20 并提示“一次最多选择 20 张，已取前 20 张”。
+- 按钮两行：短标签 + 8.5px 说明。
+- `title` / `aria-label` 使用完整说明。
+- 映射：
+  - `四分` → `每拍 1 个` / `四分音符，每拍 1 个`
+  - `八分` → `每拍 2 个` / `八分音符，每拍 2 个`
+  - `三连` → `每拍 3 个` / `三连音，每拍 3 个`
+  - `三·休1..3` → `第 1..3 位休止` / `三连音，第 1..3 位休止`
+  - `十六` → `每拍 4 个` / `十六分音符，每拍 4 个`
+  - `十·休1..4` → `第 1..4 位休止` / `十六分音符，第 1..4 位休止`
 
-### 2.5 版本与测试
+### 2.4 定时快捷档
 
-- `package.json`、`package-lock.json`、`sw.js`、`js/services/version.js`、`android/app/build.gradle` 同步为 `0.1.9` / `versionCode 109`。
-- `sw.js` 缓存清单加入 `./js/services/gallery-picker.js`。
-- 新增 `tests/browser/gs_019.py`：
-  - 在 Web 模式下打开移动端导入面板，点“从相册选择”走 input 回退。
-  - 伪造 21 个图片 File，验证只导入前 20 个。
-  - 验证取消不导入、动作面板关闭、书架数量不变。
-  - 用 mock `GalleryPicker` + mock `convertFileSrc` 验证 JS 服务把路径转成 File、不产生 base64。
-- 真机验收以 Android 13 设备 `ca14b16` 为准。
+- 新增 `TIMER_PRESETS = [3, 5, 10, 15, 20, 30]`。
+- 一行 6 个 `.timer-chip`，`grid-template-columns: repeat(6, minmax(0, 1fr))`，间距 4px。
+- 保留自定义分钟输入，默认仍 15 分钟。
+- 点快捷片只改时长，不自动开启“倒计时自动停”；已开启且在运行时按现有逻辑重算倒计时。
+- 自定义输入与快捷片双向高亮同步。
 
-## 3. 改动范围
+### 2.5 重排与文案收敛
 
-- 新增 `android/app/src/main/java/com/guitarshell/GalleryPickerPlugin.java`。
-- `android/app/src/main/java/com/guitarshell/MainActivity.java`：注册 `GalleryPickerPlugin`。
-- 新增 `js/services/gallery-picker.js`。
-- `js/components/sheet-reader.js`：动作面板按钮、原生 / Web 分支、20 张限制。
-- `sw.js`：缓存清单与版本。
-- 版本文件 5 处：`package.json`、`package-lock.json`、`sw.js`、`js/services/version.js`、`android/app/build.gradle`。
-- 新增 `tests/browser/gs_019.py`；更新 `tests/browser/README.md`。
-- 更新 `CHANGELOG.md`、`TASK.md`、`README.md`、`CURRENT_TASK.md`。
+- 重音模式标题下加一行小字“点按拍位循环：重 → 次 → 常 → 静”。
+- 闪光条 / 震动反馈改成“名称 + 一句说明”的两行结构，并放在重音模式下面。
+- 音频卡片标题为 **“音频跟练与测速”**，覆盖跟练、测速与拍号推测。
+- 设置项顺序变化不改变 `guitar_metronome_settings` 的字段和读取逻辑。
 
-## 4. 验收标准
+## 3. 验收标准
 
-### 4.1 原生选择器
+### 3.1 浏览器
 
-- [ ] Android 13 真机点“从相册选择”，打开系统照片选择器，不再进入文件管理。
-- [ ] 可选 1 张、5 张、20 张，返回后书架出现对应数量卡片。
-- [ ] 选满 20 张时无法再选第 21 张。
-- [ ] 取消选择不新增卡片、不弹错误 toast。
-- [ ] 不弹存储权限申请。
+新增 `tests/browser/gs_020.py`，在 320 / 360 宽度验证：
 
-### 4.2 文件与导入
+- 设置面板有 5 张卡片，标题与顺序为“基础节奏 / 重音与反馈 / 高级练习 / 节奏型 / 音频跟练与测速”。
+- 拍号快捷格 8 个，不含 `8/8`；`4/4` 高亮；自定义输入 `8/8` 后能应用且不报错。
+- 11 个细分按钮均有短标签 + 小字说明；`四分` 的 `title` 为“四分音符，每拍 1 个”；`十·休3` 为“十六分音符，第 3 位休止”。
+- 定时快捷片 6 个，排成一行；点 `10` 后输入框变 `10` 且该项高亮；手输 `7` 后无快捷片高亮，值保留 `7`。
+- 滚到底部后关闭再打开设置，内容回到顶部，不停留在上次的滚动位置。
+- 设置面板无横向溢出，卡片内控件不越界；320 / 360 均通过。
+- 截图保存到临时目录，供人工复核卡片间距与两行按钮。
 
-- [ ] 返回的是缓存文件路径，不是 base64；JS 用 `convertFileSrc` 成功取到 Blob。
-- [ ] 文件名、扩展名、MIME 正确；图片可在阅读页打开。
-- [ ] 内容相同的图片仍被识别为重复并跳过。
-- [ ] 部分文件复制 / fetch 失败时，其余图片仍能导入，并提示失败数量。
-- [ ] 导入完成后书架数量、标签、排序与既有逻辑一致。
+### 3.2 回归
 
-### 4.3 Web 回退与边界
+- `npm run check` 通过，版本 `0.1.10`。
+- `gs_015.py`、`gs_016.py`、`gs_018.py`、`gs_019.py` 无回归。
+- `python -m compileall -q tests/browser` 通过。
 
-- [ ] 浏览器 / PWA 无插件时，“从相册选择”仍打开文件选择器。
-- [ ] Web 一次选超过 20 张时只导入前 20 张，并提示。
-- [ ] 动作面板外点 / 返回键行为不回归 0.1.8。
-- [ ] 20 张大图导入时 loading 不消失、无白屏、无内存崩溃。
+### 3.3 APK / 真机
 
-### 4.4 工程检查
+- `versionCode 110` / `versionName 0.1.10`，包名与签名不变。
+- Android 13 设备 `ca14b16` 覆盖安装成功，书架徽标 `0.1.10`，原有数据保留。
+- 真机打开节拍器设置：5 张卡片、8 个拍号、细分小字、6 个定时片、音频卡标题均可见；面板可滚动，无横向溢出。
+- 真机点定时 `10`、细分 `十·休3`，确认选中状态与设置生效。
 
-- [ ] `npm run check` 通过。
-- [ ] `python -m compileall -q tests/browser` 通过。
-- [ ] `gs_019.py` 通过。
-- [ ] `gs_015.py` / `gs_016.py` / `gs_018.py` 无回归。
-- [ ] release APK 构建通过，`versionCode 109` / `versionName 0.1.9`，签名与 SHA-256 核对。
-- [ ] APK 覆盖安装到 `ca14b16`，书架徽标显示 `v0.1.9`。
-- [ ] 真机验收通过后提交 `main`；tag / Release 等用户确认。
+## 4. 实施记录
 
-## 5. 风险与边界
+### 4.1 设置面板结构
 
-- 部分 OEM 的 `ACTION_PICK_IMAGES` 可能不可用，必须有 `ACTION_OPEN_DOCUMENT` 回退。
-- 20 张大图同时 fetch 可能占用较多内存；JS 串行读取、逐个交给 `handleFiles`，避免一次性并发 20 个 Blob。
-- 缓存目录由系统可能随时清理；导入必须在选择返回后立即读取。
-- `convertFileSrc` 依赖 Capacitor 本地文件服务；网页端没有该通道，只能走 input 回退。
-- 不改变现有图片格式支持范围；HEIC 等格式仍取决于 WebView 能否解码。
-- Android 12 以下的 SAF 选择器 UI 与 Photo Picker 不同，但返回结果与导入链路一致。
+- `js/components/metronome.js` 新增 `.settings-card` / `.card-head` / `.card-ico`：卡片使用 `card-bg`、1px 边框、16px 圆角、12px 内边距；卡头为 24px 图标 + 13px 粗标题。
+- `.settings-content` 间距由 16 改为 10，内边距改为 `12px 14px`，五张卡按以下顺序排列：
+  1. 基础节奏：拍号、拍内细分、音色。
+  2. 重音与反馈：重音模式、节拍闪光条、震动反馈。
+  3. 高级练习：Swing、变速练习、倒计时。
+  4. 节奏型：预设、删除、保存当前。
+  5. 音频跟练与测速：音频跟练 / 测速、拍号推测、文件与预节拍参数。
+- 拍号快捷格删除 `8/8`，保留 `2/4 3/4 4/4 5/4 6/8 7/8 9/8 12/8`，正好 4×2；自定义输入仍接受 `8/8`。
+- 11 个拍内细分按钮改为“短标签 + 8.5px 小字”两行：如 `四分 / 每拍 1 个`、`十·休3 / 第 3 位休止`；`title` 与 `aria-label` 使用全称，如 `四分音符，每拍 1 个`、`十六分音符，第 3 位休止`。
+- 倒计时新增 `TIMER_PRESETS = [3, 5, 10, 15, 20, 30]`，6 个快捷片排成一行；下方保留“自定义 [值] 分钟”。
+- 重音模式标题下增加“点按拍位循环：重 → 次 → 常 → 静”；节拍闪光条、震动反馈改为“名称 + 一句说明”两行，并置于重音模式之后。
+- 音频卡标题由“音频分析”改为“音频跟练与测速”，内部控件与逻辑未改。
+- 打开设置时在 `show` 之后把 `.settings-content` 滚回顶部，避免重开时停在上次位置、卡片标题被顶部遮住。
 
-## 6. 实施结果（2026-11-23）
+### 4.2 行为边界
 
-### 6.1 代码
+- 节拍引擎、音频调度、Swing 计算、变速 / 倒计时逻辑均未改动。
+- 快捷定时片只修改时长，不自动开启倒计时；倒计时运行中修改会重新计算剩余时间。
+- 自定义分钟输入与快捷片高亮双向同步；手输 `7` 后无快捷片高亮，值保留 `7`。
+- 旧存档或旧节奏型中的 `8/8` 仍可正常加载，只是快捷格不再高亮。
 
-- 新增 `GalleryPickerPlugin.java`，已注册到 `MainActivity`；支持 Android 13+ Photo Picker、`ACTION_OPEN_DOCUMENT` / `ACTION_GET_CONTENT` 回退、`ClipData` 多选、后台流式复制、24 小时缓存清理、纯数字显示名替换为 `照片-yyyyMMdd-HHmmss-*`。
-- 新增 `js/services/gallery-picker.js`；动作面板改为按钮，原生路径 `convertFileSrc` + `fetch` → `File`，Web 回退 input；20 张截断与取消静默处理已接入。
-- 版本同步为 `0.1.9` / `versionCode 109`，`sw.js` 缓存加入 `gallery-picker.js`。
+### 4.3 回归与验证
 
-### 6.2 浏览器验收
+- `npm run check` 通过：`v0.1.10，29 个 JS 文件，SW 缓存与版本一致`。
+- `python -m compileall -q tests/browser` 通过。
+- 新增 `tests/browser/gs_020.py`（默认端口 `9355`，支持 `GS_WIDTH` 与 `GS_THEME`）：
+  - 320 宽深色通过：五卡顺序、8 个拍号、11 个细分、6 个定时片、分组归属、无横向溢出均符合预期；`scrollHeight=1802`、`clientHeight=720`，约 2.5 屏。
+  - 360 宽深色通过：`scrollHeight=1776`、`clientHeight=720`，`panelWidth=326`。
+  - 320 宽浅色通过：卡片、边框、文字与控件正常。
+  - 关闭重开断言通过：先滚到底部（`scrollTop=1082`），关闭再打开后 `scrollTop=0`。
+- 既有 `gs_015.py`、`gs_016.py`、`gs_018.py`、`gs_019.py` 在 320 宽全部通过，0.1.9 Photo Picker 链路无回归。
 
-- `npm run check`：通过，`v0.1.9 / 29 个 JS`。
-- `python -m compileall -q tests/browser`：通过。
-- `gs_019.py` 320 / 360：通过。Web 回退 input 1 次；21 张截断到 20 且 toast 提示；原生取消不增卡；mock 原生两路径导入 2 张；服务层返回 `File`、MIME / size 正确、无 base64、失败计数 2。
-- `gs_015.py` / `gs_016.py` / `gs_018.py` 320 / 360：全部通过，无回归。
+### 4.4 APK 与真机
 
-### 6.3 真机验收（`ca14b16`，Android 13）
+- `versionCode 110` / `versionName 0.1.10`，包名 `com.guitarshell` 与签名不变。
+- APK：`dist/GuitarShell-0.1.10-release.apk`，4,371,265 字节，SHA-256 `311EA1E6C236C0855B74EE63F60B94465CCF6D0825317FB474875691EDB45498`；`apksigner verify --print-certs` 通过。
+- Android 13 设备 `ca14b16`（1080×2400）覆盖安装成功，书架徽标 `v0.1.10`，原有 6 张乐谱保留。
+- 真机确认：五张卡可见、8 个拍号 4×2、11 个细分两行说明、6 个音色、定时 `3 5 10 15 20 30` 一行；面板可滚动，无横向溢出。
+- 真机点定时 `10` 后该项高亮、输入框变 `10`；再点 `5` 恢复，关闭设置后主界面 HUD 显示 `⏳5分`。
+- 真机点 `十·休3` 后主界面“细分”显示 `十·休3`，随后恢复为 `四分`。
+- 真机滚到底部后关闭设置再打开，面板回到顶部，首张“基础节奏”卡完整可见。
+- 测试后设备保持原设置：变速 `60→120`、每 4 小节、倒计时开启 5 分钟、细分 `四分`。
+- 未逐项点击全部细分、变速档位与音频模式；这些仍以浏览器回归为主。
 
-- 点“从相册选择”打开 `PhotoPickerActivity`，不再进入文件管理。
-- 单张导入成功，书架出现图片卡；5 张多选显示 `Add (5)`。
-- 选满 20 张后点第 21 张提示 `Select up to 20 items`，Add 保持 20。
-- 取消选择不新增卡片、不弹错误 toast。
-- 全程无存储权限弹窗。
-- 测试卡、临时测试图与截图均已从设备清理，原有 6 张乐谱保留。
+### 4.5 版本与状态
 
-### 6.4 APK
-
-- `dist/GuitarShell-0.1.9-release.apk`，`4,370,166` 字节。
-- SHA-256 `BE9692312CBC5E0811DD14D73C04A2F2857659F966A088633BCD4E22818588C9`。
-- `versionCode 109` / `versionName 0.1.9`，包名 `com.guitarshell`，`minSdk 22` / `targetSdk 34`。
-- v1 / v2 签名通过，证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
-- 覆盖安装到 `ca14b16`，书架徽标与系统版本均为 `0.1.9`。
+- 版本已同步：`package.json` / `package-lock.json`、`sw.js`、`js/services/version.js`、`android/app/build.gradle` 均为 `0.1.10` / `versionCode 110`。
+- 文档已更新：`CHANGELOG.md` 新增 0.1.10 段；`TASK.md` 增加 0.1.10 基线与任务项；`README.md` 改为“8 组拍号”并补 0.1.10 状态；`tests/browser/README.md` 补 `gs_020.py`、`9355`、`GS_THEME`。
+- 当前已提交并推送 `main`，已创建 tag `v0.1.10` 并发布 GitHub Release，APK 已上传。
