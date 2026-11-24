@@ -16,7 +16,7 @@
   <a href="https://moanet.github.io/GuitarShell/">
     <img src="https://img.shields.io/badge/Open-Web%20App-C7863F" alt="打开网页版">
   </a>
-  <img src="https://img.shields.io/badge/version-0.1.14b-8A8075" alt="当前版本 0.1.14b">
+  <img src="https://img.shields.io/badge/version-0.1.14c-8A8075" alt="当前版本 0.1.14c">
   <img src="https://img.shields.io/badge/data-local--first-6B8E23" alt="本地优先">
 </p>
 
@@ -49,8 +49,8 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 
 | 日间节拍器 | 全局设置 |
 | :---: | :---: |
-| <img src="docs/screenshots/metronome-light.png" width="260" alt="日间节拍器"> | <img src="docs/screenshots/theme-settings.png" width="260" alt="全局设置"> |
-| 暖纸日光主题下的节拍器与播放控制 | 数据统计、备份恢复、云同步入口与主题切换 |
+| <img src="docs/screenshots/metronome-light.png" width="260" alt="日间节拍器"> | <img src="docs/screenshots/0.1.14c-settings.png" width="260" alt="全局设置"> |
+| 暖纸日光主题下的节拍器与播放控制 | 外观分段切换、数据与备份、云同步与折叠存储 |
 
 | 练习卡片 | 保存到相册 |
 | :---: | :---: |

@@ -178,19 +178,47 @@ TEST_JS = r"""
   check('scoreBytes 与乐谱文件大小一致', before.scoreBytes === pngBlob.size * 2, `${before.scoreBytes}`);
   check('coverBytes 与 assets 汇总一致', before.coverBytes === pngBlob.size * 2, `${before.coverBytes}`);
 
-  // 设置页存储卡
+  // 设置页：0.1.14c 瘦身布局
   settings.open();
   await waitFor(() => settings.shadowRoot.getElementById('totalUsage').textContent !== '—');
   await sleep(320);
-  const totalText = settings.shadowRoot.getElementById('totalUsage').textContent;
-  const scoreText = settings.shadowRoot.getElementById('scoreUsage').textContent;
-  const coverText = settings.shadowRoot.getElementById('coverUsage').textContent;
-  const quotaHint = settings.shadowRoot.getElementById('quotaHint').textContent;
+  const sRoot = settings.shadowRoot;
+  const drawer = sRoot.getElementById('drawer');
+  const drawerWidth = drawer.getBoundingClientRect().width;
+  const expectDrawerWidth = Math.min(innerWidth * 0.8, 360);
+  check('设置抽屉宽度为 80vw 且不超过 360', Math.abs(drawerWidth - expectDrawerWidth) < 2.5, `${drawerWidth} vs ${expectDrawerWidth}`);
+  const sectionTitles = Array.from(sRoot.querySelectorAll('.body .card h3')).map((el) => el.textContent.trim());
+  check('设置分区顺序正确', sectionTitles.join(' / ') === '外观 / 数据与备份 / 云同步 / 存储与缓存 / 关于', sectionTitles.join(' / '));
+  const segBtns = Array.from(sRoot.querySelectorAll('[data-theme-choice]'));
+  check('外观为两段控件', segBtns.length === 2 && segBtns.every((b) => b.classList.contains('seg-btn')), `${segBtns.length}`);
+  check('外观默认只有一段选中', segBtns.filter((b) => b.classList.contains('active')).length === 1, '');
+  sRoot.getElementById('themeLight').click();
+  await sleep(80);
+  check('分段控件可切到浅色', sRoot.getElementById('themeLight').classList.contains('active') && sRoot.getElementById('themeDeep').classList.contains('active') === false, '');
+  sRoot.getElementById('themeDeep').click();
+  await sleep(80);
+  check('分段控件可切回深色', sRoot.getElementById('themeDeep').classList.contains('active') && sRoot.getElementById('themeLight').classList.contains('active') === false, '');
+  check('数据统计与备份入口合并', sRoot.getElementById('scoreCount').textContent !== '—'
+    && sRoot.querySelector('.data-line').textContent.includes('份乐谱')
+    && sRoot.querySelector('.data-line').textContent.includes('条练习')
+    && !!sRoot.getElementById('btnBackup') && !!sRoot.getElementById('btnRestore'), sRoot.querySelector('.data-line').textContent.trim());
+  check('清空为文本按钮', sRoot.getElementById('btnClear').classList.contains('danger-link'), '');
+  const storageBody = sRoot.getElementById('storageBody');
+  check('存储卡默认折叠', storageBody.hidden === true && sRoot.getElementById('btnToggleStorage').getAttribute('aria-expanded') === 'false', '');
+  sRoot.getElementById('btnToggleStorage').click();
+  await sleep(60);
+  check('存储卡可展开', storageBody.hidden === false && sRoot.getElementById('btnToggleStorage').getAttribute('aria-expanded') === 'true', '');
+  check('展开箭头随状态旋转', sRoot.getElementById('storageCard').classList.contains('open'), '');
+  const totalText = sRoot.getElementById('totalUsage').textContent;
+  const scoreText = sRoot.getElementById('scoreUsage').textContent;
+  const coverText = sRoot.getElementById('coverUsage').textContent;
+  const quotaHint = sRoot.getElementById('quotaHint').textContent;
   check('存储卡总占用有值', /约|\d/.test(totalText) && totalText !== '—', totalText);
   check('曲谱文件文案正确', scoreText === expectScoreText, `${scoreText} vs ${expectScoreText}`);
   check('图片缓存文案正确', coverText === expectCoverText, `${coverText} vs ${expectCoverText}`);
-  check('图片缓存标题正确', settings.shadowRoot.querySelector('#coverUsage + span').textContent === '图片缓存', settings.shadowRoot.querySelector('#coverUsage + span').textContent);
-  check('配额提示含图片张数', quotaHint.includes('封面 2 张') && quotaHint.includes('自定义背景 0 张'), quotaHint);
+  check('图片缓存标题正确', sRoot.querySelector('.storage-line').textContent.includes('图片缓存'), sRoot.querySelector('.storage-line').textContent.trim());
+  check('配额提示含图片张数', quotaHint.includes('封面 2 张') && quotaHint.includes('背景 0 张'), quotaHint);
+  check('设置页无横向溢出', sRoot.querySelector('.body').scrollWidth <= sRoot.querySelector('.body').clientWidth + 1, `${sRoot.querySelector('.body').scrollWidth}/${sRoot.querySelector('.body').clientWidth}`);
 
   // 清理封面缓存
   settings.shadowRoot.getElementById('btnCleanCover').click();
@@ -208,8 +236,16 @@ TEST_JS = r"""
   check('乐谱指针已置空', scoresAfter.every(s => s.coverAssetId === null || s.coverAssetId === undefined), scoresAfter.map(s => s.coverAssetId).join(','));
   check('乐谱未被删除', scoresAfter.length === 2, `scores=${scoresAfter.length}`);
   check('清理后数字刷新为 0 B', settings.shadowRoot.getElementById('coverUsage').textContent === '0 B', settings.shadowRoot.getElementById('coverUsage').textContent);
-  settings.shadowRoot.getElementById('btnClose').click();
-  await sleep(300);
+  // 点遮罩关闭（0.1.14c）
+  const maskEl = sRoot.getElementById('mask');
+  const pointer = (type) => maskEl.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, pointerType: 'mouse', pointerId: 1, isPrimary: true
+  }));
+  pointer('pointerdown');
+  pointer('pointerup');
+  maskEl.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  await sleep(320);
+  check('点击遮罩关闭设置', !maskEl.classList.contains('show'), '');
 
   // 重新进书架，封面应按需重建
   reader.loadShelf();
@@ -230,7 +266,41 @@ TEST_JS = r"""
   check('存在未引用缓存', orphans.length >= 1, `orphans=${orphans.length}`);
   settings.open();
   await waitFor(() => settings.shadowRoot.getElementById('totalUsage').textContent !== '—');
-  settings.shadowRoot.getElementById('btnCleanOrphan').click();
+  check('重新打开设置后存储卡默认折叠', sRoot.getElementById('storageBody').hidden === true, '');
+  const swipe = (type, x, y) => drawer.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 7, isPrimary: true, clientX: x, clientY: y
+  }));
+  swipe('pointerdown', 40, 300);
+  swipe('pointermove', 90, 302);
+  swipe('pointerup', 90, 302);
+  await sleep(80);
+  check('短横滑不关闭设置', sRoot.getElementById('mask').classList.contains('show'), '');
+  swipe('pointerdown', 100, 250);
+  swipe('pointermove', 100, 340);
+  swipe('pointerup', 100, 340);
+  await sleep(80);
+  check('纵向滚动不误触关闭', sRoot.getElementById('mask').classList.contains('show'), '');
+  const swipeBy = (type, id, x, y) => drawer.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, pointerType: 'touch', pointerId: id, isPrimary: id === 7, clientX: x, clientY: y
+  }));
+  swipeBy('pointerdown', 7, 40, 300);
+  swipeBy('pointerdown', 8, 70, 320);
+  swipeBy('pointermove', 7, 160, 306);
+  await sleep(40);
+  swipeBy('pointerup', 7, 160, 306);
+  swipeBy('pointerup', 8, 160, 306);
+  await sleep(80);
+  check('双指横滑不关闭设置', sRoot.getElementById('mask').classList.contains('show'), '');
+  swipe('pointerdown', 40, 300);
+  swipe('pointermove', 160, 306);
+  swipe('pointerup', 160, 306);
+  await sleep(340);
+  check('右滑关闭设置', !sRoot.getElementById('mask').classList.contains('show'), '');
+  settings.open();
+  await waitFor(() => settings.shadowRoot.getElementById('totalUsage').textContent !== '—');
+  sRoot.getElementById('btnToggleStorage').click();
+  await sleep(60);
+  sRoot.getElementById('btnCleanOrphan').click();
   const dlg2 = await waitFor(() => document.querySelector('guitar-app-dialog'));
   check('清理未引用弹出确认', !!dlg2, '');
   dlg2?.shadowRoot?.getElementById('dlgConfirm')?.click();
@@ -241,7 +311,7 @@ TEST_JS = r"""
   const referenced = assetsAfterOrphan.filter(a => scoresNow.some(s => s.id === a.scoreId && s.coverAssetId === a.id));
   check('孤儿缓存已清理', assetsAfterOrphan.length === 0 || (await stats.findOrphanAssets()).length === 0, `assets=${assetsAfterOrphan.length}`);
   check('被引用封面保留', referenced.length >= 1, `referenced=${referenced.length}`);
-  settings.shadowRoot.getElementById('btnClose').click();
+  sRoot.getElementById('btnClose').click();
   await sleep(300);
 
   // 0.1.14b b1：自定义背景处理与资产指针

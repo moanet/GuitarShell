@@ -21,7 +21,7 @@ import {
 
 const settingsCSS = `
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
-  :host, * { -webkit-tap-highlight-color: transparent !important; }
+  :host, * { box-sizing: border-box; -webkit-tap-highlight-color: transparent !important; }
   :host {
     position: fixed; inset: 0; z-index: 1000; pointer-events: none;
     font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif;
@@ -34,7 +34,8 @@ const settingsCSS = `
   }
   .mask.show { opacity: 1; pointer-events: auto; }
   .drawer {
-    width: min(88vw, 380px); height: 100%; display: flex; flex-direction: column;
+    width: 80vw; max-width: 360px; height: 100%; display: flex; flex-direction: column;
+    touch-action: pan-y;
     background:
       radial-gradient(560px 260px at 100% -8%, rgba(var(--primary-rgb), .13), transparent 66%),
       linear-gradient(180deg, var(--drawer-a), var(--drawer-b));
@@ -44,24 +45,23 @@ const settingsCSS = `
   }
   .mask.show .drawer { transform: translateX(0); }
   .head {
-    padding: calc(20px + env(safe-area-inset-top)) 18px 16px;
-    border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: 12px;
+    padding: calc(16px + env(safe-area-inset-top)) 14px 12px;
+    border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: 10px;
   }
   .head-copy { flex: 1; min-width: 0; }
-  .eyebrow { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 5px; }
-  h2 { margin: 0; font-size: 22px; line-height: 1.2; color: var(--heading); letter-spacing: .5px; }
-  .head p { margin: 7px 0 0; font-size: 11px; color: var(--muted); }
+  h2 { margin: 0; font-size: 20px; line-height: 1.2; color: var(--heading); letter-spacing: .4px; }
+  .head p { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); }
   .close {
-    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-strong);
-    background: var(--surface-raised); color: var(--txt); font-size: 20px; line-height: 1; cursor: pointer;
+    flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--txt); font-size: 19px; line-height: 1; cursor: pointer;
     display: grid; place-items: center;
   }
   .close:active { background: var(--surface-hover); }
-  .body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; }
-  .card { background: var(--card-bg); border: 1px solid var(--line); border-radius: 18px; padding: 14px; }
-  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
-  .card-head .ico { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 13px; }
-  h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
+  .body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 12px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--card-bg); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .card-head .ico, .storage-head .ico { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 12px; flex-shrink: 0; }
+  h3 { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 11px; }
   .stats.triple { grid-template-columns: repeat(3, 1fr); }
   .stat { background: var(--surface-deep); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; display: flex; align-items: baseline; gap: 5px; }
@@ -73,8 +73,8 @@ const settingsCSS = `
   .cap-hint { margin: 0 2px 10px; font-size: 10px; line-height: 1.55; color: var(--muted); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .act {
-    width: 100%; min-height: 42px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-raised);
-    color: var(--txt); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;
+    width: 100%; min-height: 38px; border-radius: 11px; border: 1px solid var(--line-strong); background: var(--surface-raised);
+    color: var(--txt); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
   }
   .act.primary { background: linear-gradient(180deg, var(--accent), var(--primary)); border-color: rgba(var(--secondary-rgb), .1); color: var(--on-primary); box-shadow: 0 6px 16px rgba(var(--primary-rgb), .18); }
   .act:active { filter: brightness(.96); }
@@ -85,12 +85,62 @@ const settingsCSS = `
     color: var(--danger-text); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
   }
   .danger:active { background: rgba(var(--danger-rgb), .2); }
-  .hint { margin: 9px 2px 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
+  .hint { margin: 8px 2px 0; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
   .hint b { color: var(--txt-soft); font-weight: 600; }
-  .status { min-height: 16px; margin-top: 8px; font-size: 11px; color: var(--accent-text); line-height: 1.5; word-break: break-all; }
-  .cloud-note { margin: 0 2px 10px; font-size: 11px; line-height: 1.65; color: var(--muted); }
+  .status { min-height: 15px; margin-top: 6px; font-size: 10.5px; color: var(--accent-text); line-height: 1.5; word-break: break-all; }
+  .status:empty { display: none; }
+  .cloud-note { margin: 0 2px 8px; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
   .cloud-note b { color: var(--txt-soft); font-weight: 600; }
-  .cloud-status { margin: 0 2px 10px; font-size: 11px; line-height: 1.6; color: var(--accent-text); }
+  .cloud-status { margin: 0; font-size: 10.5px; line-height: 1.5; color: var(--accent-text); }
+
+  /* 数据与备份：一行裸统计 + 紧凑动作 */
+  .data-line { display: flex; align-items: baseline; gap: 5px; margin: 0 2px 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .data-line b { font-size: 16px; line-height: 1.1; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+  .data-line .dot { color: var(--muted-soft); margin: 0 2px; }
+  .danger-link {
+    width: 100%; min-height: 30px; margin-top: 8px; padding: 6px 2px 0;
+    border: 0; border-top: 1px solid var(--line); background: transparent;
+    color: var(--danger-text); font-size: 10.5px; font-weight: 600; font-family: inherit;
+    text-align: right; cursor: pointer;
+  }
+  .danger-link:active { color: var(--danger); }
+
+  /* 外观：一行分段控件 */
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-deep); }
+  .seg-btn {
+    min-width: 0; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    border: 1px solid transparent; border-radius: 9px; background: transparent;
+    color: var(--muted); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+    transition: background .18s, border-color .18s, color .18s;
+  }
+  .seg-btn.active { background: rgba(var(--primary-rgb), .14); border-color: rgba(var(--primary-rgb), .6); color: var(--heading); box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), .12); }
+  .seg-btn:active { transform: scale(.985); }
+  .dots { display: inline-flex; gap: 2px; flex-shrink: 0; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid rgba(var(--secondary-rgb), .18); }
+  .dots.deep i:nth-child(1) { background: #121110; }
+  .dots.deep i:nth-child(2) { background: #B87B4C; }
+  .dots.deep i:nth-child(3) { background: #F3E8D6; }
+  .dots.light i:nth-child(1) { background: #F3EDE3; }
+  .dots.light i:nth-child(2) { background: #8F552C; }
+  .dots.light i:nth-child(3) { background: #C7863F; }
+
+  /* 存储：默认折叠，头常驻 */
+  .storage-head {
+    width: 100%; display: flex; align-items: center; gap: 8px; margin: 0; padding: 0;
+    border: 0; background: transparent; color: inherit; font-family: inherit; text-align: left; cursor: pointer;
+  }
+  .storage-total { margin-left: auto; font-size: 11.5px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+  .chev { width: 16px; text-align: center; color: var(--muted); font-size: 10px; transition: transform .2s; }
+  .storage-card.open .chev { transform: rotate(180deg); }
+  .storage-body { margin-top: 10px; }
+  .storage-line { display: flex; flex-wrap: wrap; gap: 3px 9px; margin: 0 2px 8px; font-size: 10.5px; color: var(--muted); }
+  .storage-line b { color: var(--txt-soft); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cap-hint { margin: 0 2px 9px; font-size: 10px; line-height: 1.5; color: var(--muted); }
+
+  /* 云同步：状态与入口同一行 */
+  .cloud-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .cloud-row .cloud-status { flex: 1; min-width: 0; }
+  .act.small { width: auto; flex: 0 0 auto; min-height: 32px; padding: 0 11px; font-size: 11px; }
 
   /* 主题选择：两张可点按的色板卡，不依赖弹窗 */
   .theme-choice {
@@ -128,13 +178,13 @@ const settingsCSS = `
     opacity: 0; transform: translateX(3px); transition: opacity .18s, transform .18s;
   }
   .theme-choice.active .tag { opacity: 1; transform: translateX(0); }
-  .about-brand { display: flex; align-items: center; gap: 11px; }
-  .about-brand img { width: 42px; height: 42px; border-radius: 11px; object-fit: contain; box-shadow: 0 4px 14px rgba(var(--shadow-rgb), .28); }
+  .about-brand { display: flex; align-items: center; gap: 9px; }
+  .about-brand img { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; box-shadow: 0 4px 14px rgba(var(--shadow-rgb), .28); }
   .about-copy { flex: 1; min-width: 0; }
-  .about-copy b { display: block; font-size: 15px; color: var(--heading); }
-  .about-copy small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
-  .ver { padding: 3px 8px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--accent-text); font-size: 10px; font-variant-numeric: tabular-nums; }
-  .about p { margin: 11px 2px 0; font-size: 11px; line-height: 1.7; color: var(--muted); }
+  .about-copy b { display: block; font-size: 14px; color: var(--heading); }
+  .about-copy small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+  .ver { padding: 3px 7px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--accent-text); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .about p { margin: 8px 2px 0; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
   .about p b { color: var(--txt-soft); font-weight: 600; }
   .dev-row {
     display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px;
@@ -145,7 +195,7 @@ const settingsCSS = `
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; box-sizing: border-box; border-radius: 9px;
     border: 1px solid var(--line); background: var(--surface-raised);
-    color: var(--accent-text); text-decoration: none;
+    color: var(--accent-text); text-decoration: none; margin-left: auto; flex: 0 0 auto;
     -webkit-tap-highlight-color: transparent;
     transition: background .18s, border-color .18s, transform .12s;
   }
@@ -157,10 +207,9 @@ const settingsCSS = `
 
 const settingsHTML = `
   <div class="mask" id="mask">
-    <aside class="drawer" role="dialog" aria-modal="true" aria-label="全局设置">
+    <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="全局设置">
       <div class="head">
         <div class="head-copy">
-          <div class="eyebrow">Global Settings</div>
           <h2>全局设置</h2>
           <p>本地优先 · 数据只留在这台设备</p>
         </div>
@@ -168,72 +217,72 @@ const settingsHTML = `
       </div>
       <div class="body">
         <section class="card">
-          <div class="card-head"><span class="ico">▦</span><h3>数据管理</h3></div>
-          <div class="stats">
-            <div class="stat"><b id="scoreCount">—</b><span>份乐谱</span></div>
-            <div class="stat"><b id="logCount">—</b><span>条练习</span></div>
+          <div class="card-head"><span class="ico">◐</span><h3>外观</h3></div>
+          <div class="seg" role="group" aria-label="外观主题">
+            <button class="seg-btn active" id="themeDeep" data-theme-choice="deep" type="button" aria-pressed="true">
+              <span class="dots deep" aria-hidden="true"><i></i><i></i><i></i></span>深夜琴房
+            </button>
+            <button class="seg-btn" id="themeLight" data-theme-choice="light" type="button" aria-pressed="false">
+              <span class="dots light" aria-hidden="true"><i></i><i></i><i></i></span>暖纸日光
+            </button>
           </div>
-          <div class="grid2">
-            <button class="act primary" id="btnBackup" type="button">📤 本地备份</button>
-            <button class="act" id="btnRestore" type="button">📥 从文件恢复</button>
-          </div>
-          <button class="danger" id="btnClear" type="button">清空乐谱与练习记录</button>
-          <div class="status" id="statusLine"></div>
-          <p class="hint">备份包含乐谱、阅读进度、页级书签和练习记录。Android 版会保存到 <b>Download/GuitarShell</b>，网页版进入浏览器下载目录。</p>
+          <p class="hint">点按即切换，全站同步换色。</p>
         </section>
 
         <section class="card">
-          <div class="card-head"><span class="ico">▤</span><h3>存储与缓存</h3></div>
-          <div class="stats triple">
-            <div class="stat"><b id="totalUsage">—</b><span>总占用</span></div>
-            <div class="stat"><b id="scoreUsage">—</b><span>曲谱文件</span></div>
-            <div class="stat"><b id="coverUsage">—</b><span>图片缓存</span></div>
+          <div class="card-head"><span class="ico">▦</span><h3>数据与备份</h3></div>
+          <div class="data-line">
+            <b id="scoreCount">—</b><span>份乐谱</span><span class="dot">·</span><b id="logCount">—</b><span>条练习</span>
           </div>
-          <p class="cap-hint" id="quotaHint">正在统计本机占用…</p>
           <div class="grid2">
-            <button class="act" id="btnCleanCover" type="button">清理封面缓存</button>
-            <button class="act" id="btnCleanOrphan" type="button">清理未引用缓存</button>
+            <button class="act primary" id="btnBackup" type="button">备份到文件</button>
+            <button class="act" id="btnRestore" type="button">从文件恢复</button>
           </div>
-          <p class="hint">只删可重建的封面缓存和失去引用的自定义背景副本，不动乐谱、阅读进度、书签和练习记录。当前使用中的自定义背景不会被清理；封面在下次进书架时自动重建。</p>
-          <div class="status" id="storageStatus"></div>
+          <button class="danger-link" id="btnClear" type="button">清空本机数据</button>
+          <div class="status" id="statusLine"></div>
+          <p class="hint">备份含乐谱、进度、书签与练习记录；Android 存到 <b>Download/GuitarShell</b>。</p>
         </section>
 
         <section class="card">
           <div class="card-head"><span class="ico">☁</span><h3>云同步</h3></div>
-          <p class="cloud-note">坚果云 WebDAV · 手动上传 / 下载。账号与应用密码由读谱页的云同步弹窗管理，密码只在本机加密保存。</p>
-          <p class="cloud-status" id="cloudStatus">正在读取同步状态…</p>
-          <button class="act" id="btnCloudEntry" type="button">☁ 打开云同步</button>
+          <p class="cloud-note">坚果云 WebDAV · 手动上传 / 下载，密码本机加密。</p>
+          <div class="cloud-row">
+            <p class="cloud-status" id="cloudStatus">正在读取同步状态…</p>
+            <button class="act small" id="btnCloudEntry" type="button">打开</button>
+          </div>
         </section>
 
-        <section class="card">
-          <div class="card-head"><span class="ico">◐</span><h3>外观</h3></div>
-          <button class="theme-choice" id="themeDeep" data-theme-choice="deep" type="button" aria-pressed="true">
-            <span class="swatch swatch-dark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-            <span class="theme-copy"><b>复古木质 · 深夜琴房</b><small>深色 · 低光练琴，保留原有木质暖调</small></span>
-            <span class="tag">使用中</span>
+        <section class="card storage-card" id="storageCard">
+          <button class="storage-head" id="btnToggleStorage" type="button" aria-expanded="false" aria-controls="storageBody">
+            <span class="ico">▤</span><h3>存储与缓存</h3>
+            <span class="storage-total" id="totalUsage">—</span>
+            <span class="chev" aria-hidden="true">▾</span>
           </button>
-          <button class="theme-choice" id="themeLight" data-theme-choice="light" type="button" aria-pressed="false">
-            <span class="swatch swatch-light" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-            <span class="theme-copy"><b>暖纸日光 · 日间模式</b><small>浅色 · 暖纸底 / 深暖棕文字</small></span>
-            <span class="tag">使用中</span>
-          </button>
-          <p class="hint">两套主题都使用九色 token，点按即切换并保存在本机；读谱、节拍器、调音与记录会同步换色。</p>
+          <div class="storage-body" id="storageBody" hidden>
+            <div class="storage-line"><span>曲谱 <b id="scoreUsage">—</b></span><span>图片缓存 <b id="coverUsage">—</b></span></div>
+            <p class="cap-hint" id="quotaHint">正在统计本机占用…</p>
+            <div class="grid2">
+              <button class="act" id="btnCleanCover" type="button">清理封面缓存</button>
+              <button class="act" id="btnCleanOrphan" type="button">清理未引用缓存</button>
+            </div>
+            <p class="hint">只删可重建的封面缓存和失去引用的自定义背景副本；当前使用中的背景不会被清理。</p>
+            <div class="status" id="storageStatus"></div>
+          </div>
         </section>
 
         <section class="card about">
-          <div class="card-head"><span class="ico">◎</span><h3>关于</h3></div>
-          <div class="about-brand">
-            <img src="./icon-gShell-192.png" data-theme-icon data-dark-src="./icon-gShell-192.png" data-light-src="./icon-gShell-light-192.png" alt="">
-            <div class="about-copy"><b>Guitar Shell</b><small>吉他手的一站式练琴工作站</small></div>
-            <span class="ver" id="appVer">v…</span>
-          </div>
-          <p>零构建原生 Web Components · PWA / Android 壳。<br><b>无账号、无云端默认上传</b>，乐谱与练习记录默认只存在本机。</p>
-          <div class="dev-row">
-            <span>找到开发者：</span>
+          <div class="card-head">
+            <span class="ico">◎</span><h3>关于</h3>
             <a class="dev-link" id="btnGithub" href="https://github.com/moanet/GuitarShell" target="_blank" rel="noopener noreferrer" aria-label="在 GitHub 打开 Guitar Shell 项目" title="GitHub">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c6.63 0 12 5.276 12 11.79-.001 5.067-3.29 9.567-8.175 11.187-.6.118-.825-.25-.825-.56 0-.398.015-1.665.015-3.242 0-1.105-.375-1.813-.81-2.181 2.67-.295 5.475-1.297 5.475-5.822 0-1.297-.465-2.344-1.23-3.169.12-.295.54-1.503-.12-3.125 0 0-1.005-.324-3.3 1.209a11.32 11.32 0 00-3-.398c-1.02 0-2.04.133-3 .398-2.295-1.518-3.3-1.209-3.3-1.209-.66 1.622-.24 2.83-.12 3.125-.765.825-1.23 1.887-1.23 3.169 0 4.51 2.79 5.527 5.46 5.822-.345.294-.66.81-.765 1.577-.69.31-2.415.81-3.495-.973-.225-.354-.9-1.223-1.845-1.209-1.005.015-.405.56.015.781.51.28 1.095 1.327 1.23 1.666.24.663 1.02 1.93 4.035 1.385 0 .988.015 1.916.015 2.196 0 .31-.225.664-.825.56C3.303 21.374-.003 16.867 0 11.791 0 5.276 5.37 0 12 0z"/></svg>
             </a>
           </div>
+          <div class="about-brand">
+            <img src="./icon-gShell-192.png" data-theme-icon data-dark-src="./icon-gShell-192.png" data-light-src="./icon-gShell-light-192.png" alt="">
+            <div class="about-copy"><b>Guitar Shell</b><small>吉他手的练琴工作站</small></div>
+            <span class="ver" id="appVer">v…</span>
+          </div>
+          <p>零构建 Web Components<br>无账号 · 默认不上传</p>
         </section>
       </div>
     </aside>
@@ -247,6 +296,8 @@ class GuitarSettings extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.busy = false;
     this._layerOff = null;
+    this._swipeOff = null;
+    this._suppressClickUntil = 0;
   }
 
   connectedCallback() {
@@ -264,6 +315,7 @@ class GuitarSettings extends HTMLElement {
     window.removeEventListener('open-global-settings', this.handleOpen);
     document.removeEventListener('keydown', this.handleKey);
     if (this._layerOff) { this._layerOff(); this._layerOff = null; }
+    if (this._swipeOff) { this._swipeOff(); this._swipeOff = null; }
     if (this.offTheme) { this.offTheme(); this.offTheme = null; }
   }
 
@@ -311,10 +363,180 @@ class GuitarSettings extends HTMLElement {
     this.$('btnClear').onclick = () => this.clear();
     this.$('btnCleanCover').onclick = () => this.cleanCoverCache();
     this.$('btnCleanOrphan').onclick = () => this.cleanOrphanCache();
+    this.$('btnToggleStorage').onclick = () => this.setStorageOpen(this.$('storageBody').hidden);
+    this._swipeOff = this.bindSwipe();
+  }
+
+  setStorageOpen(open) {
+    const body = this.$('storageBody');
+    if (!body) return;
+    body.hidden = !open;
+    this.$('storageCard').classList.toggle('open', open);
+    this.$('btnToggleStorage').setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  /**
+   * 抽屉右滑关闭：触屏与鼠标统一走 pointer 事件。
+   * 只有横向位移明确压过纵向才判定，避免和存储区纵向滚动抢手势。
+   */
+  bindSwipe() {
+    const drawer = this.$('drawer');
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let horizontal = false;
+    let vertical = false;
+
+    const reset = () => {
+      pointerId = null;
+      horizontal = false;
+      vertical = false;
+    };
+
+    const onDown = (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (pointerId !== null) {
+        vertical = true; // 第二根手指落下即取消主指针关闭判定
+        return;
+      }
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      horizontal = false;
+      vertical = false;
+    };
+
+    // Android WebView 的横向滑动在部分机型不派发 pointermove；
+    // 触摸事件是兜底通道，判定阈值与 pointer 路径一致。
+    let touchId = null;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchHorizontal = false;
+    let touchVertical = false;
+    let touchMulti = false;
+
+    const resetTouch = () => {
+      touchId = null;
+      touchHorizontal = false;
+      touchVertical = false;
+    };
+
+    const onTouchStart = (e) => {
+      if (e.touches.length > 1) {
+        touchMulti = true;
+        resetTouch();
+        return;
+      }
+      if (touchMulti || touchId !== null) return;
+      touchId = e.touches[0].identifier;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchHorizontal = false;
+      touchVertical = false;
+    };
+
+    const onTouchMove = (e) => {
+      const t = Array.from(e.touches).find((item) => item.identifier === touchId);
+      if (!t || touchVertical) return;
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      if (!touchHorizontal) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) + 8) {
+          touchVertical = true;
+          return;
+        }
+        if (dx > 10 && dx > Math.abs(dy) + 8) touchHorizontal = true;
+      }
+      if (touchHorizontal) e.preventDefault();
+    };
+
+    const onTouchEnd = (e) => {
+      if (touchMulti) {
+        if (e.touches.length === 0) touchMulti = false;
+        resetTouch();
+        return;
+      }
+      if (touchId === null) return;
+      const t = Array.from(e.changedTouches).find((item) => item.identifier === touchId);
+      if (!t) return;
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      const shouldClose = !touchVertical && touchHorizontal && dx >= 64 && dx > Math.abs(dy) * 1.5;
+      resetTouch();
+      if (shouldClose) {
+        this._suppressClickUntil = performance.now() + 450;
+        this.close();
+      }
+    };
+
+    const onTouchCancel = () => {
+      touchMulti = false;
+      resetTouch();
+    };
+
+
+    const onMove = (e) => {
+      if (e.pointerId !== pointerId) return;
+      if (vertical) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (!horizontal) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) + 8) {
+          vertical = true;
+          return;
+        }
+        if (dx > 10 && dx > Math.abs(dy) + 8) horizontal = true;
+      }
+    };
+
+    const onUp = (e) => {
+      if (e.pointerId !== pointerId) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const shouldClose = !vertical && horizontal && dx >= 64 && dx > Math.abs(dy) * 1.5;
+      reset();
+      if (shouldClose) {
+        this._suppressClickUntil = performance.now() + 450;
+        this.close();
+      }
+    };
+
+    const onClick = (e) => {
+      if (performance.now() < this._suppressClickUntil) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    };
+
+    drawer.addEventListener('pointerdown', onDown, { passive: true });
+    drawer.addEventListener('pointermove', onMove, { passive: true });
+    drawer.addEventListener('pointerup', onUp, { passive: true });
+    drawer.addEventListener('pointercancel', reset, { passive: true });
+    drawer.addEventListener('touchstart', onTouchStart, { passive: true });
+    drawer.addEventListener('touchmove', onTouchMove, { passive: false });
+    drawer.addEventListener('touchend', onTouchEnd, { passive: true });
+    drawer.addEventListener('touchcancel', onTouchCancel, { passive: true });
+    drawer.addEventListener('click', onClick, true);
+
+    return () => {
+      drawer.removeEventListener('pointerdown', onDown);
+      drawer.removeEventListener('pointermove', onMove);
+      drawer.removeEventListener('pointerup', onUp);
+      drawer.removeEventListener('pointercancel', reset);
+      drawer.removeEventListener('touchstart', onTouchStart);
+      drawer.removeEventListener('touchmove', onTouchMove);
+      drawer.removeEventListener('touchend', onTouchEnd);
+      drawer.removeEventListener('touchcancel', onTouchCancel);
+      drawer.removeEventListener('click', onClick, true);
+    };
   }
 
   open() {
     this.$('mask').classList.add('show');
+    this._suppressClickUntil = 0;
+    this.setStorageOpen(false);
+    const body = this.shadowRoot.querySelector('.body');
+    if (body) body.scrollTop = 0;
     if (!this._layerOff) {
       this._layerOff = registerLayer({
         id: 'settings-drawer',
@@ -373,7 +595,7 @@ class GuitarSettings extends HTMLElement {
         : persist === 'denied'
           ? '未授予持久存储，空间紧张时可能被回收'
           : '当前环境不支持持久存储申请';
-      this.$('quotaHint').textContent = `${quotaText} · ${persistText} · 封面 ${stats.coverCount} 张 · 自定义背景 ${stats.backgroundCount} 张`;
+      this.$('quotaHint').textContent = `${quotaText} · ${persistText} · 封面 ${stats.coverCount} 张 · 背景 ${stats.backgroundCount} 张`;
     } catch (err) {
       console.warn('[存储] 统计失败:', err.message);
       ['totalUsage', 'scoreUsage', 'coverUsage'].forEach((id) => { this.$(id).textContent = '—'; });
