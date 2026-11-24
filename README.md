@@ -153,12 +153,13 @@ Guitar Shell
 ├─ docs/
 │  ├─ screenshots/             实机界面截图
 │  ├─ archive/                 历史迭代简报
+│  ├─ RELEASE_CHECKLIST.md     发版冒烟、测试矩阵与发布门禁
 │  ├─ icon/ · posters/ · qr_code/  品牌与发布素材
 │  └─ BRAND.md                 品牌规范
 ├─ 项目目录结构.txt              项目目录速览
 ├─ CHANGELOG.md                逐版本迭代记录
 ├─ CURRENT_TASK.md             当前迭代简报
-├─ TASK.md                     开发任务、进度与避坑指南
+├─ TASK.md                     长期工程维护手册
 └─ package.json · capacitor.config.json
 ```
 
@@ -190,7 +191,7 @@ npm install
 npm run apk:release
 ```
 
-构建产物位于 `android/app/build/outputs/apk/release/app-release.apk`。发布前请同步修改 `js/services/version.js` 与 `sw.js` 中的版本号，避免线上继续使用旧缓存。
+构建产物位于 `android/app/build/outputs/apk/release/app-release.apk`。发布前请同步修改 `package.json` / `package-lock.json`、`js/services/version.js`、`sw.js` 与 `android/app/build.gradle` 中的版本号，避免线上继续使用旧缓存。
 
 ## 数据与隐私
 
@@ -201,6 +202,7 @@ npm run apk:release
 
 ## 文档
 
-- [TASK.md](TASK.md)：开发任务、当前进度、冒烟清单、技术债与避坑指南。
+- [TASK.md](TASK.md)：长期工程维护手册：当前基线、路线、活跃待办、风险、发布门禁与避坑指南。
 - [CURRENT_TASK.md](CURRENT_TASK.md)：当前迭代的目标、范围、验收与发布检查。
+- [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)：每次发版复用的冒烟清单、测试矩阵与发布门禁。
 - [CHANGELOG.md](CHANGELOG.md)：逐版本交付内容、测试与历史决策。

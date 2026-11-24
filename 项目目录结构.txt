@@ -65,6 +65,7 @@ GuitarShell/
 ├─ docs/
 │  ├─ screenshots/               实机界面截图
 │  ├─ archive/                   历史迭代简报（CURRENT_TASK-<版本>.md）
+│  ├─ RELEASE_CHECKLIST.md       发版冒烟、测试矩阵与发布门禁
 │  ├─ icon/                      品牌图标源文件
 │  ├─ posters/                   发布海报
 │  ├─ qr_code/                   二维码素材
@@ -74,5 +75,5 @@ GuitarShell/
 ├─ README.md                     项目说明、功能、同步方法与目录结构
 ├─ CHANGELOG.md                  逐版本交付、测试与决策记录
 ├─ CURRENT_TASK.md               当前迭代目标、范围与验收
-├─ TASK.md                       开发任务、进度、基线、冒烟清单与避坑指南
+├─ TASK.md                       长期工程维护手册：基线、路线、待办、风险、门禁与避坑
 └─ 项目目录结构.txt               本文件
