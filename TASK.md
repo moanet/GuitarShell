@@ -3,7 +3,7 @@
 > 项目总账：记录长期路线、版本时间线、任务队列、冒烟清单、构建发布、技术债与避坑指南。
 > 当前迭代：见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 > 已发布版本的完整改动与验收证据：见 [CHANGELOG.md](CHANGELOG.md)。
-> 当前基线：Android 正式 Release 为 `0.1.12`（`versionCode 114`）；`0.1.5`–`0.1.11b` 的改动与发布记录见 `CHANGELOG.md`；`0.1.12` 完成读谱底座（PDF/图片封面、TXT/Markdown/ChordPro、禅定锁屏、桌面快捷键），已真机验收并发布 GitHub Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
+> 当前基线：Android 正式 Release 为 `0.1.12`（`versionCode 114`），本地已构建并真机安装 `0.1.12a`（`versionCode 115`，禅定模式阅读化修正，尚未发布）；`0.1.5`–`0.1.11b` 的改动与发布记录见 `CHANGELOG.md`；`0.1.12` 完成读谱底座（PDF/图片封面、TXT/Markdown/ChordPro、禅定锁屏、桌面快捷键），已真机验收并发布 GitHub Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
 
 ## 1. 当前阶段
 
@@ -103,6 +103,10 @@
 
 0.1.12 把读谱页补成阅读底座：PDF / 图片首页封面、TXT / Markdown / 轻量 ChordPro 导入与渲染、禅定锁屏、桌面键盘快捷键。数据层升到 IndexedDB v4，新增 `assets` store 缓存封面；备份 schema 升到 3，仍不导出封面资产。文本谱按第 1 页 + 滚动比例存进度，当前阅读行高亮，缩放改字号；锁屏必须长按 3 秒，返回键被层级栈吞掉；键盘覆盖 PageUp/PageDown、↑↓、Home/End、+/-、F、L、Space、Esc，锁定状态不提供解锁绕过。真机发现 Android DocumentsUI 把 `.cho` 识别为 BIN，已在文件输入 `accept` 增加 `application/octet-stream`，格式仍由扩展名 / MIME 统一判定。`npm run check` 通过 `v0.1.12 / 32 个 JS`；新增 `gs_022.py`，320 / 360 通过；`gs_015/016/018/019/020/021` 全量复跑通过（旧脚本的 IndexedDB 固定版本 3 改为按当前版本打开，兼容 DB v4）。release APK `4,428,186` 字节 / SHA-256 `9339ED821C605020E36A968CFE8EA8C8E0E68DBC91D70B97989D29F74E33CBEB`，`versionCode 114`，已覆盖安装 `ca14b16`，原 6 张谱 / 10 条练习保留；真机导入 TXT / MD / CHO、打开 TXT 与 CHO、锁屏短按/长按均通过，测试谱已清理。已推送 `main` 并发布 GitHub Release `v0.1.12`（Release ID `456339351`，APK asset ID `785820396`），远端下载 SHA-256 复核一致。范围与边界见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.12 段。
 
+### 1.15 0.1.12a 禅定模式阅读化修正（已构建并真机验收）
+
+0.1.12a 只修禅定体验：遮罩改为全透明且 `pointer-events:none`，谱面亮度、滚动和缩放不再被阻断；阅读工具栏、缩放控件、迷你节拍器、相邻谱例左右热区与进度横幅在禅定时隐藏；轻点谱面（650ms 内、位移 ≤10px）才浮出底部解锁条；长按解锁从 3 秒缩短到 1.5 秒；桌面 `L` 短按进入、锁定后长按 1.5 秒解锁，`keyup` / 失焦取消，锁定期 `PageDown`、`+`、`Space`、`Esc` 被拦截。新增 `samples/试用谱例/` 四份 TXT / ChordPro / Markdown 谱例并推送真机 `/sdcard/Download/GuitarShell/`。`npm run check` 通过 `v0.1.12a / 32 个 JS`；`gs_022.py` 在 360 / 320 通过。release APK `4,428,909` 字节 / SHA-256 `1F62F7DD15B0CCE25E8E006992C1E941B7DB281A8144BAC704A7D46D076572E7`，`versionCode 115`，已覆盖安装 `ca14b16`，书架与练习数据保留；真机透明禅定、点击浮出、1.7 秒解锁均通过。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.12a 段；本轮未创建 tag / Release。
+
 ## 2. 演进路线
 
 
@@ -180,6 +184,7 @@ flowchart LR
 | 0.1.11            | WebDAV 可恢复写入：临时文件 + 校验 + MOVE / PUT 回退 | 已正式发布，GitHub Release `v0.1.11` |
 | 0.1.11b           | 日间模式启动动画 / 界面图标与 favicon 联动 / 顶部导航浅细分割线 | 已正式发布，GitHub Release `v0.1.11b` |
 | 0.1.12            | 读谱底座：PDF/图片封面 / TXT·MD·CHO / 禅定锁屏 / 桌面快捷键 | 已正式发布，GitHub Release `v0.1.12` |
+| 0.1.12a           | 禅定透明遮罩 / 点击浮出解锁 / 1.5 秒长按 / `L` 长按 / 三种格式试用谱例 | 已构建并真机验收，未发布 |
 
 ### 2.1 永久非目标（不进入任务队列）
 

@@ -1,6 +1,6 @@
 {
   "name": "guitarshell",
-  "version": "0.1.12",
+  "version": "0.1.12a",
   "private": true,
   "description": "Guitar Shell Android shell",
   "scripts": {

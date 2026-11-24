@@ -264,19 +264,46 @@ def main():
     meta: pdfCard.querySelector('.score-meta')?.textContent || ''
   };
 
-  // 禅定锁屏
+  // 禅定模式：透明阅读锁
   pdfCard.click();
   await waitFor(() => reader.classList.contains('reading'));
   await sleep(400);
   $('btnZenLock').click();
-  await sleep(200);
-  out.zen = { locked: reader.zenLocked, mask: $('zenLock').classList.contains('show') };
+  await sleep(250);
+  out.zen = {
+    locked: reader.zenLocked,
+    mask: $('zenLock').classList.contains('show'),
+    zenActive: reader.classList.contains('zen-active'),
+    background: getComputedStyle($('zenLock')).backgroundColor,
+    pointerEvents: getComputedStyle($('zenLock')).pointerEvents,
+    revealed: $('zenLock').classList.contains('revealed'),
+    panelOpacity: Number(getComputedStyle($('zenPanel')).opacity),
+    panelPointer: getComputedStyle($('zenPanel')).pointerEvents,
+    toolbarVisibility: getComputedStyle($('readerToolbar')).visibility,
+    zoomVisibility: getComputedStyle($('zoomControls')).visibility,
+    miniOpacity: Number(getComputedStyle($('miniMetronome')).opacity),
+    navDisplay: getComputedStyle($('navPrev')).display
+  };
+
+  const tapViewer = async () => {
+    const rect = $('viewer').getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const opts = { bubbles: true, cancelable: true, pointerType: 'mouse', button: 0, isPrimary: true, clientX: x, clientY: y };
+    $('viewer').dispatchEvent(new PointerEvent('pointerdown', opts));
+    $('viewer').dispatchEvent(new PointerEvent('pointerup', opts));
+    await sleep(250);
+  };
+  await tapViewer();
+  out.zen.revealedAfterTap = $('zenLock').classList.contains('revealed');
+  out.zen.panelOpacityAfterTap = Number(getComputedStyle($('zenPanel')).opacity);
+  out.zen.panelPointerAfterTap = getComputedStyle($('zenPanel')).pointerEvents;
 
   const down = () => $('zenUnlock').dispatchEvent(new PointerEvent('pointerdown', {
-    bubbles: true, cancelable: true, pointerType: 'mouse', button: 0
+    bubbles: true, cancelable: true, pointerType: 'mouse', button: 0, isPrimary: true
   }));
   const up = () => $('zenUnlock').dispatchEvent(new PointerEvent('pointerup', {
-    bubbles: true, cancelable: true, pointerType: 'mouse', button: 0
+    bubbles: true, cancelable: true, pointerType: 'mouse', button: 0, isPrimary: true
   }));
   down();
   await sleep(1000);
@@ -290,27 +317,30 @@ def main():
   out.zen.backStillLocked = reader.zenLocked;
 
   down();
-  await sleep(3300);
+  await sleep(1700);
   out.zen.longHoldUnlocked = !reader.zenLocked;
   up();
   await sleep(200);
 
   // 桌面键盘：翻页、缩放、全屏、节拍器、锁定
   $('viewer').scrollTop = 0;
-  const key = (value) => window.dispatchEvent(new KeyboardEvent('keydown', {
+  const keydown = (value, repeat = false) => window.dispatchEvent(new KeyboardEvent('keydown', {
+    key: value, bubbles: true, cancelable: true, repeat
+  }));
+  const keyup = (value) => window.dispatchEvent(new KeyboardEvent('keyup', {
     key: value, bubbles: true, cancelable: true
   }));
-  key('PageDown');
+  keydown('PageDown');
   await sleep(500);
   out.keyboard = { pageDown: $('viewer').scrollTop > 0 };
   const beforeZoom = reader.scale;
-  key('+');
+  keydown('+');
   await sleep(200);
   out.keyboard.zoom = reader.scale > beforeZoom;
-  key('f');
+  keydown('f');
   await sleep(300);
   out.keyboard.fullscreen = reader.fullscreen;
-  key('Escape');
+  keydown('Escape');
   await sleep(300);
   out.keyboard.exitFullscreen = !reader.fullscreen;
   $('mmPlay').click();
@@ -318,14 +348,35 @@ def main():
   out.keyboard.metronomePlaying = reader.mmPlaying;
   $('mmPlay').click();
   await sleep(200);
-  key('l');
-  await sleep(200);
+
+  // L 短按进入；锁定期间其他快捷键全部失效；长按 L 解锁
+  keydown('l');
+  await sleep(250);
   out.keyboard.lock = reader.zenLocked;
-  down();
-  await sleep(3300);
-  up();
+  keyup('l');
+  await sleep(300);
+  out.keyboard.quickLStillLocked = reader.zenLocked;
+  const lockedScroll = $('viewer').scrollTop;
+  keydown('PageDown');
+  await sleep(350);
+  out.keyboard.lockedPageDownBlocked = Math.abs($('viewer').scrollTop - lockedScroll) < 2;
+  const lockedZoom = reader.scale;
+  keydown('+');
   await sleep(200);
+  out.keyboard.lockedZoomBlocked = reader.scale === lockedZoom;
+  keydown(' ');
+  await sleep(200);
+  out.keyboard.lockedSpaceBlocked = reader.mmPlaying === false;
+  keydown('Escape');
+  await sleep(200);
+  out.keyboard.lockedEscBlocked = reader.classList.contains('reading') && reader.zenLocked;
+  keydown('l');
+  await sleep(1200);
+  out.keyboard.longLStillLocked = reader.zenLocked;
+  await sleep(450);
   out.keyboard.unlocked = !reader.zenLocked;
+  keyup('l');
+  await sleep(200);
 
   out.registry = {
     dbVersion: await new Promise((resolve, reject) => {
@@ -376,6 +427,19 @@ def main():
         assert out["cover"]["asset"]["dims"] == [320, 427], out
         assert "3 页" in out["cover"]["meta"], out
         assert out["zen"]["locked"] is True and out["zen"]["mask"] is True, out
+        assert out["zen"]["zenActive"] is True, out
+        assert out["zen"]["background"] in ("rgba(0, 0, 0, 0)", "transparent"), out
+        assert out["zen"]["pointerEvents"] == "none", out
+        assert out["zen"]["toolbarVisibility"] == "hidden", out
+        assert out["zen"]["zoomVisibility"] == "hidden", out
+        assert out["zen"]["miniOpacity"] <= 0.001, out
+        assert out["zen"]["navDisplay"] == "none", out
+        assert out["zen"]["revealed"] is False, out
+        assert out["zen"]["panelOpacity"] <= 0.05, out
+        assert out["zen"]["panelPointer"] == "none", out
+        assert out["zen"]["revealedAfterTap"] is True, out
+        assert out["zen"]["panelOpacityAfterTap"] >= 0.9, out
+        assert out["zen"]["panelPointerAfterTap"] == "auto", out
         assert out["zen"]["shortHoldStillLocked"] is True, out
         assert out["zen"]["backStillReading"] is True and out["zen"]["backStillLocked"] is True, out
         assert out["zen"]["longHoldUnlocked"] is True, out
@@ -384,6 +448,12 @@ def main():
         assert out["keyboard"]["fullscreen"] is True, out
         assert out["keyboard"]["exitFullscreen"] is True, out
         assert out["keyboard"]["lock"] is True, out
+        assert out["keyboard"]["quickLStillLocked"] is True, out
+        assert out["keyboard"]["lockedPageDownBlocked"] is True, out
+        assert out["keyboard"]["lockedZoomBlocked"] is True, out
+        assert out["keyboard"]["lockedSpaceBlocked"] is True, out
+        assert out["keyboard"]["lockedEscBlocked"] is True, out
+        assert out["keyboard"]["longLStillLocked"] is True, out
         assert out["keyboard"]["unlocked"] is True, out
         assert out["registry"]["dbVersion"]["version"] == 4, out
         assert "assets" in out["registry"]["dbVersion"]["stores"], out

@@ -1,0 +1,14 @@
+{title: 晨练和弦}
+{artist: 练习}
+{capo: 0}
+{key: C}
+{comment: 每个和弦按 4 拍，循环 4 遍再换下一组}
+
+{section: 循环一}
+[C]C  [Am]Am  [F]F  [G]G
+
+{section: 循环二}
+[C]C  [G]G  [Am]Am  [F]F
+
+{section: 循环三}
+[C]C  [F]F  [G]G  [C]C

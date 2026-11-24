@@ -229,30 +229,47 @@ const readerCSS = `
   .text-block.section.current { background: rgba(var(--primary-rgb), .17); }
   .chord-token { color: var(--accent-text); font-weight: 700; }
 
-  /* 🧘 禅定锁屏 */
+  /* 🧘 禅定模式：透明阅读锁，不压暗谱面，只收起阅读控件 */
   .zen-lock {
     position: absolute; inset: 0; z-index: 340; display: none;
-    flex-direction: column; align-items: center; justify-content: center; gap: 18px;
-    background: rgba(var(--shadow-rgb), .94); color: var(--txt);
-    -webkit-user-select: none; user-select: none; touch-action: none;
+    background: transparent; pointer-events: none;
+    -webkit-user-select: none; user-select: none;
   }
-  .zen-lock.show { display: flex; }
+  .zen-lock.show { display: block; }
   :host(.reader-fullscreen) .zen-lock { position: fixed; }
-  .zen-title { font-size: 16px; font-weight: 800; letter-spacing: 2px; color: var(--accent-text); }
-  .zen-desc { margin-top: -8px; font-size: 12px; color: var(--muted); }
+  :host(.zen-active) .toolbar { visibility: hidden; pointer-events: none; }
+  :host(.zen-active) .zoom-controls,
+  :host(.zen-active) .mini-metronome {
+    opacity: 0 !important; visibility: hidden; pointer-events: none;
+  }
+  :host(.zen-active) .nav-zone,
+  :host(.zen-active) #progressBanner { display: none !important; }
+  .zen-panel {
+    position: absolute; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    transform: translate(-50%, 8px); z-index: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    max-width: calc(100% - 32px); box-sizing: border-box;
+    padding: 8px 12px 10px; border-radius: 16px;
+    background: rgba(var(--bg1-rgb), .78); border: 1px solid var(--line-warm);
+    box-shadow: 0 8px 24px rgba(var(--shadow-rgb), .22);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease;
+  }
+  .zen-lock.revealed .zen-panel { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .zen-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); }
   .zen-unlock {
-    width: 132px; height: 132px; border-radius: 50%; border: 2px solid var(--line-warm);
-    background: rgba(var(--bg1-rgb), .55); color: var(--txt-soft); font-family: inherit;
-    font-size: 13px; font-weight: 700; line-height: 1.5; cursor: pointer; position: relative;
+    min-width: 142px; height: 42px; padding: 0 18px; border-radius: 999px;
+    border: 1px solid var(--line-warm); background: rgba(var(--bg1-rgb), .9);
+    color: var(--accent-text); font-family: inherit; font-size: 13px; font-weight: 700;
+    line-height: 1.2; white-space: nowrap; cursor: pointer; position: relative;
     overflow: hidden; touch-action: none; -webkit-tap-highlight-color: transparent;
   }
   .zen-unlock:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
   .zen-unlock .zen-progress {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--primary);
+    position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--primary);
     transform: scaleX(0); transform-origin: left center; opacity: .9;
   }
-  .zen-unlock.holding .zen-progress { transform: scaleX(1); transition: transform 3s linear; }
-  .zen-hint { font-size: 11px; color: var(--muted); }
+  .zen-unlock.holding .zen-progress { transform: scaleX(1); transition: transform 1.5s linear; }
 
   .mini-metronome { position: absolute; bottom: 30px; left: 20px; display: none; flex-direction: column; align-items: center; z-index: 20; }
   .mm-panel { background: rgba(var(--bg1-rgb), 0.95); backdrop-filter: blur(8px); border: 1px solid var(--line-warm); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.3s ease; }
@@ -576,10 +593,10 @@ const readerHTML = `
   <div class="toast" id="toast"></div>
 
   <div class="zen-lock" id="zenLock" role="dialog" aria-modal="true" aria-label="禅定模式已锁定">
-    <div class="zen-title">禅定模式</div>
-    <div class="zen-desc">屏幕已锁定，专注练琴</div>
-    <button class="zen-unlock" id="zenUnlock" type="button">长按 3 秒<br>解锁</button>
-    <div class="zen-hint">松开即重新计时</div>
+    <div class="zen-panel" id="zenPanel" aria-hidden="true">
+      <span class="zen-title">禅定模式</span>
+      <button class="zen-unlock" id="zenUnlock" type="button" aria-label="长按 1.5 秒解锁">长按 1.5 秒解锁<span class="zen-progress"></span></button>
+    </div>
   </div>
 
   <div id="bookmarkMask">
@@ -782,6 +799,9 @@ class SheetReader extends HTMLElement {
     this.coverSeq = 0;
     this.zenLocked = false;
     this.zenHoldTimer = null;
+    this.zenHoldSource = '';
+    this.zenTapStart = null;
+    this.zenKeyHeld = false;
     this.zenLayerOff = null;
     this.textHighlightRaf = null;
   }
@@ -847,6 +867,8 @@ class SheetReader extends HTMLElement {
     if (this.setZenLock) this.setZenLock(false);
     if (this.revokeCoverUrls) this.revokeCoverUrls();
     if (this.handleReaderKeydown) window.removeEventListener('keydown', this.handleReaderKeydown);
+    if (this.handleReaderKeyup) window.removeEventListener('keyup', this.handleReaderKeyup);
+    if (this.cancelZenKeyHold) window.removeEventListener('blur', this.cancelZenKeyHold);
     if (this.textHighlightRaf) { cancelAnimationFrame(this.textHighlightRaf); this.textHighlightRaf = null; }
     clearTimeout(this.zenHoldTimer);
     if (this.autoSaveTimer) { clearInterval(this.autoSaveTimer); this.autoSaveTimer = null; }
@@ -883,6 +905,7 @@ class SheetReader extends HTMLElement {
     const zoomControls = $('zoomControls');
     const miniMetronome = $('miniMetronome');
     const zenLock = $('zenLock');
+    const zenPanel = $('zenPanel');
     const zenUnlock = $('zenUnlock');
     const btnZenLock = $('btnZenLock');
     const loading = $('loading');
@@ -3302,11 +3325,38 @@ class SheetReader extends HTMLElement {
       if (!zoomControls.classList.contains('faded')) setZoomFaded(true);
     };
 
-    // 🧘 禅定锁屏：遮住全部控件，必须连续长按 3 秒解锁
+    // 🧘 禅定模式：透明阅读锁；轻点浮出解锁条，连续长按 1.5 秒解锁
+    const ZEN_HOLD_MS = 1500;
+    const revealZenControls = () => {
+      if (!this.zenLocked) return;
+      zenLock.classList.add('revealed');
+      zenPanel.setAttribute('aria-hidden', 'false');
+    };
+    const hideZenControls = () => {
+      zenLock.classList.remove('revealed');
+      zenPanel.setAttribute('aria-hidden', 'true');
+    };
     const cancelZenHold = () => {
       clearTimeout(this.zenHoldTimer);
       this.zenHoldTimer = null;
+      this.zenHoldSource = '';
       zenUnlock.classList.remove('holding');
+    };
+    const startZenHold = (source, showProgress) => {
+      if (!this.zenLocked) return;
+      clearTimeout(this.zenHoldTimer);
+      this.zenHoldSource = source;
+      if (showProgress) {
+        zenUnlock.classList.remove('holding');
+        // 强制重排，保证每次按下进度条都从 0 开始
+        void zenUnlock.offsetWidth;
+        zenUnlock.classList.add('holding');
+      }
+      this.zenHoldTimer = setTimeout(() => {
+        if (!this.zenLocked) return;
+        this.setZenLock(false);
+        showToast('已解锁');
+      }, ZEN_HOLD_MS);
     };
 
     this.setZenLock = (on) => {
@@ -3314,10 +3364,13 @@ class SheetReader extends HTMLElement {
       if (this.zenLocked === next) return;
       this.zenLocked = next;
       cancelZenHold();
+      hideZenControls();
+      this.classList.toggle('zen-active', next);
       zenLock.classList.toggle('show', next);
       if (next) {
         trackLayer('zen-lock', () => {}, { blocksNavigation: true });
         wakeLock.acquire('reader');
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       } else {
         untrackLayer('zen-lock');
         if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -3329,25 +3382,41 @@ class SheetReader extends HTMLElement {
       this.setZenLock(true);
     };
 
+    // 轻点谱面才浮出解锁条；拖动 / 双指缩放不触发
+    viewer.addEventListener('pointerdown', (e) => {
+      if (!this.zenLocked) { this.zenTapStart = null; return; }
+      if (!e.isPrimary || zenPanel.contains(e.target)) { this.zenTapStart = null; return; }
+      this.zenTapStart = { x: e.clientX, y: e.clientY, at: Date.now() };
+    }, { passive: true });
+    viewer.addEventListener('pointerup', (e) => {
+      if (!this.zenLocked) return;
+      const tap = this.zenTapStart;
+      this.zenTapStart = null;
+      if (!tap || !e.isPrimary || zenPanel.contains(e.target)) return;
+      if (Date.now() - tap.at > 650) return;
+      if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 10) return;
+      revealZenControls();
+    }, { passive: true });
+    viewer.addEventListener('pointercancel', () => { this.zenTapStart = null; }, { passive: true });
+
     zenUnlock.addEventListener('pointerdown', (e) => {
       if (!this.zenLocked) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (!e.isPrimary) return;
       e.preventDefault();
-      clearTimeout(this.zenHoldTimer);
-      zenUnlock.classList.remove('holding');
-      // 强制重排，保证每次按下进度条都从 0 开始
-      void zenUnlock.offsetWidth;
-      zenUnlock.classList.add('holding');
-      this.zenHoldTimer = setTimeout(() => {
-        if (!this.zenLocked) return;
-        this.setZenLock(false);
-        showToast('已解锁');
-      }, 3000);
+      e.stopPropagation();
+      revealZenControls();
+      startZenHold('pointer', true);
     });
     zenUnlock.addEventListener('pointerup', cancelZenHold);
     zenUnlock.addEventListener('pointercancel', cancelZenHold);
     zenUnlock.addEventListener('pointerleave', cancelZenHold);
     zenUnlock.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    this.cancelZenKeyHold = () => {
+      if (this.zenHoldSource === 'key') cancelZenHold();
+    };
+    window.addEventListener('blur', this.cancelZenKeyHold);
 
     // 🌟 全屏：CSS 先覆盖整个视口（兼容 WebView），再尽量申请浏览器原生全屏隐藏地址栏 / 状态栏
     this.setReaderFullscreen = (on) => {
@@ -3398,15 +3467,27 @@ class SheetReader extends HTMLElement {
 
     this.handleReaderKeydown = (e) => {
       if (!this.classList.contains('reading')) return;
-      if (this.zenLocked) return;
 
       const target = e.composedPath ? e.composedPath()[0] : e.target;
       const tag = target && target.tagName ? target.tagName.toLowerCase() : '';
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || (target && target.isContentEditable)) return;
-      if (isReaderModalOpen()) return;
 
       const key = e.key;
       const lower = key.length === 1 ? key.toLowerCase() : key;
+
+      if (this.zenLocked) {
+        // 锁定期间只允许长按 L 解锁，翻页 / 缩放 / Esc 等一律不执行
+        if (lower === 'l' && !e.repeat) {
+          revealZenControls();
+          startZenHold('key', true);
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if (isReaderModalOpen()) return;
+
       const pageStep = Math.max(120, Math.round(viewer.clientHeight * 0.86));
       let handled = true;
 
@@ -3428,6 +3509,7 @@ class SheetReader extends HTMLElement {
         this.setReaderFullscreen(!this.fullscreen);
       } else if (lower === 'l' && !e.repeat) {
         this.setZenLock(true);
+        startZenHold('key', false);
       } else if (key === ' ' && !e.repeat) {
         if (e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'button') return;
         const mmPlay = $('mmPlay');
@@ -3444,7 +3526,17 @@ class SheetReader extends HTMLElement {
         e.stopPropagation();
       }
     };
+    this.handleReaderKeyup = (e) => {
+      if (!this.classList.contains('reading')) return;
+      if (!e.key || e.key.toLowerCase() !== 'l') return;
+      if (this.zenHoldSource === 'key') cancelZenHold();
+      if (this.zenLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
     window.addEventListener('keydown', this.handleReaderKeydown);
+    window.addEventListener('keyup', this.handleReaderKeyup);
 
     // 鼠标在谱面上移动即虚化（只在状态不同时写 DOM，避免每帧重排）
     viewer.addEventListener('pointermove', () => {
