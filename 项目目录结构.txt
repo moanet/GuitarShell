@@ -1,62 +1,78 @@
-Guitar Shell · 项目目录速览（与 README.md 同步维护 · 2026-11-18 · v0.0.5.14）
-图例：✅ 完成  🟡 基础版可用待扩展  🚧 待重构/空占位  ⏳ 待创建  📦 本地文件不上传
+Guitar Shell · 项目目录速览（与 README.md「项目结构」同步维护 · 2026-11-25 · v0.1.14c）
+说明：只列主干与常用落点；node_modules、www、dist、Android 构建产物与签名材料按 .gitignore 排除在本机。
 
-guitar-shell/
-├── index.html                   ✅ 外壳 + 4 大导航（入口已收敛：脚本/图标/manifest 各一份，meta 全在 head）
-├── manifest.json                ✅ PWA 清单
-├── sw.js                        ✅ 离线缓存（APP_VERSION=0.0.5.14，改代码必升版本，且与 version.js 同步）
-├── start-dev.bat                ✅ 一键启动：Python 静态页 :8000 + Node WebDAV 代理 :8081
-├── .gitignore                   ✅ 忽略 proxy 依赖、*.bat、IDE、*.log
-├── README.md                    ✅ 项目文档（进度/架构/迭代记录/任务看板/避坑指南）
-├── icon-gShell-32/192/512.png   ✅ PWA 图标
-├── css/
-│   └── layout.css               ✅ 全局布局与主题色
-├── js/
-│   ├── main.js                  ✅ 入口：tab 切换（广播 app-tab-changed）+ 组件动态加载 + SW 注册
-│   ├── services/
-│   │   ├── db.js                ✅ IndexedDB v3：scores/logs 双表；已含 tags、
-│   │   │                           lastReadPage/Ratio/ScrollY/At、fileHash 字段；
-│   │   │                           方法：addScore/getScore/getAllScores/updateScore/
-│   │   │                           deleteScore/addLog/getAllLogs/getLatestLogByName/
-│   │   │                           clearAllData/bulkImport/getLocalChangeStamp
-│   │   ├── webdav.js            ✅ upload/download/probe/stat（Basic Auth→坚果云）
-│   │   │                           ✅ 多通道回落：本地代理 → 自建域名 dav.noamet.ccwu.cc → Worker
-│   │   │                           ✅ 单通道超时 / 5xx 自动换线；409 自动建目录后重试
-│   │   │                           ✅ stat()：PROPFIND 取 getlastmodified/getetag/大小，供冲突检测
-│   │   ├── version.js           ✅ APP_VERSION 与 BACKUP_SCHEMA 单一来源（sw.js 无法 import，两处同步）
-│   │   ├── vault.js             ✅ AES-GCM 加密存应用密码；密钥不可导出，独立库 GuitarShellVault
-│   │   └── audio.js             ✅ 全局音频引擎：共享 AudioContext + lookahead 调度 + 引擎内互斥 + 麦克风分析
-│   ├── components/
-│   │   ├── metronome.js         🟡 调度/旋钮/TAP/拍号细分/首拍重音/BPM 广播
-│   │   │                           ⏳ Swing、重音模式、变速练习、倒计时、音频跟练
-│   │   ├── sheet-reader.js      ✅ 书架/标签/搜索/排序、PDF 全平台虚拟化渲染（只保可见页 ±3 页 + DPR≤2 自适应 + 离屏释放）
-│   │   │                           ✅ 缩放拖拽；阅读进度双轨制（📍存进度 / 打卡 / 5 分钟兜底）
-│   │   │                           ✅ 进度药丸；左右热区（脱离滚动容器 + 内缩 20/26px）
-│   │   │                           ✅ 切歌保位（切换前存位 + autoRestore 回位）
-│   │   │                           ✅ 阅读态仅留三按钮（修掉 .pc-actions 的 !important 覆盖）
-│   │   │                           ✅ 迷你节拍器：启停可用、悬停实体化虚化、与主节拍器互斥
-│   │   │                           ✅ 备份/恢复（restoreFromPayload 原子恢复 + importBackup）
-│   │   │                           ⏳ 多标签页、拼音搜索、单曲抽取、书签、Wake Lock 常亮
-│   │   ├── practice-log.js      ✅ 打卡(时长/BPM/页码)、累计统计、趋势图(近7天/近12月 SVG + TOP5)、广播刷新
-│   │   │                           ⏳ 按曲目统计、时长图表
-│   │   └── tuner.js             🟡 麦克风 + 自相关基频 + 指针盘
-│   │                               ⏳ YIN 算法、A4 校准、参考音试听
-│   └── lib/
-│       ├── pdf.js               ✅ PDF.js v3.11 本地化
-│       ├── pdf.worker.js        ✅ 解析线程
-│       ├── pdf.min.mjs          ✅ 备用压缩版
-│       ├── pdf.worker.min.mjs   ✅ 备用压缩线程版
-│       ├── pinyin.js             ✅ 汉字拼音首字母字典（C2 书架搜索，纯本地）
-│       └── spark-md5.js         ⏳ 待引入（文件哈希去重）
-├── proxy/                       ✅ 本地调试后端（不加载进浏览器、不上传 Pages）
-│   ├── proxy.js                 ✅ Node WebDAV 代理（CORS → 坚果云转发）
-│   ├── package.json             ✅ 依赖 undici
-│   ├── package-lock.json        📦
-│   └── node_modules/            📦 已 git 忽略
-└── android/                     ⏳ 待生成：Capacitor 安卓工程
-
-
-
-
-
-
+GuitarShell/
+├─ .github/workflows/ci.yml      CI：版本一致性、语法检查与浏览器回归
+├─ index.html                    网页入口与四 Tab 导航
+├─ manifest.json                 PWA 清单
+├─ sw.js                         离线缓存与版本号（与 version.js 同步）
+├─ start-dev.bat                 Windows 本地静态页启动脚本
+├─ package.json                  开发脚本：check / apk:release
+├─ capacitor.config.json         Capacitor 配置
+├─ icon-gShell-*.png             PWA / 应用图标（深色与浅色）
+├─ css/
+│  └─ layout.css                 全局布局、组件基础样式与双主题 token
+├─ js/
+│  ├─ main.js                    入口：Tab 切换、组件动态加载、SW 注册
+│  ├─ components/
+│  │  ├─ sheet-reader.js         书架、导入、标签、搜索、读谱、书签、PDF 拆分
+│  │  ├─ metronome.js            节拍器、拍号、细分、音色、变速、倒计时、音频跟练
+│  │  ├─ tuner.js                调音器、YIN 基频、A4 校准、音分曲线
+│  │  ├─ practice-log.js         练习打卡、统计、趋势、今日练习卡片入口
+│  │  ├─ settings.js             全局设置抽屉、备份恢复、云同步、存储与主题
+│  │  ├─ share-preview.js        今日练习卡片预览与保存 / 分享
+│  │  ├─ share-bg-crop.js        自定义背景 3:4 裁切
+│  │  └─ app-dialog.js           统一确认弹窗
+│  ├─ services/
+│  │  ├─ db.js                   IndexedDB：乐谱、练习记录、标签、阅读进度
+│  │  ├─ backup.js               完整备份 / 恢复 / 清空
+│  │  ├─ webdav.js               坚果云 WebDAV 上传、下载、探测与冲突检测
+│  │  ├─ share-card.js           练习卡片绘制、排版与导出
+│  │  ├─ share-bg.js             6 套预设背景与自定义背景
+│  │  ├─ cover-cache.js          封面缓存与孤儿清理
+│  │  ├─ storage-stats.js        存储占用、配额与资产统计
+│  │  ├─ pdf-split.js            PDF 页段拆分
+│  │  ├─ theme.js                主题切换与全站同步
+│  │  ├─ audio.js                共享 AudioContext 与节拍调度
+│  │  ├─ audio-analysis.js       音频测速与节奏分析
+│  │  ├─ pitch.js                音高检测算法
+│  │  ├─ vault.js                应用密码本机加密
+│  │  ├─ version.js              版本与备份 schema 单一来源
+│  │  └─ 其余服务              file-hash、score-dedup、text-score、tag-utils、toast、ui-layer、sync-state、wakelock、quotes、gallery-picker、score-format
+│  └─ lib/                       PDF.js、pdf-lib、拼音字典与本地依赖
+├─ scripts/
+│  ├─ build-www.mjs              生成可部署的 www
+│  └─ check.mjs                  版本、语法、SW 缓存一致性检查
+├─ tests/browser/                gs_015–gs_023 浏览器回归与 README
+├─ android/
+│  ├─ app/src/main/java/com/guitarshell/
+│  │  ├─ MainActivity.java
+│  │  ├─ BackGuardPlugin.java    Android 返回键层级拦截
+│  │  ├─ GalleryPickerPlugin.java 原生相册选择
+│  │  ├─ KeepAwakePlugin.java    屏幕常亮
+│  │  ├─ SaveBackupPlugin.java   备份写入 Download
+│  │  ├─ ShareCardPlugin.java    练习卡片保存 / 系统分享
+│  │  └─ ThemeBarsPlugin.java    系统栏与主题同步
+│  ├─ app/src/main/res/          图标、启动图与原生资源
+│  └─ gradle/                    Gradle wrapper
+├─ www/                          构建产物（Git 忽略）
+├─ dist/                         APK 构建产物（Git 忽略）
+├─ proxy/
+│  ├─ proxy.js                    Node WebDAV 本地代理
+│  └─ cloudflare-worker.js       Cloudflare Worker 代理参考
+├─ samples/
+│  └─ trial-scores/              试用谱例：TXT / ChordPro / Markdown
+├─ docs/
+│  ├─ screenshots/               README 界面截图
+│  ├─ archive/                   历史迭代简报（CURRENT_TASK-<版本>.md）
+│  ├─ icon/                      品牌图标源文件
+│  ├─ posters/                   发布海报
+│  ├─ qr_code/                   二维码素材
+│  ├─ palette/                   本地调色板预览（Git 忽略）
+│  ├─ Sheet Music Engine/        制谱引擎规范草案（本地参考，Git 忽略）
+│  └─ BRAND.md                   品牌规范
+├─ README.md                     项目说明、功能、同步方法与目录结构
+├─ CHANGELOG.md                  逐版本交付、测试与决策记录
+├─ CURRENT_TASK.md               当前迭代目标、范围与验收
+├─ TASK.md                       开发任务、进度、基线、冒烟清单与避坑指南
+└─ 项目目录结构.txt               本文件

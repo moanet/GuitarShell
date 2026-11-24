@@ -52,16 +52,6 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 | <img src="docs/screenshots/metronome-light.png" width="260" alt="日间节拍器"> | <img src="docs/screenshots/0.1.14c-settings.png" width="260" alt="全局设置"> |
 | 暖纸日光主题下的节拍器与播放控制 | 外观分段切换、数据与备份、云同步与折叠存储 |
 
-| 练习卡片 | 保存到相册 |
-| :---: | :---: |
-| <img src="docs/screenshots/0.1.14a-native-preview.png" width="260" alt="练习卡片预览"> | <img src="docs/screenshots/0.1.14a-gallery.png" width="260" alt="系统相册中的练习卡片"> |
-| 今日统计、曲名开关、6 套背景、保存与系统分享 | 1080×1440 PNG 写入 `Pictures/GuitarShell`，系统相册直接可见 |
-
-| 自定义背景 | 轻量裁切 |
-| :---: | :---: |
-| <img src="docs/screenshots/0.1.14b-preview.png" width="260" alt="自定义背景预览"> | <img src="docs/screenshots/0.1.14b-crop.png" width="260" alt="裁切页"> |
-| 相册选图、60–90% 压暗、更换与移除 | 3:4 取景框、拖动定位、1×–3× 双指缩放 |
-
 ## 下载与安装
 
 - **Android 最新版**：前往 [GitHub Releases](https://github.com/moanet/GuitarShell/releases/latest)，在最新 Release 的 Assets 中下载 `GuitarShell-*-release.apk`。
@@ -146,23 +136,30 @@ Guitar Shell 不要求注册账号。云同步使用你自己的坚果云 WebDAV
 
 ```text
 Guitar Shell
-├─ index.html                  网页入口与四大模块导航
-├─ manifest.json               PWA 配置
-├─ sw.js                       离线缓存与版本号
-├─ css/
-│  └─ layout.css               全局布局与双主题 token
+├─ index.html                  网页入口与四 Tab 导航
+├─ manifest.json / sw.js       PWA 清单、离线缓存与版本号
+├─ css/layout.css              全局布局与双主题 token
 ├─ js/
-│  ├─ components/              乐谱 / 节拍器 / 调音器 / 练习记录 / 设置
-│  ├─ services/                IndexedDB / 备份 / WebDAV / 主题 / 音频 / 音频分析 / 调音算法
-│  └─ lib/                     PDF.js / 拼音字典 / 本地依赖
-├─ scripts/
-│  └─ build-www.mjs            生成可部署的 www
+│  ├─ main.js                  入口、Tab 切换、组件加载、SW 注册
+│  ├─ components/              书架读谱、节拍器、调音器、练习记录、设置、分享预览、背景裁切、通用弹窗
+│  ├─ services/                IndexedDB、备份、WebDAV、分享卡、缓存、存储统计、主题、音频、版本
+│  └─ lib/                     PDF.js、pdf-lib、拼音字典
+├─ scripts/                    build-www.mjs、check.mjs
+├─ tests/browser/              gs_015–gs_023 浏览器回归
 ├─ android/                    Capacitor Android 壳与原生插件
-├─ docs/screenshots/           README 界面截图
-├─ icon-gShell-*.png           应用图标
+├─ www/                        构建产物（Git 忽略）
+├─ proxy/                      Node / Cloudflare WebDAV 代理
+├─ samples/trial-scores/       TXT / ChordPro / Markdown 试用谱例
+├─ docs/
+│  ├─ screenshots/             README 界面截图
+│  ├─ archive/                 历史迭代简报
+│  ├─ icon/ · posters/ · qr_code/  品牌与发布素材
+│  └─ BRAND.md                 品牌规范
+├─ 项目目录结构.txt              项目目录速览
 ├─ CHANGELOG.md                逐版本迭代记录
 ├─ CURRENT_TASK.md             当前迭代简报
-└─ TASK.md                     开发任务、进度与避坑指南
+├─ TASK.md                     开发任务、进度与避坑指南
+└─ package.json · capacitor.config.json
 ```
 
 ### 构建路径

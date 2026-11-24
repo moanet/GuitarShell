@@ -105,7 +105,7 @@
 
 ### 1.15 0.1.12a 禅定模式阅读化修正（已构建并真机验收）
 
-0.1.12a 只修禅定体验：遮罩改为全透明且 `pointer-events:none`，谱面亮度、滚动和缩放不再被阻断；阅读工具栏、缩放控件、迷你节拍器、相邻谱例左右热区与进度横幅在禅定时隐藏；轻点谱面（650ms 内、位移 ≤10px）才浮出底部解锁条；长按解锁从 3 秒缩短到 1.5 秒；桌面 `L` 短按进入、锁定后长按 1.5 秒解锁，`keyup` / 失焦取消，锁定期 `PageDown`、`+`、`Space`、`Esc` 被拦截。新增 `samples/试用谱例/` 四份 TXT / ChordPro / Markdown 谱例并推送真机 `/sdcard/Download/GuitarShell/`。`npm run check` 通过 `v0.1.12a / 32 个 JS`；`gs_022.py` 在 360 / 320 通过。release APK `4,428,909` 字节 / SHA-256 `1F62F7DD15B0CCE25E8E006992C1E941B7DB281A8144BAC704A7D46D076572E7`，`versionCode 115`，已覆盖安装 `ca14b16`，书架与练习数据保留；真机透明禅定、点击浮出、1.7 秒解锁均通过。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.12a 段；本轮未创建 tag / Release。
+0.1.12a 只修禅定体验：遮罩改为全透明且 `pointer-events:none`，谱面亮度、滚动和缩放不再被阻断；阅读工具栏、缩放控件、迷你节拍器、相邻谱例左右热区与进度横幅在禅定时隐藏；轻点谱面（650ms 内、位移 ≤10px）才浮出底部解锁条；长按解锁从 3 秒缩短到 1.5 秒；桌面 `L` 短按进入、锁定后长按 1.5 秒解锁，`keyup` / 失焦取消，锁定期 `PageDown`、`+`、`Space`、`Esc` 被拦截。新增 `samples/trial-scores/` 四份 TXT / ChordPro / Markdown 谱例并推送真机 `/sdcard/Download/GuitarShell/`。`npm run check` 通过 `v0.1.12a / 32 个 JS`；`gs_022.py` 在 360 / 320 通过。release APK `4,428,909` 字节 / SHA-256 `1F62F7DD15B0CCE25E8E006992C1E941B7DB281A8144BAC704A7D46D076572E7`，`versionCode 115`，已覆盖安装 `ca14b16`，书架与练习数据保留；真机透明禅定、点击浮出、1.7 秒解锁均通过。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.12a 段；本轮未创建 tag / Release。
 
 ### 1.16 0.1.12b 书架滚动、禅定锁滚与工具栏让位（已发布）
 

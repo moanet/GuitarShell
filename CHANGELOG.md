@@ -205,7 +205,7 @@
 
 **试用谱例**
 
-- 新增 `samples/试用谱例/`：`试用-小星星.txt`、`试用-茉莉花.cho`、`试用-送别.md`、`试用-晨练和弦.cho`，覆盖 TXT / ChordPro / Markdown 三种格式，均为 UTF-8。
+- 新增 `samples/trial-scores/`：`试用-小星星.txt`、`试用-茉莉花.cho`、`试用-送别.md`、`试用-晨练和弦.cho`，覆盖 TXT / ChordPro / Markdown 三种格式，均为 UTF-8。
 - 4 份文件已推送至真机 `/sdcard/Download/GuitarShell/`，可直接从导入入口选择试用。
 
 **验证**
