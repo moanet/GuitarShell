@@ -30,7 +30,8 @@
 
 **状态**
 
-- 本轮未创建 tag 或 GitHub Release，等待用户真机试用确认。
+- 已提交 `ae99976 feat: 0.1.12b 书架滚动与禅定锁屏优化`，推送到 `main`，创建并推送 tag `v0.1.12b`。
+- 已发布 GitHub Release `v0.1.12b`（Release ID `456404769`，https://github.com/moanet/GuitarShell/releases/tag/v0.1.12b），APK asset 已上传。
 
 ## 0.1.12a — 禅定模式阅读化修正（已构建并真机验收，2026-11-24）
 

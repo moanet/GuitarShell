@@ -3,7 +3,7 @@
 > 项目总账：记录长期路线、版本时间线、任务队列、冒烟清单、构建发布、技术债与避坑指南。
 > 当前迭代：见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 > 已发布版本的完整改动与验收证据：见 [CHANGELOG.md](CHANGELOG.md)。
-> 当前基线：Android 正式 Release 为 `0.1.12`（`versionCode 114`），本地已构建并真机安装 `0.1.12b`（`versionCode 116`，书架滚动 + 禅定锁滚 + 工具栏折叠，尚未发布）；`0.1.5`–`0.1.11b` 的改动与发布记录见 `CHANGELOG.md`；`0.1.12` 完成读谱底座（PDF/图片封面、TXT/Markdown/ChordPro、禅定锁屏、桌面快捷键），已真机验收并发布 GitHub Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
+> 当前基线：Android 正式 Release 为 `0.1.12b`（`versionCode 116`，书架滚动 + 禅定锁滚 + 工具栏折叠，已真机验收并发布）；`0.1.5`–`0.1.11b` 的改动与发布记录见 `CHANGELOG.md`；`0.1.12` 完成读谱底座（PDF/图片封面、TXT/Markdown/ChordPro、禅定锁屏、桌面快捷键）。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
 
 ## 1. 当前阶段
 
@@ -107,9 +107,9 @@
 
 0.1.12a 只修禅定体验：遮罩改为全透明且 `pointer-events:none`，谱面亮度、滚动和缩放不再被阻断；阅读工具栏、缩放控件、迷你节拍器、相邻谱例左右热区与进度横幅在禅定时隐藏；轻点谱面（650ms 内、位移 ≤10px）才浮出底部解锁条；长按解锁从 3 秒缩短到 1.5 秒；桌面 `L` 短按进入、锁定后长按 1.5 秒解锁，`keyup` / 失焦取消，锁定期 `PageDown`、`+`、`Space`、`Esc` 被拦截。新增 `samples/试用谱例/` 四份 TXT / ChordPro / Markdown 谱例并推送真机 `/sdcard/Download/GuitarShell/`。`npm run check` 通过 `v0.1.12a / 32 个 JS`；`gs_022.py` 在 360 / 320 通过。release APK `4,428,909` 字节 / SHA-256 `1F62F7DD15B0CCE25E8E006992C1E941B7DB281A8144BAC704A7D46D076572E7`，`versionCode 115`，已覆盖安装 `ca14b16`，书架与练习数据保留；真机透明禅定、点击浮出、1.7 秒解锁均通过。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.12a 段；本轮未创建 tag / Release。
 
-### 1.16 0.1.12b 书架滚动、禅定锁滚与工具栏让位（已构建并真机验收）
+### 1.16 0.1.12b 书架滚动、禅定锁滚与工具栏让位（已发布）
 
-0.1.12b 按真机试用反馈修三处：书架 `.shelf-view` 改成独立纵向滚动容器，手机固定 2 列，卡片改横向、封面固定 84px×3:4、书名两行和类型 / 标签完整可见；卡片补 `min-height:148px`，修掉“条目变多时 CSS Grid 把卡片压成 18px 细条、内容被裁掉、书架无法撑出滚动高度”的根因。禅定下 `wheel` / `touchstart` / `touchmove` / `pointer*` 全部拦截，`viewer` 设 `overflow:hidden` 与 `touch-action:none`，手指与鼠标滚轮都不能滚动；`:host(.zen-active) .toolbar` 改为 `display:none`，工具栏不再占位，谱面整体上移，长谱获得更多纵向空间。`npm run check` 通过 `v0.1.12b / 32 个 JS`；`gs_022.py` 360 / 320 通过，新增卡片高度、书架可滚动、禅定工具栏折叠、`overflow/touch-action` 与滚轮锁定断言。release APK `4,429,070` 字节 / SHA-256 `8DC2893860C5DA518C5018C4D3B97FA84491AD298D8C3D0E58884F12871322BF`，`versionCode 116`，已覆盖安装 `ca14b16`，原谱与练习保留；真机 14 张谱时书架可在顶部 / 底部自由滚动，禅定上滑前后画面一致。临时测试谱与 Download 临时文件已清理。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.12b 段；本轮未创建 tag / Release。
+0.1.12b 按真机试用反馈修三处：书架 `.shelf-view` 改成独立纵向滚动容器，手机固定 2 列，卡片改横向、封面固定 84px×3:4、书名两行和类型 / 标签完整可见；卡片补 `min-height:148px`，修掉“条目变多时 CSS Grid 把卡片压成 18px 细条、内容被裁掉、书架无法撑出滚动高度”的根因。禅定下 `wheel` / `touchstart` / `touchmove` / `pointer*` 全部拦截，`viewer` 设 `overflow:hidden` 与 `touch-action:none`，手指与鼠标滚轮都不能滚动；`:host(.zen-active) .toolbar` 改为 `display:none`，工具栏不再占位，谱面整体上移，长谱获得更多纵向空间。`npm run check` 通过 `v0.1.12b / 32 个 JS`；`gs_022.py` 360 / 320 通过，新增卡片高度、书架可滚动、禅定工具栏折叠、`overflow/touch-action` 与滚轮锁定断言。release APK `4,429,070` 字节 / SHA-256 `8DC2893860C5DA518C5018C4D3B97FA84491AD298D8C3D0E58884F12871322BF`，`versionCode 116`，已覆盖安装 `ca14b16`，原谱与练习保留；真机 14 张谱时书架可在顶部 / 底部自由滚动，禅定上滑前后画面一致。临时测试谱与 Download 临时文件已清理。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.12b 段；已提交 `ae99976`、推送 `main`，tag `v0.1.12b` 与 GitHub Release `456404769` 已发布。
 
 ## 2. 演进路线
 
@@ -189,7 +189,7 @@ flowchart LR
 | 0.1.11b           | 日间模式启动动画 / 界面图标与 favicon 联动 / 顶部导航浅细分割线 | 已正式发布，GitHub Release `v0.1.11b` |
 | 0.1.12            | 读谱底座：PDF/图片封面 / TXT·MD·CHO / 禅定锁屏 / 桌面快捷键 | 已正式发布，GitHub Release `v0.1.12` |
 | 0.1.12a           | 禅定透明遮罩 / 点击浮出解锁 / 1.5 秒长按 / `L` 长按 / 三种格式试用谱例 | 已构建并真机验收，未发布 |
-| 0.1.12b           | 书架内部滚动与横向卡片 / 禅定完全锁滚 / 禅定折叠工具栏 | 已构建并真机验收，未发布 |
+| 0.1.12b           | 书架内部滚动与横向卡片 / 禅定完全锁滚 / 禅定折叠工具栏 | 已发布 `v0.1.12b`（Release `456404769`） |
 
 ### 2.1 永久非目标（不进入任务队列）
 
