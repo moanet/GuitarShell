@@ -192,6 +192,26 @@ def main():
     octetAccept: ($('inputSingleFile').getAttribute('accept') || '').includes('application/octet-stream')
   };
 
+  // 书架多条目：卡片不能被网格压扁，且内部必须能滚动
+  const shelf = $('shelfView');
+  const sampleCard = shelf.querySelector('.score-card');
+  const cardHeight = Math.round(sampleCard.getBoundingClientRect().height);
+  const clones = Array.from({ length: 18 }, () => sampleCard.cloneNode(true));
+  clones.forEach((node) => shelf.appendChild(node));
+  await sleep(250);
+  out.shelfDensity = {
+    cardHeight,
+    clientH: shelf.clientHeight,
+    scrollH: shelf.scrollHeight,
+    canScroll: shelf.scrollHeight > shelf.clientHeight + 20
+  };
+  shelf.scrollTop = 160;
+  await sleep(120);
+  out.shelfDensity.scrollTopAfter = shelf.scrollTop;
+  clones.forEach((node) => node.remove());
+  shelf.scrollTop = 0;
+  await sleep(150);
+
   const textCard = Array.from(reader.shadowRoot.querySelectorAll('.score-card'))
     .find((card) => card.querySelector('.score-name')?.textContent === '小星星.txt');
   textCard.click();
@@ -279,11 +299,18 @@ def main():
     revealed: $('zenLock').classList.contains('revealed'),
     panelOpacity: Number(getComputedStyle($('zenPanel')).opacity),
     panelPointer: getComputedStyle($('zenPanel')).pointerEvents,
-    toolbarVisibility: getComputedStyle($('readerToolbar')).visibility,
+    toolbarDisplay: getComputedStyle($('readerToolbar')).display,
+    viewerOverflow: getComputedStyle($('viewer')).overflow,
+    viewerTouchAction: getComputedStyle($('viewer')).touchAction,
     zoomVisibility: getComputedStyle($('zoomControls')).visibility,
     miniOpacity: Number(getComputedStyle($('miniMetronome')).opacity),
     navDisplay: getComputedStyle($('navPrev')).display
   };
+  $('viewer').scrollTop = 120;
+  out.zen.scrollTopBefore = $('viewer').scrollTop;
+  $('viewer').dispatchEvent(new WheelEvent('wheel', { deltaY: 160, bubbles: true, cancelable: true }));
+  await sleep(80);
+  out.zen.scrollTopAfterWheel = $('viewer').scrollTop;
 
   const tapViewer = async () => {
     const rect = $('viewer').getBoundingClientRect();
@@ -407,6 +434,9 @@ def main():
         assert names.get("弹唱.cho") == "CHO", out
         assert out["textImport"]["shelfOverflow"] is False, out
         assert out["textImport"]["octetAccept"] is True, out
+        assert out["shelfDensity"]["cardHeight"] >= 140, out
+        assert out["shelfDensity"]["canScroll"] is True, out
+        assert out["shelfDensity"]["scrollTopAfter"] >= 100, out
         assert out["textRender"]["title"] == "小星星", out
         assert "主歌" in out["textRender"]["sections"], out
         assert out["textRender"]["chordTokens"] >= 4, out
@@ -430,7 +460,10 @@ def main():
         assert out["zen"]["zenActive"] is True, out
         assert out["zen"]["background"] in ("rgba(0, 0, 0, 0)", "transparent"), out
         assert out["zen"]["pointerEvents"] == "none", out
-        assert out["zen"]["toolbarVisibility"] == "hidden", out
+        assert out["zen"]["toolbarDisplay"] == "none", out
+        assert out["zen"]["viewerOverflow"] == "hidden", out
+        assert out["zen"]["viewerTouchAction"] == "none", out
+        assert out["zen"]["scrollTopAfterWheel"] == out["zen"]["scrollTopBefore"], out
         assert out["zen"]["zoomVisibility"] == "hidden", out
         assert out["zen"]["miniOpacity"] <= 0.001, out
         assert out["zen"]["navDisplay"] == "none", out

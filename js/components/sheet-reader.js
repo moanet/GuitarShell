@@ -95,24 +95,31 @@ const readerCSS = `
   .manage-btn.active { background: rgba(var(--primary-rgb), .18); border-color: var(--primary); color: var(--accent-text); }
   .search-inp:disabled, .sort-sel:disabled { opacity: .45; cursor: not-allowed; }
 
-  .shelf-view { flex: 1; overflow-y: auto; padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; align-content: start; }
+  .shelf-view { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; align-content: start; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  @media (max-width: 640px) {
+    .shelf-view { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+  }
+  @media (max-width: 340px) {
+    .shelf-view { grid-template-columns: minmax(0, 1fr); }
+  }
   .shelf-view.managing { padding-bottom: 118px; }
-  .score-card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; padding: 7px 7px 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; position: relative; transition: 0.2s; overflow: hidden; }
+  .score-card { box-sizing: border-box; min-height: 148px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; padding: 8px; cursor: pointer; display: flex; flex-direction: row; align-items: flex-start; gap: 8px; position: relative; transition: 0.2s; overflow: hidden; }
   .score-card:hover { background: var(--surface-hover); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(var(--shadow-rgb),.24); }
   .score-card.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), 0 0 0 3px rgba(var(--primary-rgb), .12); }
   .score-cover {
-    width: 100%; aspect-ratio: 3 / 4; border-radius: 10px; overflow: hidden; position: relative;
+    width: 84px; flex: 0 0 84px; aspect-ratio: 3 / 4; border-radius: 9px; overflow: hidden; position: relative;
     display: grid; place-items: center; background: var(--surface-deep); border: 1px solid var(--line);
   }
   .score-cover img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
   .score-cover.has-cover .score-cover-fallback { display: none; }
-  .score-cover-fallback { font-size: 30px; line-height: 1; color: var(--muted); }
+  .score-cover-fallback { font-size: 26px; line-height: 1; color: var(--muted); }
   .score-icon { font-size: 36px; margin-bottom: 8px; }
-  .score-name { font-size: 13px; text-align: center; display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; margin-top: 7px; }
-  .score-meta { font-size: 9px; color: var(--muted); text-align: center; margin-top: 2px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .score-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding-top: 1px; }
+  .score-name { font-size: 13px; text-align: left; display: -webkit-box; width: 100%; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; margin-top: 0; word-break: break-word; }
+  .score-meta { font-size: 10px; color: var(--muted); text-align: left; margin-top: 4px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .tag-badge {
-    display: block; margin-top: 5px; z-index: 2; max-width: 100%; box-sizing: border-box;
+    display: block; margin-top: 7px; z-index: 2; max-width: 100%; box-sizing: border-box;
     padding: 3px 7px; border-radius: 8px; border: 1px solid rgba(var(--primary-rgb), .32);
     background: rgba(var(--primary-rgb), .13); color: var(--accent-text);
     font-size: 9px; line-height: 1.4; font-weight: 700; pointer-events: none;
@@ -237,7 +244,9 @@ const readerCSS = `
   }
   .zen-lock.show { display: block; }
   :host(.reader-fullscreen) .zen-lock { position: fixed; }
-  :host(.zen-active) .toolbar { visibility: hidden; pointer-events: none; }
+  :host(.zen-active) .toolbar { display: none !important; }
+  :host(.zen-active) .viewer { overflow: hidden; touch-action: none; }
+  :host(.zen-active) .content-container { padding-top: 8px; padding-bottom: 8px; }
   :host(.zen-active) .zoom-controls,
   :host(.zen-active) .mini-metronome {
     opacity: 0 !important; visibility: hidden; pointer-events: none;
@@ -1379,9 +1388,11 @@ class SheetReader extends HTMLElement {
           <button class="card-edit-btn" type="button" title="编辑乐谱信息">✎</button>
           <span class="select-mark" aria-hidden="true">✓</span>
           <div class="score-cover"><span class="score-cover-fallback" aria-hidden="true">${icon}</span></div>
-          <div class="score-name" title="${escapeHtml(score.name)}">${escapeHtml(score.name)}</div>
-          <div class="score-meta">${escapeHtml(metaText)}</div>
-          ${tags.length ? `<span class="tag-badge" title="${escapeHtml(tags.join('，'))}">${escapeHtml(badgeText)}</span>` : ''}
+          <div class="score-info">
+            <div class="score-name" title="${escapeHtml(score.name)}">${escapeHtml(score.name)}</div>
+            <div class="score-meta">${escapeHtml(metaText)}</div>
+            ${tags.length ? `<span class="tag-badge" title="${escapeHtml(tags.join('，'))}">${escapeHtml(badgeText)}</span>` : ''}
+          </div>
           <div class="card-actions">
             <button class="action-btn btn-delete" title="删除">×</button>
           </div>
@@ -3552,12 +3563,14 @@ class SheetReader extends HTMLElement {
     zoomControls.addEventListener('touchstart', () => setZoomFaded(false), { passive: true });
 
     viewer.addEventListener('wheel', (e) => {
+      if (this.zenLocked) { e.preventDefault(); return; }
       fadeReaderChrome(); // 滚动谱面时虚化
       if (miniMetronome.classList.contains('advanced')) miniMetronome.classList.remove('advanced');
       if (e.ctrlKey || e.metaKey) { e.preventDefault(); const delta = e.deltaY > 0 ? -0.15 : 0.15; this.scale = Math.max(1, Math.min(6, this.scale + delta)); applyScale(); }
     }, { passive: false });
     
     viewer.addEventListener('pointerdown', (e) => {
+      if (this.zenLocked) { this.isDragging = false; return; }
       fadeReaderChrome(); // 触摸/拖拽谱面时虚化
       if (miniMetronome.classList.contains('advanced')) miniMetronome.classList.remove('advanced');
       if (e.target.closest('.zoom-controls') || e.target.closest('.toolbar') || e.target.closest('.mini-metronome') || e.target.closest('.nav-zone')) return;
@@ -3572,6 +3585,7 @@ class SheetReader extends HTMLElement {
       return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
     };
     viewer.addEventListener('touchstart', (e) => {
+      if (this.zenLocked) return;
       fadeReaderChrome();
       if (e.touches.length === 2) {
         this.isDragging = false;
@@ -3589,6 +3603,7 @@ class SheetReader extends HTMLElement {
     }, { passive: false });
 
     viewer.addEventListener('touchmove', (e) => {
+      if (this.zenLocked) { e.preventDefault(); return; }
       if (!pinchState || e.touches.length !== 2) return;
       e.preventDefault();
       const t1 = e.touches[0], t2 = e.touches[1];
@@ -3614,7 +3629,7 @@ class SheetReader extends HTMLElement {
     viewer.addEventListener('touchend', endPinch, { passive: true });
     viewer.addEventListener('touchcancel', () => { pinchState = null; }, { passive: true });
 
-    viewer.addEventListener('pointermove', (e) => { if (!this.isDragging) return; e.preventDefault(); viewer.scrollLeft = this.scrollLeftStart - (e.clientX - this.startX); viewer.scrollTop = this.scrollTopStart - (e.clientY - this.startY); });
+    viewer.addEventListener('pointermove', (e) => { if (this.zenLocked || !this.isDragging) return; e.preventDefault(); viewer.scrollLeft = this.scrollLeftStart - (e.clientX - this.startX); viewer.scrollTop = this.scrollTopStart - (e.clientY - this.startY); });
     const onPointerUp = () => { this.isDragging = false; viewer.style.cursor = 'grab'; };
     viewer.addEventListener('pointerup', onPointerUp); viewer.addEventListener('pointercancel', onPointerUp);
     $('zoomIn').onclick = () => { this.scale = Math.min(6, this.scale * 1.25); applyScale(); };

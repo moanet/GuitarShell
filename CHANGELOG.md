@@ -3,6 +3,35 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.12b — 书架滚动、禅定锁滚与工具栏让位（已构建并真机验收，2026-11-24）
+
+> 版本号 `0.1.12b` / `versionCode 116`。只读书架布局与禅定交互，不改数据层、读谱格式与既有功能。
+
+**书架**
+
+- `.shelf-view` 补 `min-height:0`、`overflow-y:auto`、`-webkit-overflow-scrolling:touch` 与 `overscroll-behavior:contain`，成为独立纵向滚动容器；条目多时在书架内部上下滑，外层栏目不动。
+- 手机 2 列（≤340px 单列），卡片改成横向：左封面、右书名 / 类型 / 标签；封面固定 84px 宽、3:4，不再被挤扁。
+- 卡片加 `box-sizing:border-box` 与 `min-height:148px`。此前 CSS Grid 会在条目变多时把卡片压成 18px 的细条，内容被 `overflow:hidden` 裁掉，书架因此永远撑不出滚动高度；固定最小高度后卡片与滚动同时恢复。
+- 书名 13px、最多两行，类型 10px，标签完整显示。点击、编辑、删除与批量管理逻辑不变。
+
+**禅定模式**
+
+- 锁定后 `wheel` / `touchstart` / `touchmove` / `pointerdown` / `pointermove` 全部拦截，不再手动修改 `scrollTop/scrollLeft`；`:host(.zen-active) .viewer` 设 `overflow:hidden` 与 `touch-action:none`，手指与鼠标滚轮都不能滚动。
+- `:host(.zen-active) .toolbar { display:none !important; }`，阅读工具栏不再只是隐藏，而是完全不占位；谱面顶部上移到 App 头部下方，长谱 / 多页谱获得更多纵向空间。
+- 轻点浮出解锁条、长按 1.5 秒解锁、`L` 短按 / 长按行为不变；解锁后工具栏与正常滚动恢复。
+
+**验证**
+
+- `npm run check` 通过：`v0.1.12b，32 个 JS 文件，SW 缓存与版本一致`。
+- `gs_022.py` 360 / 320 通过：新增 `cardHeight >= 140`、书架 `scrollHeight > clientHeight`、`scrollTop` 可变化，以及禅定 `toolbarDisplay:none`、`viewerOverflow:hidden`、`viewerTouchAction:none`、滚轮前后 `scrollTop` 不变。
+- release APK `4,429,070` 字节，SHA-256 `8DC2893860C5DA518C5018C4D3B97FA84491AD298D8C3D0E58884F12871322BF`；`versionCode 116` / `versionName 0.1.12b`，证书 SHA-256 保持 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- 真机 `ca14b16` 覆盖安装：原谱与练习记录保留；书架 2 列 4 行，封面 84×112，书名 / 类型 / 标签完整；14 张谱时可在顶部与底部之间自由滚动。禅定下工具栏消失，上滑前后画面一致，点击浮出解锁条，长按解锁后恢复。
+- 临时 4 张“溢出测试”谱已从书架批量删除，`/sdcard/Download/GuitarShell/` 下临时文件已清理。
+
+**状态**
+
+- 本轮未创建 tag 或 GitHub Release，等待用户真机试用确认。
+
 ## 0.1.12a — 禅定模式阅读化修正（已构建并真机验收，2026-11-24）
 
 > 版本号 `0.1.12a` / `versionCode 115`。只修 0.1.12 禅定模式的阅读体验，不改数据层、读谱格式与既有功能。
