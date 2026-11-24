@@ -54,7 +54,9 @@ export async function buildBackupPayload() {
       lastReadScrollY: item.lastReadScrollY || 0,
       lastReadAt: item.lastReadAt || 0,
       bookmarks: Array.isArray(item.bookmarks) ? item.bookmarks : [],
-      fileHash: item.fileHash || ''
+      fileHash: item.fileHash || '',
+      format: item.format || '',
+      pageCount: item.pageCount || 0
     });
   }
 
@@ -152,7 +154,9 @@ export async function restoreBackup(payload) {
       lastReadPageRatio: item.lastReadPageRatio || 0,
       lastReadScrollY: item.lastReadScrollY || 0,
       lastReadAt: item.lastReadAt || 0,
-      bookmarks: Array.isArray(item.bookmarks) ? item.bookmarks : []
+      bookmarks: Array.isArray(item.bookmarks) ? item.bookmarks : [],
+      format: item.format || '',
+      pageCount: item.pageCount || 0
     });
   }
   await dbService.clearAllData();

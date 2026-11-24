@@ -19,6 +19,7 @@ python tests/browser/gs_018.py
 python tests/browser/gs_019.py
 python tests/browser/gs_020.py
 python tests/browser/gs_021.py
+python tests/browser/gs_022.py
 ```
 
 脚本会：
@@ -31,8 +32,8 @@ python tests/browser/gs_021.py
 
 - `GS_BROWSER`：浏览器可执行文件路径。
 - `GS_BASE_URL`：默认 `http://127.0.0.1:8123/`。
-- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`。
-- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` 视口宽度，默认 `320`；可设 `360` 复跑宽屏。
+- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`。
+- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` 视口宽度；`gs_022.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
 - `GS_THEME`：仅 `gs_020.py`，`deep`（默认）或 `light`，用于检查两套主题下的设置卡片。
 
 ## 当前覆盖
@@ -99,5 +100,15 @@ python tests/browser/gs_021.py
 - MOVE 失败且回退 PUT 失败时，保留临时文件，错误提示包含“临时文件已保留”。
 - 正式文件 GET 404 时，下载回退读取 `.uploading`；正式文件是半截 JSON 时，也改用完整的 `.uploading`；两者都不存在时报“云端没有找到备份文件”。
 - 首个自定义端点 503 时自动换到本地端点，后续请求全部锁在该端点，避免跨端点替换。
+
+`gs_022.py`：
+
+- 清库并显式切回乐谱页，导入 `.txt` / `.md` / `.cho`，书架分别显示 `TXT` / `MD` / `CHO`，无横向溢出。
+- 打开 ChordPro 文本谱：标题、段落、和弦 token、纯和弦行渲染正确；文本模式隐藏书签与拆分，末行不溢出。
+- 滚动到 58% 后当前行高亮切换；保存进度、返回、重开后点进度条恢复到约 58%。
+- 导入 PDF 后等待封面生成：卡片有封面、图片解码完成、宽 320，meta 为 `PDF · 3 页`。
+- 禅定锁屏：短按 1 秒仍锁，返回键被层级栈吞掉；长按 3.3 秒解锁。
+- 桌面键盘：PageDown 滚动、`+` 缩放、`F` 全屏、Esc 先退全屏、Space 切节拍器、`L` 锁屏。
+- IndexedDB 为 v4，stores 为 `assets/logs/scores`；返回书架 320 / 360 均无溢出。
 
 CI 只做 Python 语法编译；浏览器交互需要本机浏览器，仍在本地执行。

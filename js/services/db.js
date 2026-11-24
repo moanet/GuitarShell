@@ -1,20 +1,31 @@
 const DB_NAME = 'GuitarShellDB';
 const STORE_NAME = 'scores';
 const LOG_STORE_NAME = 'logs';
-const DB_VERSION = 3;
+const ASSET_STORE_NAME = 'assets';
+const DB_VERSION = 4;
 
 function openDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (e) => {
-      const db = e.target.result;
+    request.onupgradeneeded = () => {
+      const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
       }
       if (!db.objectStoreNames.contains(LOG_STORE_NAME)) {
         db.createObjectStore(LOG_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains(ASSET_STORE_NAME)) {
+        const assetStore = db.createObjectStore(ASSET_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+        assetStore.createIndex('scoreId', 'scoreId', { unique: false });
+      } else {
+        const tx = request.transaction;
+        const assetStore = tx.objectStore(ASSET_STORE_NAME);
+        if (!assetStore.indexNames.contains('scoreId')) {
+          assetStore.createIndex('scoreId', 'scoreId', { unique: false });
+        }
       }
     };
   });
@@ -26,7 +37,7 @@ export const dbService = {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      const record = { 
+      const record = {
         name, fileBlob, createdAt: Date.now(),
         updatedAt: extraData.updatedAt || Date.now(),
         tags: extraData.tags || [],
@@ -34,7 +45,10 @@ export const dbService = {
         lastReadPageRatio: extraData.lastReadPageRatio || 0,
         lastReadScrollY: extraData.lastReadScrollY || 0,
         lastReadAt: extraData.lastReadAt || 0,
-        fileHash: extraData.fileHash || ''
+        fileHash: extraData.fileHash || '',
+        format: extraData.format || '',
+        pageCount: extraData.pageCount || 0,
+        coverAssetId: extraData.coverAssetId || null
       };
       const request = store.add(record);
       request.onsuccess = () => resolve(request.result);
@@ -65,7 +79,7 @@ export const dbService = {
     });
   },
 
-  // 🌟 新增：按 id 读取单条乐谱（避免 getAllScores 把所有 Blob 都读进内存）
+  // 🌟 按 id 读取单条乐谱（避免 getAllScores 把所有 Blob 都读进内存）
   async getScore(id) {
     if (id === null || id === undefined) return null;
     const db = await openDB();
@@ -78,8 +92,8 @@ export const dbService = {
     });
   },
 
-  // 🌟 新增：更新单个乐谱的信息（重命名、改标签等）
-  // options.touch=false 用于内部回填（如 fileHash），不把维护动作算成用户改动
+  // 🌟 更新单个乐谱的信息（重命名、改标签等）
+  // options.touch=false 用于内部回填（如 fileHash / coverAssetId），不把维护动作算成用户改动
   async updateScore(id, updateData, options = {}) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -102,11 +116,75 @@ export const dbService = {
   async deleteScore(id) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.delete(id);
-      request.onsuccess = () => resolve();
+      const tx = db.transaction([STORE_NAME, ASSET_STORE_NAME], 'readwrite');
+      tx.objectStore(STORE_NAME).delete(id);
+      const assetStore = tx.objectStore(ASSET_STORE_NAME);
+      const cursorReq = assetStore.index('scoreId').openCursor(IDBKeyRange.only(id));
+      cursorReq.onsuccess = () => {
+        const cursor = cursorReq.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('删除乐谱失败'));
+    });
+  },
+
+  // ==================== 封面 / 缩略图等派生资产 ====================
+  async addAsset(assetData) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(ASSET_STORE_NAME, 'readwrite');
+      const store = tx.objectStore(ASSET_STORE_NAME);
+      const record = { ...assetData, createdAt: assetData.createdAt || Date.now() };
+      const request = store.add(record);
+      request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
+    });
+  },
+
+  async getAsset(id) {
+    if (id === null || id === undefined) return null;
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(ASSET_STORE_NAME, 'readonly');
+      const store = tx.objectStore(ASSET_STORE_NAME);
+      const request = store.get(id);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  async deleteAsset(id) {
+    if (id === null || id === undefined) return;
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(ASSET_STORE_NAME, 'readwrite');
+      tx.objectStore(ASSET_STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  async deleteAssetsForScore(scoreId) {
+    if (scoreId === null || scoreId === undefined) return 0;
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      let count = 0;
+      const tx = db.transaction(ASSET_STORE_NAME, 'readwrite');
+      const cursorReq = tx.objectStore(ASSET_STORE_NAME).index('scoreId').openCursor(IDBKeyRange.only(scoreId));
+      cursorReq.onsuccess = () => {
+        const cursor = cursorReq.result;
+        if (!cursor) return;
+        count += 1;
+        cursor.delete();
+        cursor.continue();
+      };
+      tx.oncomplete = () => resolve(count);
+      tx.onerror = () => reject(tx.error);
     });
   },
 
@@ -184,9 +262,10 @@ export const dbService = {
   async clearAllData() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction([STORE_NAME, LOG_STORE_NAME], 'readwrite');
+      const tx = db.transaction([STORE_NAME, LOG_STORE_NAME, ASSET_STORE_NAME], 'readwrite');
       tx.objectStore(STORE_NAME).clear();
       tx.objectStore(LOG_STORE_NAME).clear();
+      tx.objectStore(ASSET_STORE_NAME).clear();
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });

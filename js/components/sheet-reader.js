@@ -15,6 +15,9 @@ import { parseTagInput, uniqueTags, toggleTag, hasTag, applyTagChanges, collectT
 import { saveBackupFile } from '../services/backup.js';
 import { splitPdfPages } from '../services/pdf-split.js';
 import { isNativeGalleryAvailable, pickGalleryImages, takeGalleryFiles } from '../services/gallery-picker.js';
+import { ensureCoverForScore } from '../services/cover-cache.js';
+import { detectScoreFormat, formatDisplay, formatIcon, SCORE_FORMAT } from '../services/score-format.js';
+import { parseTextScore, readTextBlob } from '../services/text-score.js';
 
 let pdfjsLib = null;
 
@@ -94,18 +97,26 @@ const readerCSS = `
 
   .shelf-view { flex: 1; overflow-y: auto; padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; align-content: start; }
   .shelf-view.managing { padding-bottom: 118px; }
-  .score-card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; padding: 32px 12px 32px; cursor: pointer; display: flex; flex-direction: column; align-items: center; position: relative; transition: 0.2s; overflow: hidden; }
+  .score-card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; padding: 7px 7px 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; position: relative; transition: 0.2s; overflow: hidden; }
   .score-card:hover { background: var(--surface-hover); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(var(--shadow-rgb),.24); }
   .score-card.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), 0 0 0 3px rgba(var(--primary-rgb), .12); }
+  .score-cover {
+    width: 100%; aspect-ratio: 3 / 4; border-radius: 10px; overflow: hidden; position: relative;
+    display: grid; place-items: center; background: var(--surface-deep); border: 1px solid var(--line);
+  }
+  .score-cover img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+  .score-cover.has-cover .score-cover-fallback { display: none; }
+  .score-cover-fallback { font-size: 30px; line-height: 1; color: var(--muted); }
   .score-icon { font-size: 36px; margin-bottom: 8px; }
-  .score-name { font-size: 13px; text-align: center; display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+  .score-name { font-size: 13px; text-align: center; display: block; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; margin-top: 7px; }
+  .score-meta { font-size: 9px; color: var(--muted); text-align: center; margin-top: 2px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .tag-badge {
-    position: absolute; left: 6px; bottom: 6px; z-index: 2; max-width: calc(100% - 12px);
+    display: block; margin-top: 5px; z-index: 2; max-width: 100%; box-sizing: border-box;
     padding: 3px 7px; border-radius: 8px; border: 1px solid rgba(var(--primary-rgb), .32);
     background: rgba(var(--primary-rgb), .13); color: var(--accent-text);
     font-size: 9px; line-height: 1.4; font-weight: 700; pointer-events: none;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
   }
 
   .select-mark {
@@ -193,7 +204,56 @@ const readerCSS = `
   .zoom-controls { position: absolute; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); right: calc(20px + env(safe-area-inset-right, 0px)); display: none; flex-direction: column; gap: 8px; z-index: 20; transition: opacity 0.25s ease; }
   .zoom-controls.faded { opacity: 0.15; }
   .zoom-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(var(--bg1-rgb), 0.92); border: 1px solid var(--line-warm); color: var(--accent-text); font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  
+  .zoom-btn.lock-btn { font-size: 18px; }
+
+  /* 📝 文本谱：等宽、保留空格，当前行轻高亮 */
+  .text-sheet {
+    width: min(900px, 100%); margin: 0 auto; box-sizing: border-box;
+    padding: 18px clamp(14px, 4vw, 34px) 46vh;
+    font-family: "SFMono-Regular", "Cascadia Mono", "Noto Sans Mono CJK SC", "Sarasa Mono SC", ui-monospace, monospace;
+    font-size: calc(var(--text-scale, 1) * 15px); line-height: 1.85; color: var(--txt);
+    tab-size: 4; word-break: break-word;
+  }
+  .text-head { margin: 0 0 18px; padding: 0 0 14px; border-bottom: 1px solid var(--line-warm); }
+  .text-title { margin: 0; font-size: calc(var(--text-scale, 1) * 22px); line-height: 1.35; color: var(--txt); letter-spacing: .2px; }
+  .text-sub { margin: 5px 0 0; font-size: calc(var(--text-scale, 1) * 12px); color: var(--muted); line-height: 1.5; }
+  .text-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .text-tag { padding: 2px 8px; border-radius: 8px; border: 1px solid rgba(var(--primary-rgb), .3); background: rgba(var(--primary-rgb), .1); color: var(--accent-text); font-size: calc(var(--text-scale, 1) * 11px); line-height: 1.5; }
+  .text-block { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1px 8px; margin: 0 -8px; border-left: 2px solid transparent; border-radius: 4px; }
+  .text-block.empty { min-height: 1em; }
+  .text-block.section { margin-top: 18px; margin-bottom: 7px; padding: 3px 10px; border-left: 3px solid var(--primary); background: rgba(var(--primary-rgb), .08); color: var(--accent-text); font-weight: 800; letter-spacing: .3px; }
+  .text-block.chord { color: var(--accent-text); font-weight: 700; letter-spacing: .3px; }
+  .text-block.note { color: var(--muted); font-style: italic; }
+  .text-block.divider { height: 1px; min-height: 1px; margin: 16px 0; padding: 0; background: var(--line-warm); }
+  .text-block.current { background: rgba(var(--primary-rgb), .13); border-left-color: var(--primary); color: var(--txt); }
+  .text-block.section.current { background: rgba(var(--primary-rgb), .17); }
+  .chord-token { color: var(--accent-text); font-weight: 700; }
+
+  /* 🧘 禅定锁屏 */
+  .zen-lock {
+    position: absolute; inset: 0; z-index: 340; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    background: rgba(var(--shadow-rgb), .94); color: var(--txt);
+    -webkit-user-select: none; user-select: none; touch-action: none;
+  }
+  .zen-lock.show { display: flex; }
+  :host(.reader-fullscreen) .zen-lock { position: fixed; }
+  .zen-title { font-size: 16px; font-weight: 800; letter-spacing: 2px; color: var(--accent-text); }
+  .zen-desc { margin-top: -8px; font-size: 12px; color: var(--muted); }
+  .zen-unlock {
+    width: 132px; height: 132px; border-radius: 50%; border: 2px solid var(--line-warm);
+    background: rgba(var(--bg1-rgb), .55); color: var(--txt-soft); font-family: inherit;
+    font-size: 13px; font-weight: 700; line-height: 1.5; cursor: pointer; position: relative;
+    overflow: hidden; touch-action: none; -webkit-tap-highlight-color: transparent;
+  }
+  .zen-unlock:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+  .zen-unlock .zen-progress {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--primary);
+    transform: scaleX(0); transform-origin: left center; opacity: .9;
+  }
+  .zen-unlock.holding .zen-progress { transform: scaleX(1); transition: transform 3s linear; }
+  .zen-hint { font-size: 11px; color: var(--muted); }
+
   .mini-metronome { position: absolute; bottom: 30px; left: 20px; display: none; flex-direction: column; align-items: center; z-index: 20; }
   .mm-panel { background: rgba(var(--bg1-rgb), 0.95); backdrop-filter: blur(8px); border: 1px solid var(--line-warm); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.3s ease; }
   .mm-main-row { display: flex; align-items: center; gap: 12px; }
@@ -432,11 +492,11 @@ const readerHTML = `
     </button>
   </div>
   
-  <input type="file" id="inputSingleFile" accept="image/*,application/pdf" multiple style="display:none">
+  <input type="file" id="inputSingleFile" accept="image/*,application/pdf,.txt,.md,.markdown,.cho,.chordpro,text/plain,text/markdown,application/octet-stream" multiple style="display:none">
   <input type="file" id="inputFolder" webkitdirectory multiple style="display:none">
   <input type="file" id="inputCamera" accept="image/*" capture="environment" style="display:none">
   <input type="file" id="inputGallery" accept="image/*" multiple style="display:none">
-  <input type="file" id="inputMobileFile" accept=".pdf,application/pdf,image/*" multiple style="display:none">
+  <input type="file" id="inputMobileFile" accept=".pdf,application/pdf,image/*,.txt,.md,.markdown,.cho,.chordpro,text/plain,text/markdown,application/octet-stream" multiple style="display:none">
 
   <div class="filter-bar" id="filterBar">
     <div class="search-row">
@@ -487,6 +547,7 @@ const readerHTML = `
     <button class="zoom-btn" id="zoomIn" aria-label="放大">＋</button>
     <button class="zoom-btn" id="zoomOut" aria-label="缩小">−</button>
     <button class="zoom-btn" id="btnFullscreen" aria-label="进入全屏" title="全屏">⤢</button>
+    <button class="zoom-btn lock-btn" id="btnZenLock" aria-label="锁定阅读页" title="禅定锁定">🔒</button>
   </div>
 
   <div class="mini-metronome" id="miniMetronome">
@@ -513,6 +574,13 @@ const readerHTML = `
     <button class="cloud-task-btn cloud-task-dismiss" id="cloudTaskDismiss" type="button" aria-label="关闭任务提示">×</button>
   </div>
   <div class="toast" id="toast"></div>
+
+  <div class="zen-lock" id="zenLock" role="dialog" aria-modal="true" aria-label="禅定模式已锁定">
+    <div class="zen-title">禅定模式</div>
+    <div class="zen-desc">屏幕已锁定，专注练琴</div>
+    <button class="zen-unlock" id="zenUnlock" type="button">长按 3 秒<br>解锁</button>
+    <div class="zen-hint">松开即重新计时</div>
+  </div>
 
   <div id="bookmarkMask">
     <div class="bm-panel">
@@ -709,6 +777,13 @@ class SheetReader extends HTMLElement {
     this.bookmarks = [];             // 🔖 当前谱的页级书签 [{ page, at }]
     this.fullscreen = false;
     this.nativeFullscreenActive = false;
+    this.currentFormat = '';
+    this.coverUrls = new Map();
+    this.coverSeq = 0;
+    this.zenLocked = false;
+    this.zenHoldTimer = null;
+    this.zenLayerOff = null;
+    this.textHighlightRaf = null;
   }
 
   connectedCallback() {
@@ -769,6 +844,11 @@ class SheetReader extends HTMLElement {
     if (this.observer) this.observer.disconnect();
     if (this.destroyPdf) this.destroyPdf();
     if (this.stopMiniMetronome) this.stopMiniMetronome();
+    if (this.setZenLock) this.setZenLock(false);
+    if (this.revokeCoverUrls) this.revokeCoverUrls();
+    if (this.handleReaderKeydown) window.removeEventListener('keydown', this.handleReaderKeydown);
+    if (this.textHighlightRaf) { cancelAnimationFrame(this.textHighlightRaf); this.textHighlightRaf = null; }
+    clearTimeout(this.zenHoldTimer);
     if (this.autoSaveTimer) { clearInterval(this.autoSaveTimer); this.autoSaveTimer = null; }
     if (this.handleTabChange) window.removeEventListener('app-tab-changed', this.handleTabChange);
     if (this.handleMetronomeSettings) window.removeEventListener('metronome-settings', this.handleMetronomeSettings);
@@ -802,6 +882,9 @@ class SheetReader extends HTMLElement {
     const container = $('contentContainer');
     const zoomControls = $('zoomControls');
     const miniMetronome = $('miniMetronome');
+    const zenLock = $('zenLock');
+    const zenUnlock = $('zenUnlock');
+    const btnZenLock = $('btnZenLock');
     const loading = $('loading');
     const toastEl = $('toast');
     const cloudTask = $('cloudTask');
@@ -1159,6 +1242,57 @@ class SheetReader extends HTMLElement {
       return true;
     };
 
+    const revokeCoverUrls = () => {
+      this.coverUrls.forEach((url) => {
+        try { URL.revokeObjectURL(url); } catch (err) {}
+      });
+      this.coverUrls.clear();
+      this.coverSeq += 1;
+    };
+    this.revokeCoverUrls = revokeCoverUrls;
+
+    const updateCardMeta = (card, score) => {
+      const meta = card.querySelector('.score-meta');
+      if (!meta) return;
+      const format = detectScoreFormat(score.name, score.fileBlob && score.fileBlob.type, score.format);
+      meta.textContent = formatDisplay(format, score.name, score.pageCount);
+    };
+
+    const hydrateOneCover = async (score, seq) => {
+      if (seq !== this.coverSeq) return;
+      const card = shelfView.querySelector(`.score-card[data-score-id="${score.id}"]`);
+      if (!card) return;
+      const cover = card.querySelector('.score-cover');
+      if (!cover) return;
+
+      const blob = await ensureCoverForScore(score);
+      if (seq !== this.coverSeq) return;
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        this.coverUrls.set(score.id, url);
+        let img = cover.querySelector('img');
+        if (!img) {
+          img = document.createElement('img');
+          img.alt = '';
+          img.decoding = 'async';
+          cover.appendChild(img);
+        }
+        img.src = url;
+        cover.classList.add('has-cover');
+      }
+      updateCardMeta(card, score);
+    };
+
+    const hydrateCovers = async (scores) => {
+      const seq = this.coverSeq;
+      // 小批并发：PDF 首页解析不要太挤，也不能让 30 张卡排成一条长队
+      const batchSize = 3;
+      for (let i = 0; i < scores.length; i += batchSize) {
+        if (seq !== this.coverSeq) return;
+        await Promise.all(scores.slice(i, i + batchSize).map((score) => hydrateOneCover(score, seq)));
+      }
+    };
+
     this.renderList = () => {
       const keyword = (this.searchKeyword || '').trim();
       this.filteredScores = this.allScores.filter(score => {
@@ -1178,13 +1312,14 @@ class SheetReader extends HTMLElement {
       shelfView.classList.toggle('managing', this.manageMode);
       updateBatchBar();
 
+      revokeCoverUrls();
       shelfView.innerHTML = '';
       if (this.allScores.length === 0) {
         shelfView.innerHTML = `
           <div class="empty-state">
             <div class="empty-mark" aria-hidden="true">♪</div>
             <h3 class="empty-title">还没有乐谱</h3>
-            <p class="empty-desc">导入 PDF、图片或拍照，建立你的练琴书架。也可以先用节拍器热身。</p>
+            <p class="empty-desc">导入 PDF、图片、TXT / Markdown / ChordPro，或拍照，建立你的练琴书架。也可以先用节拍器热身。</p>
             <div class="empty-actions">
               <button class="empty-action primary" id="emptyImport" type="button">导入第一份乐谱</button>
               <button class="empty-action secondary" id="emptyMetronome" type="button">先用节拍器</button>
@@ -1209,18 +1344,21 @@ class SheetReader extends HTMLElement {
         const selected = this.selectedIds.has(score.id);
         card.className = 'score-card' + (selected ? ' selected' : '');
         card.dataset.scoreId = String(score.id);
-        const isPdf = score.name.toLowerCase().endsWith('.pdf');
+        const format = detectScoreFormat(score.name, score.fileBlob && score.fileBlob.type, score.format);
+        const icon = formatIcon(format, score.name);
+        const metaText = formatDisplay(format, score.name, score.pageCount);
         const tags = uniqueTags(score.tags || []);
         const badgeText = tags.length === 0
           ? ''
           : (tags.length === 1 ? `#${tags[0]}` : `#${tags[0]} +${tags.length - 1}`);
 
         card.innerHTML = `
-          ${tags.length ? `<span class="tag-badge" title="${escapeHtml(tags.join('，'))}">${escapeHtml(badgeText)}</span>` : ''}
           <button class="card-edit-btn" type="button" title="编辑乐谱信息">✎</button>
           <span class="select-mark" aria-hidden="true">✓</span>
-          <div class="score-icon">${isPdf ? '📄' : '🖼️'}</div>
+          <div class="score-cover"><span class="score-cover-fallback" aria-hidden="true">${icon}</span></div>
           <div class="score-name" title="${escapeHtml(score.name)}">${escapeHtml(score.name)}</div>
+          <div class="score-meta">${escapeHtml(metaText)}</div>
+          ${tags.length ? `<span class="tag-badge" title="${escapeHtml(tags.join('，'))}">${escapeHtml(badgeText)}</span>` : ''}
           <div class="card-actions">
             <button class="action-btn btn-delete" title="删除">×</button>
           </div>
@@ -1251,6 +1389,8 @@ class SheetReader extends HTMLElement {
 
         shelfView.appendChild(card);
       });
+
+      hydrateCovers(this.filteredScores);
     };
 
     this.loadShelf = async () => {
@@ -1389,7 +1529,13 @@ class SheetReader extends HTMLElement {
 
     const applyScale = () => {
       this.scale = Math.max(1, Math.min(6, Number(this.scale) || 1));
-      container.style.width = `${this.scale * 100}%`;
+      if (this.currentFormat === SCORE_FORMAT.TEXT) {
+        container.style.width = '100%';
+        container.style.setProperty('--text-scale', String(this.scale));
+      } else {
+        container.style.removeProperty('--text-scale');
+        container.style.width = `${this.scale * 100}%`;
+      }
       // 缩放改变的是 CSS 宽度，位图要按新宽度重渲才不糊（防抖，滚轮连续缩放不卡）
       if (this.refreshPdfResolution) this.refreshPdfResolution();
     };
@@ -1641,7 +1787,11 @@ class SheetReader extends HTMLElement {
         ratio = Math.min(1, Math.max(0, (scrollTop - top) / Math.max(1, h - viewH)));
       } else {
         const img = container.querySelector('img');
-        if (img) {
+        const textSheet = container.querySelector('.text-sheet');
+        if (textSheet) {
+          page = 1;
+          ratio = Math.min(1, Math.max(0, scrollTop / Math.max(1, viewer.scrollHeight - viewH)));
+        } else if (img) {
           const top = img.getBoundingClientRect().top - viewTop + scrollTop;
           const h = img.offsetHeight || 1;
           page = 1;
@@ -1659,7 +1809,7 @@ class SheetReader extends HTMLElement {
       const boxes = pageBoxes();
       const targetEl = boxes.length
         ? (boxes.find(b => parseInt(b.dataset.page, 10) === page) || boxes[boxes.length - 1])
-        : container.querySelector('img');
+        : (container.querySelector('img') || container.querySelector('.text-sheet'));
       if (!targetEl) return;
 
       const viewTop = viewer.getBoundingClientRect().top;
@@ -2111,7 +2261,8 @@ class SheetReader extends HTMLElement {
       });
       this.lastKnownPosition = pos;
       if (withToast) {
-        showToast(pos.total > 1 ? `已保存：第 ${pos.page} 页 / 共 ${pos.total} 页` : `已保存当前阅读位置`);
+        if (this.currentFormat === SCORE_FORMAT.TEXT) showToast('已保存文本谱阅读位置');
+        else showToast(pos.total > 1 ? `已保存：第 ${pos.page} 页 / 共 ${pos.total} 页` : `已保存当前阅读位置`);
       }
       return true;
     };
@@ -2183,7 +2334,122 @@ class SheetReader extends HTMLElement {
     viewer.addEventListener('scroll', () => {
       const banner = $('progressBanner');
       if (banner && banner.classList.contains('show') && viewer.scrollTop > 40) hideProgressBanner();
+      scheduleTextHighlight();
     }, { passive: true });
+
+    // ==================== 📝 文本谱渲染 ====================
+    const appendInlineChords = (el, text) => {
+      // [C] 和弦原样保留括号，只上色，不重排歌词，保证空格与和弦位置不变
+      const parts = String(text).split(/(\[[^\]\n]{1,24}\])/g);
+      parts.forEach((part) => {
+        if (!part) return;
+        if (/^\[[^\]\n]{1,24}\]$/.test(part)) {
+          const span = document.createElement('span');
+          span.className = 'chord-token';
+          span.textContent = part;
+          el.appendChild(span);
+        } else {
+          el.appendChild(document.createTextNode(part));
+        }
+      });
+    };
+
+    const buildTextSheet = (parsed) => {
+      const sheet = document.createElement('div');
+      sheet.className = 'text-sheet';
+
+      const head = document.createElement('div');
+      head.className = 'text-head';
+      const title = document.createElement('h2');
+      title.className = 'text-title';
+      title.textContent = parsed.meta.title || '未命名文本谱';
+      head.appendChild(title);
+
+      const subBits = [];
+      if (parsed.meta.artist) subBits.push(parsed.meta.artist);
+      if (parsed.meta.capo) subBits.push(`Capo ${parsed.meta.capo}`);
+      if (parsed.meta.key) subBits.push(`Key ${parsed.meta.key}`);
+      if (subBits.length) {
+        const sub = document.createElement('p');
+        sub.className = 'text-sub';
+        sub.textContent = subBits.join(' · ');
+        head.appendChild(sub);
+      }
+      sheet.appendChild(head);
+
+      const blocks = parsed.blocks.slice();
+      if (blocks[0] && blocks[0].type === 'section' && blocks[0].text === parsed.meta.title) blocks.shift();
+
+      if (!blocks.length) {
+        const empty = document.createElement('div');
+        empty.className = 'text-block note';
+        empty.textContent = '这份文本谱没有可显示的正文。';
+        sheet.appendChild(empty);
+        return sheet;
+      }
+
+      blocks.forEach((block) => {
+        const el = document.createElement('div');
+        el.className = `text-block ${block.type}`;
+        if (block.type === 'empty') {
+          el.textContent = '';
+          el.setAttribute('aria-hidden', 'true');
+        } else if (block.type === 'divider') {
+          el.textContent = '';
+          el.setAttribute('aria-hidden', 'true');
+        } else if (block.type === 'line') {
+          appendInlineChords(el, block.text);
+        } else {
+          el.textContent = block.text;
+        }
+        sheet.appendChild(el);
+      });
+      return sheet;
+    };
+
+    const renderTextScore = async (fileBlob, fileName) => {
+      this.currentFormat = SCORE_FORMAT.TEXT;
+      this.totalPages = 1;
+      container.style.padding = '0';
+      container.style.width = '100%';
+      const parsed = parseTextScore(await readTextBlob(fileBlob), fileName);
+      const sheet = buildTextSheet(parsed);
+      container.appendChild(sheet);
+      container.style.setProperty('--text-scale', String(this.scale));
+      requestAnimationFrame(() => {
+        updateTextHighlight();
+        applyScale();
+      });
+      return parsed;
+    };
+
+    const updateTextHighlight = () => {
+      if (this.currentFormat !== SCORE_FORMAT.TEXT) return;
+      const blocks = Array.from(container.querySelectorAll('.text-sheet .text-block'));
+      if (!blocks.length) return;
+      const viewRect = viewer.getBoundingClientRect();
+      const probe = viewer.scrollTop + viewer.clientHeight * 0.46;
+      let target = blocks[0];
+      for (const block of blocks) {
+        if (!block.offsetHeight && block.classList.contains('empty')) continue;
+        const top = block.getBoundingClientRect().top - viewRect.top + viewer.scrollTop;
+        if (top <= probe) target = block;
+        else break;
+      }
+      if (!target) return;
+      const current = container.querySelector('.text-sheet .text-block.current');
+      if (current === target) return;
+      if (current) current.classList.remove('current');
+      target.classList.add('current');
+    };
+
+    const scheduleTextHighlight = () => {
+      if (this.currentFormat !== SCORE_FORMAT.TEXT || this.textHighlightRaf) return;
+      this.textHighlightRaf = requestAnimationFrame(() => {
+        this.textHighlightRaf = null;
+        updateTextHighlight();
+      });
+    };
 
     this.openScore = async (fileBlob, fileName, fileId, tags, scoreData, opts = {}) => {
       this.currentFileName = fileName.replace(/\.[^/.]+$/, ""); 
@@ -2191,7 +2457,11 @@ class SheetReader extends HTMLElement {
       this.currentFileBlob = fileBlob;
       this.currentTags = Array.isArray(tags) ? tags.slice() : [];
       this.closingReader = false;
-      const isPdf = fileName.toLowerCase().endsWith('.pdf');
+      const format = detectScoreFormat(fileName, fileBlob && fileBlob.type, scoreData && scoreData.format);
+      const isPdf = format === SCORE_FORMAT.PDF;
+      const isText = format === SCORE_FORMAT.TEXT;
+      this.currentFormat = format;
+      if (!format) { showToast('不支持的文件格式'); return; }
       btnSplit.style.display = isPdf ? 'flex' : 'none';
       untrackLayer('split-modal');
       untrackLayer('split-picker');
@@ -2199,7 +2469,7 @@ class SheetReader extends HTMLElement {
       $('splitModalMask').classList.remove('show');
 
       // 🔖 载入这份谱已有的书签（存于乐谱记录里，随备份 / 云同步一起走）
-      this.bookmarks = (scoreData && Array.isArray(scoreData.bookmarks))
+      this.bookmarks = (!isText && scoreData && Array.isArray(scoreData.bookmarks))
         ? scoreData.bookmarks
             .filter(b => b && Number(b.page) > 0)
             .map(b => ({ page: Number(b.page), at: Number(b.at) || 0 }))
@@ -2214,7 +2484,7 @@ class SheetReader extends HTMLElement {
       
       btnBack.style.display = 'flex'; btnLog.style.display = 'flex'; viewer.style.display = 'block'; miniMetronome.style.display = 'flex'; 
       $('btnSavePos').style.display = 'flex';
-      $('btnBookmarks').style.display = 'flex';
+      $('btnBookmarks').style.display = isText ? 'none' : 'flex';
       $('navPrev').classList.add('show'); $('navNext').classList.add('show');
       
       if (miniMetronome.classList.contains('advanced')) miniMetronome.classList.remove('advanced');
@@ -2226,6 +2496,7 @@ class SheetReader extends HTMLElement {
       if (this.destroyPdf) this.destroyPdf();
       if (this.observer) { this.observer.disconnect(); this.observer = null; }
       container.innerHTML = ''; this.scale = 1; applyScale();
+      viewer.scrollTop = 0; viewer.scrollLeft = 0;
       
       this.totalPages = 0;
       this.lastKnownPosition = null;
@@ -2247,6 +2518,8 @@ class SheetReader extends HTMLElement {
 
       if (isPdf) {
         try { await renderPDFLazy(fileBlob); } catch (err) { await showAlert(err.message, { title: '无法打开乐谱' }); }
+      } else if (isText) {
+        try { await renderTextScore(fileBlob, fileName); } catch (err) { await showAlert(err.message, { title: '无法打开文本谱' }); }
       } else {
         this.currentObjectUrl = URL.createObjectURL(fileBlob);
         const img = document.createElement('img'); img.src = this.currentObjectUrl; img.draggable = false;
@@ -2285,6 +2558,7 @@ class SheetReader extends HTMLElement {
       }
 
       // 🌟 阅读模式收尾：热区对齐 + 启动 5 分钟兜底自动保存
+      if (isText) requestAnimationFrame(scheduleTextHighlight);
       positionNavZones();
       startAutoSave();
       // 读谱期间保持屏幕常亮，直到返回书架 / 切走读谱页
@@ -2302,6 +2576,11 @@ class SheetReader extends HTMLElement {
       wakeLock.release('reader');
       hideProgressBanner();
       this.lastKnownPosition = null;
+
+      if (this.setZenLock) this.setZenLock(false);
+      if (this.textHighlightRaf) { cancelAnimationFrame(this.textHighlightRaf); this.textHighlightRaf = null; }
+      this.currentFormat = '';
+      container.style.removeProperty('--text-scale');
 
       $('btnSavePos').style.display = 'none';
       $('btnBookmarks').style.display = 'none';
@@ -2367,7 +2646,9 @@ class SheetReader extends HTMLElement {
       $('logName').value = this.currentFileName; $('logBpm').value = this.mmBpm; $('logTime').value = '';
       // 🌟 打开弹窗时快照当前阅读位置并展示出来
       const pos = getReadingPosition();
-      $('logProgressText').textContent = (pos.total > 1) ? `第 ${pos.page} 页 / 共 ${pos.total} 页` : '第 1 页';
+      $('logProgressText').textContent = this.currentFormat === SCORE_FORMAT.TEXT
+        ? (pos.ratio > 0 ? `文本谱 · 约 ${Math.round(pos.ratio * 100)}%` : '文本谱 · 开头')
+        : ((pos.total > 1) ? `第 ${pos.page} 页 / 共 ${pos.total} 页` : '第 1 页');
       logInitial = readLogForm();
       logModalMask.classList.add('show');
       trackLayer('log-modal', closeLogModal);
@@ -2474,12 +2755,8 @@ class SheetReader extends HTMLElement {
       try {
         const existingScores = await dbService.getAllScores();
         for (const file of filesArray) {
-          // 只要后缀是图片或PDF就放行
-          const fileName = file.name.toLowerCase();
-          const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(fileName);
-          const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf');
-
-          if (isImage || isPdf) {
+          const format = detectScoreFormat(file.name, file.type);
+          if (format) {
             let fileHash = '';
             try {
               loading.textContent = `正在校验 ${file.name}...`;
@@ -2496,8 +2773,8 @@ class SheetReader extends HTMLElement {
             }
             
             try {
-              const id = await dbService.addScore(file.name, file, { fileHash });
-              existingScores.push({ id, name: file.name, fileBlob: file, fileHash });
+              const id = await dbService.addScore(file.name, file, { fileHash, format });
+              existingScores.push({ id, name: file.name, fileBlob: file, fileHash, format });
               addedCount++;
             } catch (err) {
               console.error('保存文件失败:', file.name, err);
@@ -3025,6 +3302,53 @@ class SheetReader extends HTMLElement {
       if (!zoomControls.classList.contains('faded')) setZoomFaded(true);
     };
 
+    // 🧘 禅定锁屏：遮住全部控件，必须连续长按 3 秒解锁
+    const cancelZenHold = () => {
+      clearTimeout(this.zenHoldTimer);
+      this.zenHoldTimer = null;
+      zenUnlock.classList.remove('holding');
+    };
+
+    this.setZenLock = (on) => {
+      const next = !!on;
+      if (this.zenLocked === next) return;
+      this.zenLocked = next;
+      cancelZenHold();
+      zenLock.classList.toggle('show', next);
+      if (next) {
+        trackLayer('zen-lock', () => {}, { blocksNavigation: true });
+        wakeLock.acquire('reader');
+      } else {
+        untrackLayer('zen-lock');
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      }
+    };
+
+    btnZenLock.onclick = (e) => {
+      e.stopPropagation();
+      this.setZenLock(true);
+    };
+
+    zenUnlock.addEventListener('pointerdown', (e) => {
+      if (!this.zenLocked) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      clearTimeout(this.zenHoldTimer);
+      zenUnlock.classList.remove('holding');
+      // 强制重排，保证每次按下进度条都从 0 开始
+      void zenUnlock.offsetWidth;
+      zenUnlock.classList.add('holding');
+      this.zenHoldTimer = setTimeout(() => {
+        if (!this.zenLocked) return;
+        this.setZenLock(false);
+        showToast('已解锁');
+      }, 3000);
+    });
+    zenUnlock.addEventListener('pointerup', cancelZenHold);
+    zenUnlock.addEventListener('pointercancel', cancelZenHold);
+    zenUnlock.addEventListener('pointerleave', cancelZenHold);
+    zenUnlock.addEventListener('contextmenu', (e) => e.preventDefault());
+
     // 🌟 全屏：CSS 先覆盖整个视口（兼容 WebView），再尽量申请浏览器原生全屏隐藏地址栏 / 状态栏
     this.setReaderFullscreen = (on) => {
       const next = !!on;
@@ -3066,6 +3390,61 @@ class SheetReader extends HTMLElement {
       setZoomFaded(false);
       this.setReaderFullscreen(!this.fullscreen);
     };
+
+    // ⌨️ 桌面键盘：只在阅读页、无弹窗、未聚焦输入框时接管
+    const isReaderModalOpen = () => !!this.shadowRoot.querySelector(
+      '.modal-mask.show, #bookmarkMask.show, #actionSheetMask.show'
+    );
+
+    this.handleReaderKeydown = (e) => {
+      if (!this.classList.contains('reading')) return;
+      if (this.zenLocked) return;
+
+      const target = e.composedPath ? e.composedPath()[0] : e.target;
+      const tag = target && target.tagName ? target.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || (target && target.isContentEditable)) return;
+      if (isReaderModalOpen()) return;
+
+      const key = e.key;
+      const lower = key.length === 1 ? key.toLowerCase() : key;
+      const pageStep = Math.max(120, Math.round(viewer.clientHeight * 0.86));
+      let handled = true;
+
+      if (key === 'PageDown') viewer.scrollBy({ top: pageStep, behavior: 'smooth' });
+      else if (key === 'PageUp') viewer.scrollBy({ top: -pageStep, behavior: 'smooth' });
+      else if (key === 'ArrowDown') viewer.scrollBy({ top: 80, behavior: 'smooth' });
+      else if (key === 'ArrowUp') viewer.scrollBy({ top: -80, behavior: 'smooth' });
+      else if (key === 'Home') viewer.scrollTo({ top: 0, behavior: 'smooth' });
+      else if (key === 'End') viewer.scrollTo({ top: viewer.scrollHeight, behavior: 'smooth' });
+      else if (key === '+' || key === '=') {
+        this.scale = Math.min(6, this.scale + 0.25);
+        applyScale();
+        setZoomFaded(false);
+      } else if (key === '-') {
+        this.scale = Math.max(1, this.scale - 0.25);
+        applyScale();
+        setZoomFaded(false);
+      } else if (lower === 'f' && !e.repeat) {
+        this.setReaderFullscreen(!this.fullscreen);
+      } else if (lower === 'l' && !e.repeat) {
+        this.setZenLock(true);
+      } else if (key === ' ' && !e.repeat) {
+        if (e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'button') return;
+        const mmPlay = $('mmPlay');
+        if (mmPlay) mmPlay.click();
+      } else if (key === 'Escape' && !e.repeat) {
+        if (this.fullscreen) this.setReaderFullscreen(false);
+        else closeReader();
+      } else {
+        handled = false;
+      }
+
+      if (handled) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', this.handleReaderKeydown);
 
     // 鼠标在谱面上移动即虚化（只在状态不同时写 DOM，避免每帧重排）
     viewer.addEventListener('pointermove', () => {

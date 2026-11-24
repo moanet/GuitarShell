@@ -163,7 +163,7 @@ def main():
   const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
 
   const db = await new Promise((res, rej) => {
-    const q = indexedDB.open('GuitarShellDB', 3);
+    const q = indexedDB.open('GuitarShellDB');
     q.onsuccess = () => res(q.result);
     q.onerror = () => rej(q.error);
   });
@@ -345,7 +345,7 @@ def main():
   sr.querySelector('#splitConfirm').click();
 
   const db = await new Promise((res, rej) => {
-    const q = indexedDB.open('GuitarShellDB', 3);
+    const q = indexedDB.open('GuitarShellDB');
     q.onsuccess = () => res(q.result);
     q.onerror = () => rej(q.error);
   });

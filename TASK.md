@@ -3,7 +3,7 @@
 > 项目总账：记录长期路线、版本时间线、任务队列、冒烟清单、构建发布、技术债与避坑指南。
 > 当前迭代：见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 > 已发布版本的完整改动与验收证据：见 [CHANGELOG.md](CHANGELOG.md)。
-> 当前基线：Android 正式 Release 为 `0.1.11b`；`0.1.5`–`0.1.11` 的改动与发布记录见 `CHANGELOG.md`；`0.1.11b` 完成日间模式启动动画、界面图标与 favicon 主题联动、顶部导航浅细分割线，已推送 `main`、Pages 部署网页版并发布 GitHub Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
+> 当前基线：Android 正式包为 `0.1.12`（`versionCode 114`）；`0.1.5`–`0.1.11b` 的改动与发布记录见 `CHANGELOG.md`；`0.1.12` 完成读谱底座（PDF/图片封面、TXT/Markdown/ChordPro、禅定锁屏、桌面快捷键），已真机验收并推送 `main`，未单独创建 GitHub Release。`0.1.8` 双指缩放、`0.1.9` 20 张完整导入、调音器麦克风与震动权限均已由用户确认；Android 12 及以下真机验证按决定永久跳过。
 
 ## 1. 当前阶段
 
@@ -99,6 +99,10 @@
 
 0.1.11b 汇总 `0.1.11` 之后的两轮 UI 收口。启动屏合并为单文件双主题版本，原生按 `gs_native/gs_theme` 冷启动加载 `#deep` / `#light` 并同步系统栏；日间中心同心圆对齐浅色图标的三层结构。页头品牌图标、全局设置「关于」图标与 favicon 随主题切换，新增浅色 `32 / 192 / 512` PNG 并接入构建与 SW 缓存。顶部导航去掉渐变底色、`box-shadow` 与 `backdrop-filter`，改为透明背景 + `1px var(--line)` 分割线，选中标签去掉外投影、只留内高光，与全局设置标题栏统一。README 下载与安装只保留最新 Release 信息。`0.1.11a` 仅本地真机试用、不单独发布。`npm run check` 通过 `v0.1.11b / 29 个 JS`；Edge 360 宽双主题通过；release APK `4,417,334` 字节 / SHA-256 `E858F6ED95CB8BBB6DCC3C1C4001B8FF4E8E06E21E3C8E33CC23B8B0E4DEDDA7`，`versionCode 113`，已覆盖安装 `ca14b16`，书架 6 张乐谱与练习数据保留，日间冷启动浅色动画验证正常。已推送 `main`、发布 GitHub Release `v0.1.11b`。范围与验收见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.11b 段。
 
+### 1.14 0.1.12 读谱底座（已完成真机验收，待发布）
+
+0.1.12 把读谱页补成阅读底座：PDF / 图片首页封面、TXT / Markdown / 轻量 ChordPro 导入与渲染、禅定锁屏、桌面键盘快捷键。数据层升到 IndexedDB v4，新增 `assets` store 缓存封面；备份 schema 升到 3，仍不导出封面资产。文本谱按第 1 页 + 滚动比例存进度，当前阅读行高亮，缩放改字号；锁屏必须长按 3 秒，返回键被层级栈吞掉；键盘覆盖 PageUp/PageDown、↑↓、Home/End、+/-、F、L、Space、Esc，锁定状态不提供解锁绕过。真机发现 Android DocumentsUI 把 `.cho` 识别为 BIN，已在文件输入 `accept` 增加 `application/octet-stream`，格式仍由扩展名 / MIME 统一判定。`npm run check` 通过 `v0.1.12 / 32 个 JS`；新增 `gs_022.py`，320 / 360 通过；`gs_015/016/018/019/020/021` 全量复跑通过（旧脚本的 IndexedDB 固定版本 3 改为按当前版本打开，兼容 DB v4）。release APK `4,428,186` 字节 / SHA-256 `9339ED821C605020E36A968CFE8EA8C8E0E68DBC91D70B97989D29F74E33CBEB`，`versionCode 114`，已覆盖安装 `ca14b16`，原 6 张谱 / 10 条练习保留；真机导入 TXT / MD / CHO、打开 TXT 与 CHO、锁屏短按/长按均通过，测试谱已清理。范围与边界见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [CHANGELOG.md](CHANGELOG.md) 0.1.12 段。
+
 ## 2. 演进路线
 
 
@@ -175,6 +179,7 @@ flowchart LR
 | 0.1.10            | 节拍器设置五卡分组 / 8 组拍号 / 细分说明 / 定时快捷档 | 已正式发布，GitHub Release `v0.1.10` |
 | 0.1.11            | WebDAV 可恢复写入：临时文件 + 校验 + MOVE / PUT 回退 | 已正式发布，GitHub Release `v0.1.11` |
 | 0.1.11b           | 日间模式启动动画 / 界面图标与 favicon 联动 / 顶部导航浅细分割线 | 已正式发布，GitHub Release `v0.1.11b` |
+| 0.1.12            | 读谱底座：PDF/图片封面 / TXT·MD·CHO / 禅定锁屏 / 桌面快捷键 | 已真机验收并推送 main，未创建 Release |
 
 ### 2.1 永久非目标（不进入任务队列）
 

@@ -148,7 +148,7 @@ def main():
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const out = {};
   const db = await new Promise((res, rej) => {
-    const q = indexedDB.open('GuitarShellDB', 3);
+    const q = indexedDB.open('GuitarShellDB');
     q.onsuccess = () => res(q.result);
     q.onerror = () => rej(q.error);
   });

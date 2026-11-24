@@ -3,6 +3,62 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.12 — 读谱底座（2026-11-24）
+
+> 版本号 `0.1.12` / `versionCode 114`。把读谱页从“文件查看器”补成阅读底座：PDF / 图片封面、TXT / Markdown / 轻量 ChordPro、禅定锁屏、桌面键盘。不做 OMR、页段/行段循环、自动滚屏、文本书签/目录/搜索、蓝牙踏板。
+
+**数据与格式**
+
+- `DB_VERSION` 从 `3` 升到 `4`，新增 `assets` store（`keyPath: 'id'`、`autoIncrement`、`scoreId` 索引），封面资产与 `scores` 分表存放。
+- `scores` 新增 `format` / `pageCount` / `coverAssetId`；`deleteScore` 在 `[scores, assets]` 事务中级联删除该谱资产，`clearAllData` 清空 `assets`。
+- 备份 schema 从 `2` 升到 `3`，导出/恢复保留 `format`、`pageCount`；不导出封面资产，恢复后按需重新生成。
+- 新增 `js/services/score-format.js`：显式 `format` 优先，其次 PDF / 图片 MIME 与扩展名，再次 `text/plain` / `text/markdown` / `.txt` / `.md` / `.markdown` / `.cho` / `.chordpro`；未知格式不再静默当图片。
+
+**封面与书架**
+
+- 新增 `js/services/cover-cache.js`：PDF 用现有 `pdf.js` 只渲染第 1 页，宽 320px、最大高 520px、暖白底、JPEG 0.78；图片等比缩到 320px；文本谱不生成封面。
+- 封面写入 `assets` 并回填 `coverAssetId` / `pageCount`；同谱复用，并发请求复用同一 Promise；资产丢失时清指针重生成；失败只 `console.warn`，不阻塞书架。
+- 书架卡片改为 3:4 封面、无封面时 `📄` / `🖼️` / `📝` 占位；先出占位再异步补封面；底部显示 `PDF · N 页` / `图片` / `TXT` / `MD` / `CHO`；标签徽标改静态块，避免与封面重叠。
+
+**文本谱**
+
+- 新增 `js/services/text-score.js`：去 BOM、统一换行、去 NUL；支持 `{title/artist/capo/key}`、`{section}`、`{comment}`、`{start_of_*}`、Markdown 标题、`【段落】`、`[主歌]`、纯和弦行与行内 `[C]`。
+- 阅读页新增 `.text-sheet`：标题 / 作者 / Capo / Key、段落标题、和弦行、行内和弦着色；等宽、`pre-wrap`、最大宽 900px，保留空格换行。
+- 当前阅读行按视口 46% 高度高亮，滚动后用 rAF 节流更新；缩放改为字号缩放。
+- 文本谱进度按“第 1 页 + 滚动比例”保存/恢复；隐藏书签和拆分；保留返回、打卡、存进度、迷你节拍器、缩放 / 全屏。
+
+**禅定锁屏**
+
+- 缩放控件新增锁按钮；锁定后全屏遮罩覆盖谱面、工具栏、翻页热区、迷你节拍器与缩放控件，显示“禅定模式 / 长按 3 秒解锁”与 3 秒进度圈。
+- 必须连续长按 3 秒；松手 / 移出 / 取消重置。锁定期间返回键被层级栈吞掉，不关闭阅读页；关闭阅读页强制解锁。
+- 锁定不停止已播放的迷你节拍器；键盘只提供锁定，不提供解锁绕过。
+
+**桌面键盘**
+
+- 阅读页无弹窗、输入框未聚焦时：`PageUp` / `PageDown` 翻屏，`↑` / `↓` 滚 80px，`Home` / `End` 到顶/底，`+` / `=` / `-` 缩放，`F` 全屏，`L` 锁定/解锁，`Space` 播放/暂停迷你节拍器，`Esc` 先退全屏、再关阅读页。
+- 弹窗、拆分选择器、书签面板、记录弹窗打开时不拦截；`contenteditable` / 输入框聚焦不拦截。
+
+**Android 文件选择器边界**
+
+- 真机发现 DocumentsUI 把 `.cho` 识别为 `application/octet-stream`（显示 BIN），原 `accept` 只写扩展名时文件灰显不可选。
+- `inputSingleFile` / `inputMobileFile` 的 `accept` 增加 `application/octet-stream`；格式仍由 `detectScoreFormat` 判定，未知二进制只计失败，不会被当成图片。
+
+**测试**
+
+- `npm run check` 通过：`v0.1.12，32 个 JS 文件，SW 缓存与版本一致`。
+- 新增 `tests/browser/gs_022.py`（端口 `9357`）：文本三格式导入与渲染、滚动高亮、58% 进度恢复、PDF 封面 320×427、锁屏短按/长按/返回键、键盘七键、IndexedDB v4 三 store；320 / 360 均通过。
+- `gs_015` / `gs_016` / `gs_018` / `gs_019` / `gs_020` / `gs_021` 全量复跑通过；旧脚本固定 `indexedDB` 版本 3 改为按当前版本打开，兼容 DB v4。
+- release APK `4,428,186` 字节，SHA-256 `9339ED821C605020E36A968CFE8EA8C8E0E68DBC91D70B97989D29F74E33CBEB`；包名 `com.guitarshell`，`versionCode 114` / `versionName 0.1.12`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名与证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E` 不变。
+- 真机 `ca14b16` 覆盖安装：版本 `0.1.12`，原 6 张乐谱 / 10 条练习保留，老 PDF 卡自动补封面；真机导入 TXT / MD / CHO 并通过 DocumentsUI 选择 `.cho`，文本标题/段落/行内和弦渲染正确；锁屏短按 1 秒无效、长按 3.4 秒解锁、遮罩正常。
+- 测试谱与临时文件已从真机删除，最终书架恢复 6 张。
+
+**边界**
+
+- 不做 PDF / 图片 OMR，不做逐音评分与音频转谱。
+- 不做页段 / 行段循环、自动滚屏、节拍器联动滚屏。
+- 不做文本谱书签 / 目录 / 搜索 / 手动行锚点。
+- 不做蓝牙键盘 / 踏板映射，不做长按快进；不改云同步协议，封面资产不进备份。
+
 ## 0.1.11b — 双主题 UI 联动与顶部导航分割线（已发布 v0.1.11b，2026-11-23）
 
 > `0.1.11a` 仅作为本地真机试用标记，不单独发布；`v0.1.11b` 汇总 `0.1.11` 之后的两轮 UI 收口。版本号 `0.1.11b` / `versionCode 113`。
