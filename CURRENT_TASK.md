@@ -145,13 +145,13 @@
 - 真机 `ca14b16`：覆盖安装后 6 张谱 / 10 条练习保留，老 PDF 卡自动补封面；真机导入 TXT / MD / CHO 成功，TXT 与 CHO 打开后标题、段落、行内和弦渲染正确；锁屏短按 1 秒无效、长按 3.4 秒解锁、遮罩与返回键拦截正常。
 - Android 文件选择器把 `.cho` 识别为 BIN，已给 `inputSingleFile` / `inputMobileFile` 增加 `application/octet-stream`；真机复查 `.cho` 从灰显变为可选，导入后格式为 `CHO`。
 - 测试谱与临时文件已从真机删除，最终书架恢复 6 张。
-- GitHub Release：`https://github.com/moanet/GuitarShell/releases/tag/v0.1.12`，标题 `v0.1.12`，公开、非草稿、非预发布。
+- GitHub Release：`https://github.com/moanet/GuitarShell/releases/tag/v0.1.12`，标题 `v0.1.12`，公开、非草稿、非预发布；Release ID `456339351`，APK asset ID `785820396`，远端下载 SHA-256 复核一致。
 
 ## 5. 发布
 
 - 版本同步：`package.json`、`package-lock.json`、`js/services/version.js`、`sw.js`、`android/app/build.gradle`、README 徽标。
 - 构建 release APK 并校验包名、`versionCode 114`、`versionName 0.1.12`、v1/v2 签名、SHA-256。
-- 更新 `CHANGELOG.md` 与 `TASK.md`；提交并推送 `main`；按需创建 `v0.1.12` Release。
+- 更新 `CHANGELOG.md` 与 `TASK.md`；提交并推送 `main`；已创建 `v0.1.12` Release 并上传 APK。
 
 ## 6. 边界
 

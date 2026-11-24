@@ -51,7 +51,7 @@
 - release APK `4,428,186` 字节，SHA-256 `9339ED821C605020E36A968CFE8EA8C8E0E68DBC91D70B97989D29F74E33CBEB`；包名 `com.guitarshell`，`versionCode 114` / `versionName 0.1.12`，`minSdk 22` / `targetSdk 34`，v1 / v2 签名与证书 SHA-256 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E` 不变。
 - 真机 `ca14b16` 覆盖安装：版本 `0.1.12`，原 6 张乐谱 / 10 条练习保留，老 PDF 卡自动补封面；真机导入 TXT / MD / CHO 并通过 DocumentsUI 选择 `.cho`，文本标题/段落/行内和弦渲染正确；锁屏短按 1 秒无效、长按 3.4 秒解锁、遮罩正常。
 - 测试谱与临时文件已从真机删除，最终书架恢复 6 张。
-- 已推送 `main` 并发布 GitHub Release `v0.1.12`：`https://github.com/moanet/GuitarShell/releases/tag/v0.1.12`。
+- 已推送 `main` 并发布 GitHub Release `v0.1.12`：`https://github.com/moanet/GuitarShell/releases/tag/v0.1.12`；Release ID `456339351`，APK asset ID `785820396`，远端下载复核 SHA-256 一致。
 
 **边界**
 
