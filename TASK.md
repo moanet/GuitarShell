@@ -259,6 +259,8 @@ flowchart LR
 
 * `0.1.10` 已正式发布：节拍器设置收进 5 张卡片，拍号快捷格 8 组、移除 `8/8`，11 个细分补两行说明，倒计时增加 `3 / 5 / 10 / 15 / 20 / 30` 快捷片，关闭重开设置回到顶部；用户确认当前视觉不需要压缩或折叠。`gs_020.py` 320 / 360 与深浅色通过；release APK `4,371,265` 字节 / `versionCode 110`，已发布 GitHub Release `v0.1.10` 并复核远端 SHA-256。详见 [CHANGELOG.md](CHANGELOG.md) 与 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
+* `0.1.11` → `0.1.14c` 已全部收口：`0.1.11` / `0.1.11b` / `0.1.12` / `0.1.12b` / `0.1.14c` 各有 GitHub Release；`0.1.12a` 并入 `v0.1.12b`，`0.1.13` 并入 `v0.1.14c`。当前基线为 `0.1.14c` / `versionCode 120`，逐版本细节见 [CHANGELOG.md](CHANGELOG.md) 与上方时间线。
+
 ## 6. 任务队列
 
 
