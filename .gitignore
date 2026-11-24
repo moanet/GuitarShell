@@ -33,3 +33,6 @@ android/build/
 android/app/build/
 android/local.properties
 android/.idea/
+
+# 制谱引擎规范草案（仅本地参考，不入库）
+docs/Sheet Music Engine/
