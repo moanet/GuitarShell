@@ -1,9 +1,9 @@
 # CURRENT TASK — 0.1.12 读谱底座
 
-> 状态：已完成浏览器 + 真机验收，推送 `main`；未单独创建 GitHub Release
+> 状态：已完成浏览器 + 真机验收，已发布 GitHub Release `v0.1.12`
 > 更新时间：2026-11-24
 > 版本基线：`0.1.11b` / `versionCode 113`，HEAD `aceaee2`
-> 目标版本：`0.1.12` / `versionCode 114`（已完成）
+> 目标版本：`0.1.12` / `versionCode 114`（已完成并发布）
 > 关联：[TASK.md](TASK.md)（项目总账） / [CHANGELOG.md](CHANGELOG.md)（发布历史） / [docs/功能完善指南.md](docs/功能完善指南.md)（范围口径）
 
 ## 1. 目标
@@ -145,6 +145,7 @@
 - 真机 `ca14b16`：覆盖安装后 6 张谱 / 10 条练习保留，老 PDF 卡自动补封面；真机导入 TXT / MD / CHO 成功，TXT 与 CHO 打开后标题、段落、行内和弦渲染正确；锁屏短按 1 秒无效、长按 3.4 秒解锁、遮罩与返回键拦截正常。
 - Android 文件选择器把 `.cho` 识别为 BIN，已给 `inputSingleFile` / `inputMobileFile` 增加 `application/octet-stream`；真机复查 `.cho` 从灰显变为可选，导入后格式为 `CHO`。
 - 测试谱与临时文件已从真机删除，最终书架恢复 6 张。
+- GitHub Release：`https://github.com/moanet/GuitarShell/releases/tag/v0.1.12`，标题 `v0.1.12`，公开、非草稿、非预发布。
 
 ## 5. 发布
 
