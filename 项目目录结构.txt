@@ -63,7 +63,7 @@ GuitarShell/
 ├─ samples/
 │  └─ trial-scores/              试用谱例：TXT / ChordPro / Markdown
 ├─ docs/
-│  ├─ screenshots/               README 界面截图
+│  ├─ screenshots/               实机界面截图
 │  ├─ archive/                   历史迭代简报（CURRENT_TASK-<版本>.md）
 │  ├─ icon/                      品牌图标源文件
 │  ├─ posters/                   发布海报
