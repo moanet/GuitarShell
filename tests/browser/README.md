@@ -20,6 +20,7 @@ python tests/browser/gs_019.py
 python tests/browser/gs_020.py
 python tests/browser/gs_021.py
 python tests/browser/gs_022.py
+python tests/browser/gs_023.py
 ```
 
 脚本会：
@@ -32,8 +33,8 @@ python tests/browser/gs_022.py
 
 - `GS_BROWSER`：浏览器可执行文件路径。
 - `GS_BASE_URL`：默认 `http://127.0.0.1:8123/`。
-- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`。
-- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` 视口宽度；`gs_022.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
+- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`，`gs_023.py` 默认 `9395`。
+- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` / `gs_023.py` 视口宽度；`gs_022.py` / `gs_023.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
 - `GS_THEME`：仅 `gs_020.py`，`deep`（默认）或 `light`，用于检查两套主题下的设置卡片。
 
 ## 当前覆盖
@@ -112,5 +113,12 @@ python tests/browser/gs_022.py
 - 禅定下派发 `wheel` 事件，`scrollTop` 前后不变；解锁条短按 1 秒仍锁，长按 1.7 秒解锁；返回键被层级栈吞掉。
 - 桌面键盘：PageDown 滚动、`+` 缩放、`F` 全屏、Esc 先退全屏、Space 切节拍器、`L` 短按锁屏；锁定时 `PageDown` / `+` / `Space` / `Esc` 被拦截，长按 `L` 1.2 秒仍锁、1.7 秒解锁。
 - IndexedDB 为 v4，stores 为 `assets/logs/scores`；返回书架 320 / 360 均无溢出。
+
+`gs_023.py`：
+
+- 清库后用 1×1 PNG 造两张图片谱：A 带 `coverAssetId`、B 只留一条孤儿封面；核对「曲谱文件」「封面缓存」等于 Blob 大小之和。
+- 打开设置读三格文案；「清理封面缓存」弹确认后，cover 资产归零、指针置空、乐谱仍 2 张、封面文案变 `0 B`。
+- 重新载入书架触发封面重建，再插入一条 `scoreId=999999` 孤儿；「清理未引用缓存」只删孤儿，被引用封面保留。
+- 写入两条今日练习（25 + 10 分钟、96 / 120 BPM），记录页点「分享卡片」：卡片 1080×1440、默认无曲名、今日分钟 35；打开「显示曲名」后像素 hash 变化；「保存图片」触发下载；全程 `fetch` 计数为 0。
 
 CI 只做 Python 语法编译；浏览器交互需要本机浏览器，仍在本地执行。

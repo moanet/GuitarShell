@@ -42,6 +42,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ThemeBarsPlugin.class);
         registerPlugin(BackGuardPlugin.class);
         registerPlugin(GalleryPickerPlugin.class);
+        registerPlugin(ShareCardPlugin.class);
         super.onCreate(savedInstanceState);
         String theme = readStoredTheme(this);
         applyThemeSystemBars(theme);

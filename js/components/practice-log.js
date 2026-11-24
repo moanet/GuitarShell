@@ -1,5 +1,6 @@
 import { dbService } from '../services/db.js';
 import { showConfirm } from './app-dialog.js';
+import { getTodayPracticeSummary } from '../services/share-card.js';
 
 // 练习内容名称可能来自备份恢复（他人数据），进 innerHTML 前必须转义
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
@@ -34,7 +35,15 @@ const logCSS = `
   .toast { position: absolute; left: 50%; bottom: 30px; transform: translate(-50%, 10px); background: rgba(var(--accent-rgb), 0.92); color: var(--on-accent); padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 100; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .trend-box { background: var(--bg2); border-bottom: 1px solid var(--line); flex-shrink: 0; }
-  .trend-toggle-row { width: 100%; border: none; background: transparent; display: flex; align-items: center; gap: 9px; padding: 11px 16px; cursor: pointer; color: var(--txt); font-family: inherit; text-align: left; }
+  .trend-head { display: flex; align-items: center; gap: 4px; }
+  .trend-toggle-row { flex: 1; min-width: 0; border: none; background: transparent; display: flex; align-items: center; gap: 9px; padding: 11px 0 11px 16px; cursor: pointer; color: var(--txt); font-family: inherit; text-align: left; }
+  .share-btn {
+    flex: 0 0 auto; margin-right: 12px; padding: 7px 10px; border-radius: 10px;
+    border: 1px solid rgba(var(--primary-rgb), .5); background: rgba(var(--primary-rgb), .12);
+    color: var(--accent-text); font-size: 11px; font-weight: 700; font-family: inherit;
+    white-space: nowrap; cursor: pointer;
+  }
+  .share-btn:active { filter: brightness(.95); }
   .trend-toggle-row:hover { background: rgba(var(--primary-rgb),.06); }
   .trend-title { font-size: 13px; font-weight: 700; flex-shrink: 0; }
   .trend-peek { flex: 1; min-width: 0; font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -73,11 +82,14 @@ const logHTML = `
     <button class="btn-submit" id="btnSubmit">✓ 保存本次练习</button>
   </div>
   <div class="trend-box collapsed" id="trendBox">
-    <button class="trend-toggle-row" id="trendToggle" type="button" aria-expanded="false">
-      <span class="trend-title">📊 练习趋势</span>
-      <span class="trend-peek" id="trendPeek">近 7 天 · 0 分钟</span>
-      <span class="trend-chevron" id="trendChevron">▸</span>
-    </button>
+    <div class="trend-head">
+      <button class="trend-toggle-row" id="trendToggle" type="button" aria-expanded="false">
+        <span class="trend-title">📊 练习趋势</span>
+        <span class="trend-peek" id="trendPeek">近 7 天 · 0 分钟</span>
+        <span class="trend-chevron" id="trendChevron">▸</span>
+      </button>
+      <button class="share-btn" id="btnShare" type="button">📤 分享卡片</button>
+    </div>
     <div class="trend-body">
       <div class="trend-controls">
         <div class="seg" id="segBtns">
@@ -132,6 +144,7 @@ class GuitarPracticeLog extends HTMLElement {
     const listCount = $('listCount'), trendPeek = $('trendPeek');
     const chartWrap = $('chartWrap'), topList = $('topList'), trendSummary = $('trendSummary');
     const segBtns = $('segBtns'), trendBox = $('trendBox'), trendToggle = $('trendToggle'), trendChevron = $('trendChevron');
+    const btnShare = $('btnShare');
 
     // ==================== 练习趋势（手写 SVG，不引库） ====================
     const DAY = 86400000;
@@ -323,6 +336,23 @@ class GuitarPracticeLog extends HTMLElement {
       this.loadLogs();
       // 这里也广播一下，万一未来其他页面需要知道数据变了呢
       window.dispatchEvent(new CustomEvent('log-updated'));
+    };
+
+    btnShare.onclick = async () => {
+      const summary = getTodayPracticeSummary(this.currentLogs || []);
+      if (!summary.count) {
+        showToast('今天还没有打卡，先记录一次练习');
+        return;
+      }
+      try {
+        await import('../components/share-preview.js');
+        const sheet = document.createElement('guitar-share-preview');
+        document.body.appendChild(sheet);
+        await sheet.open(summary);
+      } catch (err) {
+        console.error('[分享卡] 打开失败:', err);
+        showToast('练习卡片加载失败');
+      }
     };
     
     this.loadLogs();

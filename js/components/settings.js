@@ -14,6 +14,10 @@ import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import {
   buildBackupPayload, getDataStats, parseBackupFile, restoreBackup, saveBackupFile
 } from '../services/backup.js';
+import {
+  clearCoverCache, clearOrphanAssets, collectStorageStats, ensurePersistentStorage,
+  findOrphanAssets, formatBytes
+} from '../services/storage-stats.js';
 
 const settingsCSS = `
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
@@ -59,9 +63,14 @@ const settingsCSS = `
   .card-head .ico { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 13px; }
   h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 11px; }
+  .stats.triple { grid-template-columns: repeat(3, 1fr); }
   .stat { background: var(--surface-deep); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; display: flex; align-items: baseline; gap: 5px; }
   .stat b { font-size: 20px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
   .stat span { font-size: 11px; color: var(--muted); }
+  .stats.triple .stat { flex-direction: column; align-items: flex-start; gap: 3px; padding: 9px 10px; }
+  .stats.triple .stat b { font-size: 14px; line-height: 1.2; }
+  .stats.triple .stat span { font-size: 10px; }
+  .cap-hint { margin: 0 2px 10px; font-size: 10px; line-height: 1.55; color: var(--muted); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .act {
     width: 100%; min-height: 42px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-raised);
@@ -171,6 +180,22 @@ const settingsHTML = `
           <button class="danger" id="btnClear" type="button">清空乐谱与练习记录</button>
           <div class="status" id="statusLine"></div>
           <p class="hint">备份包含乐谱、阅读进度、页级书签和练习记录。Android 版会保存到 <b>Download/GuitarShell</b>，网页版进入浏览器下载目录。</p>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><span class="ico">▤</span><h3>存储与缓存</h3></div>
+          <div class="stats triple">
+            <div class="stat"><b id="totalUsage">—</b><span>总占用</span></div>
+            <div class="stat"><b id="scoreUsage">—</b><span>曲谱文件</span></div>
+            <div class="stat"><b id="coverUsage">—</b><span>封面缓存</span></div>
+          </div>
+          <p class="cap-hint" id="quotaHint">正在统计本机占用…</p>
+          <div class="grid2">
+            <button class="act" id="btnCleanCover" type="button">清理封面缓存</button>
+            <button class="act" id="btnCleanOrphan" type="button">清理未引用缓存</button>
+          </div>
+          <p class="hint">只删可重建的封面缓存，不动乐谱、阅读进度、书签和练习记录。清理前建议先做一次<b>本地备份</b>，封面在下次进书架时自动重建。</p>
+          <div class="status" id="storageStatus"></div>
         </section>
 
         <section class="card">
@@ -284,6 +309,8 @@ class GuitarSettings extends HTMLElement {
       if (file) this.restore(file);
     };
     this.$('btnClear').onclick = () => this.clear();
+    this.$('btnCleanCover').onclick = () => this.cleanCoverCache();
+    this.$('btnCleanOrphan').onclick = () => this.cleanOrphanCache();
   }
 
   open() {
@@ -295,6 +322,7 @@ class GuitarSettings extends HTMLElement {
       });
     }
     this.refreshStats();
+    this.refreshStorage();
     this.refreshCloudStatus();
   }
 
@@ -317,6 +345,110 @@ class GuitarSettings extends HTMLElement {
     } catch (err) {
       this.$('scoreCount').textContent = '—';
       this.$('logCount').textContent = '—';
+    }
+  }
+
+  setStorageBusy(on, text = '') {
+    ['btnCleanCover', 'btnCleanOrphan'].forEach((id) => {
+      const btn = this.$(id);
+      if (btn) btn.disabled = on;
+    });
+    this.$('storageStatus').textContent = text;
+  }
+
+  async refreshStorage() {
+    try {
+      const stats = await collectStorageStats();
+      this.storageStats = stats;
+      this.$('totalUsage').textContent = formatBytes(stats.usage);
+      this.$('scoreUsage').textContent = formatBytes(stats.scoreBytes);
+      this.$('coverUsage').textContent = formatBytes(stats.coverBytes);
+
+      const quotaText = stats.exact && stats.quota
+        ? `系统统计（含网页缓存）· 配额约 ${formatBytes(stats.quota)}`
+        : '系统未提供精确占用，这里显示曲谱 + 封面合计';
+      const persist = await ensurePersistentStorage();
+      const persistText = persist === 'granted'
+        ? '已申请持久存储'
+        : persist === 'denied'
+          ? '未授予持久存储，空间紧张时可能被回收'
+          : '当前环境不支持持久存储申请';
+      this.$('quotaHint').textContent = `${quotaText} · ${persistText} · 封面 ${stats.coverCount} 张`;
+    } catch (err) {
+      console.warn('[存储] 统计失败:', err.message);
+      ['totalUsage', 'scoreUsage', 'coverUsage'].forEach((id) => { this.$(id).textContent = '—'; });
+      this.$('quotaHint').textContent = '占用统计失败，两个清理按钮仍可使用';
+    }
+  }
+
+  async cleanCoverCache() {
+    if (this.busy) return;
+    const stats = this.storageStats || await collectStorageStats().catch(() => null);
+    if (!stats || !stats.coverCount) {
+      this.$('storageStatus').textContent = '没有需要清理的封面缓存';
+      showToast('没有可清理的封面缓存');
+      return;
+    }
+    const ok = await showConfirm({
+      title: '清理封面缓存',
+      message: '会删除全部乐谱封面并清空缓存指针，乐谱文件、阅读进度、书签与练习记录都不受影响；下次进入书架时按需重建。',
+      details: [
+        { label: '封面', value: `${stats.coverCount} 张` },
+        { label: '预计释放', value: `约 ${formatBytes(stats.coverBytes)}` }
+      ],
+      confirmText: '清理',
+      danger: true
+    });
+    if (!ok) return;
+    this.setStorageBusy(true, '正在清理封面缓存…');
+    try {
+      const result = await clearCoverCache();
+      window.dispatchEvent(new CustomEvent('gs-cover-cache-cleared', { detail: result }));
+      await this.refreshStorage();
+      this.setStorageBusy(false, `已清理 ${result.count} 张封面`);
+      showToast(`已清理 ${result.count} 张封面，释放约 ${formatBytes(result.bytes)}`);
+    } catch (err) {
+      this.setStorageBusy(false, '清理封面缓存失败');
+      showToast(`清理失败：${err.message}`);
+    }
+  }
+
+  async cleanOrphanCache() {
+    if (this.busy) return;
+    let orphans = [];
+    try {
+      orphans = await findOrphanAssets();
+    } catch (err) {
+      this.setStorageBusy(false, '读取缓存失败');
+      showToast(`读取缓存失败：${err.message}`);
+      return;
+    }
+    if (!orphans.length) {
+      this.$('storageStatus').textContent = '没有未引用的缓存';
+      showToast('没有未引用的缓存');
+      return;
+    }
+    const bytes = orphans.reduce((sum, asset) => sum + (Number(asset.bytes) || 0), 0);
+    const ok = await showConfirm({
+      title: '清理未引用缓存',
+      message: '只删除已失去引用关系的封面缓存，正在使用的封面与全部乐谱都不受影响。',
+      details: [
+        { label: '缓存', value: `${orphans.length} 条` },
+        { label: '预计释放', value: `约 ${formatBytes(bytes)}` }
+      ],
+      confirmText: '清理',
+      danger: true
+    });
+    if (!ok) return;
+    this.setStorageBusy(true, '正在清理未引用缓存…');
+    try {
+      const result = await clearOrphanAssets();
+      await this.refreshStorage();
+      this.setStorageBusy(false, `已清理 ${result.count} 条缓存`);
+      showToast(`已清理 ${result.count} 条缓存，释放约 ${formatBytes(result.bytes)}`);
+    } catch (err) {
+      this.setStorageBusy(false, '清理未引用缓存失败');
+      showToast(`清理失败：${err.message}`);
     }
   }
 

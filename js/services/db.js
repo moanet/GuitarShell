@@ -188,6 +188,72 @@ export const dbService = {
     });
   },
 
+  // ==================== 0.1.13 存储统计与缓存清理 ====================
+  // 只读元数据汇总用；记录里带 Blob 引用，但这里不读内容，不会把图片解码进内存
+  async getAllAssets() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(ASSET_STORE_NAME, 'readonly');
+      const request = tx.objectStore(ASSET_STORE_NAME).getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  // 清空全部封面缓存，并把乐谱上的 coverAssetId 指针置空；不碰进度 / 书签 / 标签
+  async clearCoverAssets() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      let count = 0;
+      let bytes = 0;
+      const tx = db.transaction([STORE_NAME, ASSET_STORE_NAME], 'readwrite');
+      const assetStore = tx.objectStore(ASSET_STORE_NAME);
+      const scoreStore = tx.objectStore(STORE_NAME);
+
+      const assetReq = assetStore.openCursor();
+      assetReq.onsuccess = () => {
+        const cursor = assetReq.result;
+        if (!cursor) return;
+        const value = cursor.value || {};
+        if (value.kind === 'cover') {
+          count += 1;
+          bytes += Number(value.bytes) || 0;
+          cursor.delete();
+        }
+        cursor.continue();
+      };
+
+      const scoreReq = scoreStore.openCursor();
+      scoreReq.onsuccess = () => {
+        const cursor = scoreReq.result;
+        if (!cursor) return;
+        const value = cursor.value || {};
+        if (value.coverAssetId !== null && value.coverAssetId !== undefined) {
+          value.coverAssetId = null;
+          cursor.update(value);
+        }
+        cursor.continue();
+      };
+
+      tx.oncomplete = () => resolve({ count, bytes });
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('清理封面缓存失败'));
+    });
+  },
+
+  async deleteAssetsByIds(ids) {
+    const list = Array.isArray(ids) ? ids.filter((id) => id !== null && id !== undefined) : [];
+    if (!list.length) return 0;
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(ASSET_STORE_NAME, 'readwrite');
+      const store = tx.objectStore(ASSET_STORE_NAME);
+      list.forEach((id) => store.delete(id));
+      tx.oncomplete = () => resolve(list.length);
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
   async addLog(logData) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
