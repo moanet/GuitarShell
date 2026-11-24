@@ -151,7 +151,7 @@ Guitar Shell
 ├─ proxy/                      Node / Cloudflare WebDAV 代理
 ├─ samples/trial-scores/       TXT / ChordPro / Markdown 试用谱例
 ├─ docs/
-│  ├─ screenshots/             README 界面截图
+│  ├─ screenshots/             实机界面截图
 │  ├─ archive/                 历史迭代简报
 │  ├─ icon/ · posters/ · qr_code/  品牌与发布素材
 │  └─ BRAND.md                 品牌规范
