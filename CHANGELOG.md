@@ -33,7 +33,7 @@
 
 **状态**
 
-- 已提交并推送 `main`；tag 与 GitHub Release 待用户确认后创建。
+- 已提交 `2d055ca feat: 0.1.13 存储统计与练习卡片分享` 并推送 `main`；tag 与 GitHub Release 待用户确认后创建。
 
 > 版本号 `0.1.12b` / `versionCode 116`。只读书架布局与禅定交互，不改数据层、读谱格式与既有功能。
 
