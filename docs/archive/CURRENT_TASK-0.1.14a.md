@@ -161,7 +161,7 @@
 - 真机覆盖安装：`com.guitarshell` 版本 `118 / 0.1.14a`；首页徽标 `v0.1.14a`；10 张谱、13 条练习和封面保留。
 - 真机保存：`/sdcard/Pictures/GuitarShell/GuitarShell-practice-20261124-2121.png`，626,207 字节，PNG 1080×1440；MediaStore `relative_path=Pictures/GuitarShell/`；系统相册可打开；保存后预览不关闭并 toast「已保存到相册」。
 - 真机分享：MIUI 系统分享面板显示 PNG 缩略图与文件名；取消返回后预览仍在。
-- 截图：`docs/screenshots/0.1.14a-device-home.png`、`...-native-preview.png`、`...-saved-toast.png`、`...-share-sheet.png`、`...-gallery.png`。
+- 截图：原始真机截图仅本地留存，已从仓库移除；当前仓库不再引用。
 
 ## 5. 不做
 
