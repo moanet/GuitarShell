@@ -136,8 +136,10 @@
 - [x] `npm run check` 通过，JS 文件数与 SW 缓存一致。
 - [x] release APK 构建成功，`versionName 0.1.14c` / `versionCode 120`，签名不变。
 - [x] 真机覆盖安装保留数据，设置页布局、折叠、点外部、右滑、主题、备份入口逐项通过。
-- [ ] 提交并推送 `main`；创建 tag `v0.1.14c` 与 GitHub Release，标题严格为 `v0.1.14c`。
-- [ ] Release notes 合并说明 `0.1.14a` / `0.1.14b` / `0.1.14c` 三批内容，上传 APK 并复核远端 SHA-256。
+- [x] 提交并推送 `main`；创建 tag `v0.1.14c` 与 GitHub Release，标题严格为 `v0.1.14c`。
+- [x] Release notes 合并说明 `0.1.14a` / `0.1.14b` / `0.1.14c` 三批内容，上传 APK 并复核远端 SHA-256。
+
+发布记录：Release `456978682`（`https://github.com/moanet/GuitarShell/releases/tag/v0.1.14c`），APK asset `787794514`，远端 `4,461,833` 字节，SHA-256 `0ADE3E8DDDEB43E7B72E2C0E75A89BD6FEE31C92A6EB98F5E3AE783446158C97`。
 
 ## 6. 实施批次
 
