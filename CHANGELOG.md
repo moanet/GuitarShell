@@ -3,6 +3,59 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.14b — 自定义背景与轻量裁切（已构建并真机验收，2026-11-24）
+
+> 版本号 `0.1.14b` / `versionCode 119`。给练习卡片加第 7 套「自定义背景」：相簿选图 → 3:4 轻量裁切 → 1080×1440 JPEG → 压暗蒙版 → 资产统计与孤儿清理。六套预设背景参数与卡片坐标不变，不升 IndexedDB 版本，不上传任何图片。
+
+**第 7 个色板与工具行**
+
+- 预览色板 6 → 7：末尾 28px「自定义」入口，无图时虚线 `＋`，有图时缩略图 + 暖色选中描边；窄屏 320 横向滚动，不压缩预设色板。
+- 选中自定义后出现工具行：`压暗 60%` 滑块（60–90、步进 2）、`更换图片`、`移除`；未选中时工具行隐藏，已存资产和指针保留，切回预设不删除。
+- 处理期间保存 / 分享 / 曲名 / 色板 / 滑块 / 更换 / 移除互斥禁用，文案「正在处理背景…」；取消选图静默恢复，不弹错误。
+- 移除采用“两次点击”内联确认（第一次变「再点一次移除」，3 秒复原），避开 `app-dialog` 层级低于预览的问题。
+
+**轻量裁切页**
+
+- 新增 `js/components/share-bg-crop.js`：fixed z-index 1470，独立 `ui-layer`，返回键只关裁切页；取景框 3:4（360 宽实测 300×400，320 宽 266×354.65），初始 `cover` 铺满、1.0×。
+- 单指 / 鼠标拖动定位，双指 1×–3× 捏合，双击或「恢复居中」复位；边界钳制，任何时候不露黑边。
+- 确认按同一映射导出 1080×1440：`scale=max(1080/iw,1440/ih)*zoom`、`sw=1080/scale`、`sh=1440/scale`、`sx=cx-sw/2`、`sy=cy-sh/2`；屏幕坐标与缩放比不写入资产。
+- 点遮罩 / 关闭 / 取消 / 返回键都不改背景；处理失败 toast「图片处理失败：…」保持裁切页可重试。
+- 修复 `open()` 竞态：先 `_setBusy(true)`，加载完成再启用按钮；回归以 `dataset.zoom==='1.00'` 为就绪条件。
+- 真机补修双击：触屏 WebView 不触发 `dblclick`，改为手动判定——`pointerup` 单指、非 mouse、位移 ≤8px、间隔 <320ms，且距上次 tap <36px / <340ms 时复位；`open()` 清空 `lastTap/tapStart/pointers`。
+
+**压暗与卡片**
+
+- 新增 `js/services/share-bg.js`：`gs_share_bg` / `gs_share_bg_asset` / `gs_share_bg_dim` 三键；选图、解码、压缩、资产增删、失效回退集中管理。
+- 压缩：优先 `createImageBitmap`，回退 `Image` + object URL；输出 JPEG 1080×1440，质量 `0.82 → 0.72 → 0.62`，>900 KB 拒绝，源图 >20 MB 拒绝；保留无裁切页的自动中心裁切入口作为数据层回退。
+- `share-card.js` 新增 `CUSTOM_SHARE_BG`：strong `#FBF4E9`、muted `#F1E9DE`、accent `#F0B67A`；黑底 cover 绘制 + 全局压暗 + 上下渐变 + 0.38 径向暗角；`dataset.background='custom'`、`dataset.customDim`。
+- 压暗范围从初版 70–90 / 默认 78 调为 **60–90 / 默认 60**：78% 时卡片接近全黑；按纯白图测算，60% 下 strong ≈5.26:1、muted ≈4.77:1、accent ≈3.19:1，满足 ≥5 / ≥4.5 / ≥3。
+- 修复默认值 bug：`localStorage` 空值时 `Number(null)=0` 被钳到 70%，现空值直接返回 60。
+
+**资产、统计与清理**
+
+- 复用 `assets` store，`kind:'share-bg'`、无 `scoreId`，字段 `blob/mime/width/height/bytes/sourceName/createdAt`；不升 `DB_VERSION`。
+- 替换顺序：先新增资产、写指针、切 `custom`，再删旧资产；旧资产删除失败留孤儿。移除先清指针再删资产，删除失败仍回退 `walnut`。指针失效 / 类型不符 / 图片损坏时清指针并回退。
+- `storage-stats.js` 新增 `backgroundCount/backgroundBytes/imageCount/imageBytes`；`usage` 无精确估算时改为 `scoreBytes + imageBytes`。
+- `findOrphanAssets()`：`share-bg` 仅保留 `gs_share_bg_asset` 指向者，其余判孤儿；未知 kind 判孤儿；当前使用中的背景即使选预设也保留；封面规则不变。
+- 设置页第三格改「图片缓存」（id 仍 `coverUsage`），配额提示「封面 X 张 · 自定义背景 Y 张」，清理说明明确只删失去引用的封面与背景副本；`清理封面缓存` 仍只删 `kind==='cover'`。
+
+**相簿兼容修复**
+
+- 小米设备上系统 `ACTION_PICK_IMAGES` 的 `PhotoPickerActivity` 创建后立即 `app-request finish`，直接 `am start` 同样秒退，表现为点 `＋` / 导入「从相簿选择」无反应；属设备 / MediaProvider 问题。
+- `GalleryPickerPlugin.java` 新增 `buildMiuiGalleryIntent`：`Build.MANUFACTURER` 为 Xiaomi 且 `com.miui.gallery/.picker.PickGalleryActivity` 可解析时优先 `ACTION_GET_CONTENT` + `CATEGORY_OPENABLE` + `image/*`（多选带 `EXTRA_ALLOW_MULTIPLE`）；否则 Android 13+ Photo Picker，再退 `OPEN_DOCUMENT`、`GET_CONTENT`。修复后单张与多选均正常。
+
+**验证**
+
+- `npm run check` 通过：`v0.1.14b，38 个 JS 文件，SW 缓存与版本一致`；`package.json` 使用 `0.1.14-b`，展示版本统一 `0.1.14b`。
+- `gs_023.py` 在 360 / 320 均 **111/111 通过**：新增处理输出尺寸与中心裁切、资产/指针、统计、孤儿保护、清封面不删背景、移除回退、3:4 与 1× 初始、双指 2×、恢复居中、确认 custom、工具行、缩略图、默认 60%、滑块 70% 重绘、持久化、对比度、替换资产 8→9、旧资产删除、二次确认移除、回退 felt。
+- release APK `4,460,163` 字节，SHA-256 `17E732A3E6D8342532A4D39354FFE3AF3DE827E186C91F77AE85743A908253E8`；`versionCode 119` / `versionName 0.1.14b`，证书 SHA-256 保持 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- 真机 `ca14b16` 覆盖安装：10 张谱、13 条练习保留；相簿拉起、裁切、单指拖动、恢复居中、双击复位、确认导出、预览、压暗 60%↔88%、保存到相簿、更换、二次确认移除、设置统计「图片缓存 392 KB / 封面 6 张 · 自定义背景 1 张」、清理未引用均逐项通过；保存卡片为 `GuitarShell-practice-20261124-2229.png`（1080×1440，1,865,714 字节）。
+- 真机误导入的测试谱 `GS_testbg-…` 已删除，书架恢复 10 份。
+
+**状态**
+
+- 提交并推送 `main`；tag / GitHub Release 仍按既有节奏压到 `0.1.14c` 验收后统一发布。
+
 ## 0.1.14a — 练习卡片核心（已构建并真机验收，2026-11-24）
 
 > 版本号 `0.1.14a` / `versionCode 118`。只做分享卡片：新版式、60 条格言、6 套参数化背景、原生保存相册与预览底栏。六套背景视觉仍是**暂定稿**，后续会继续调整；不改读谱、书架、禅定、拆分与云同步，不升 IndexedDB 版本。

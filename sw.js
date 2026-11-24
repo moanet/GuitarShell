@@ -1,5 +1,5 @@
 // 改版本时两处同步：这里 + js/services/version.js（SW 是 classic script，无法 import）
-const APP_VERSION = '0.1.14a';
+const APP_VERSION = '0.1.14b';
 const CACHE_NAME = 'guitar-shell-v' + APP_VERSION;
 
 const ASSETS_TO_CACHE = [
@@ -24,6 +24,7 @@ const ASSETS_TO_CACHE = [
   './js/services/cover-cache.js',
   './js/services/storage-stats.js',
   './js/services/share-card.js',
+  './js/services/share-bg.js',
   './js/services/quotes.js',
   './js/services/score-dedup.js',
   './js/services/sync-state.js',
@@ -40,6 +41,7 @@ const ASSETS_TO_CACHE = [
   './js/components/tuner.js',
   './js/components/settings.js',
   './js/components/share-preview.js',
+  './js/components/share-bg-crop.js',
   './js/lib/pdf.js',
   './js/lib/pdf.worker.js',
   './js/lib/pdf-lib.esm.min.js',

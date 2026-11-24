@@ -69,8 +69,16 @@ export const SHARE_BACKGROUNDS = [
 ];
 
 export function getShareBackground(id) {
+  if (id === CUSTOM_SHARE_BG.id) return CUSTOM_SHARE_BG;
   return SHARE_BACKGROUNDS.find((bg) => bg.id === id) || SHARE_BACKGROUNDS[0];
 }
+
+/** 第 7 套自定义背景：图片 + 压暗蒙版，固定深色文字 */
+export const CUSTOM_SHARE_BG = {
+  id: 'custom', name: '自定义', light: false, texture: 'photo',
+  top: '#000000', bottom: '#000000', vignette: 'rgba(0,0,0,0.38)',
+  palette: makePalette('#FBF4E9', '#F1E9DE', '#F0B67A')
+};
 
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 
@@ -365,6 +373,35 @@ function drawBackground(ctx, preset) {
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 }
 
+function drawCustomBackground(ctx, image, dimPercent) {
+  const dim = Math.max(0.60, Math.min(0.90, Number(dimPercent) / 100 || 0.60));
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+  if (image) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(image, 0, 0, CARD_W, CARD_H);
+  }
+
+  ctx.fillStyle = `rgba(0,0,0,${dim})`;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+  // 上下轻微压暗，避免页眉/题记压到亮部
+  const shade = ctx.createLinearGradient(0, 0, 0, CARD_H);
+  shade.addColorStop(0, 'rgba(0,0,0,0.10)');
+  shade.addColorStop(0.28, 'rgba(0,0,0,0)');
+  shade.addColorStop(0.72, 'rgba(0,0,0,0)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.14)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+  const vignette = ctx.createRadialGradient(CARD_W / 2, CARD_H / 2, CARD_H * 0.22, CARD_W / 2, CARD_H / 2, CARD_H * 0.78);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.38)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+}
+
 function drawHeader(ctx, logo, p) {
   if (logo) {
     ctx.drawImage(logo, 96, 96, 48, 48);
@@ -514,14 +551,21 @@ function drawFooter(ctx, quote, p) {
 export async function drawShareCard(canvas, summary, options = {}) {
   const showName = Boolean(options.showName);
   const quote = options.quote === undefined ? pickQuote(summary.date) : options.quote;
-  const preset = getShareBackground(options.background);
+  const customImage = options.customImage || null;
+  const requested = String(options.background || '');
+  const useCustom = requested === CUSTOM_SHARE_BG.id && Boolean(customImage);
+  const preset = useCustom
+    ? CUSTOM_SHARE_BG
+    : getShareBackground(requested === CUSTOM_SHARE_BG.id ? DEFAULT_SHARE_BG : requested);
+  const dimPercent = Math.max(60, Math.min(90, Math.round(Number(options.customDim) || 60)));
   const p = preset.palette;
   canvas.width = CARD_W;
   canvas.height = CARD_H;
   const ctx = canvas.getContext('2d');
   const logo = await loadLogo();
 
-  drawBackground(ctx, preset);
+  if (useCustom) drawCustomBackground(ctx, customImage, dimPercent);
+  else drawBackground(ctx, preset);
   drawHeader(ctx, logo, p);
   drawTodayBlock(ctx, summary, p);
   drawStatsLine(ctx, summary, p);
@@ -529,7 +573,8 @@ export async function drawShareCard(canvas, summary, options = {}) {
   drawFooter(ctx, quote, p);
 
   canvas.dataset.rendered = '1';
-  canvas.dataset.background = preset.id;
+  canvas.dataset.background = useCustom ? CUSTOM_SHARE_BG.id : preset.id;
+  canvas.dataset.customDim = useCustom ? String(dimPercent) : '';
   canvas.dataset.showName = showName ? '1' : '0';
   canvas.dataset.minutes = String(summary.minutes);
   canvas.dataset.quoteId = quote ? String(quote.id || '') : '';

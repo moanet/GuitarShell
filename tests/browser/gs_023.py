@@ -124,6 +124,7 @@ TEST_JS = r"""
   const settings = document.querySelector('guitar-settings');
   const db = await import('/js/services/db.js');
   const stats = await import('/js/services/storage-stats.js');
+  const bgStore = await import('/js/services/share-bg.js');
   const bgLib = await import('/js/services/share-card.js');
 
   const cardHash = (c) => {
@@ -187,8 +188,9 @@ TEST_JS = r"""
   const quotaHint = settings.shadowRoot.getElementById('quotaHint').textContent;
   check('存储卡总占用有值', /约|\d/.test(totalText) && totalText !== '—', totalText);
   check('曲谱文件文案正确', scoreText === expectScoreText, `${scoreText} vs ${expectScoreText}`);
-  check('封面缓存文案正确', coverText === expectCoverText, `${coverText} vs ${expectCoverText}`);
-  check('配额提示可见', quotaHint.length > 0 && !quotaHint.includes('正在统计'), quotaHint);
+  check('图片缓存文案正确', coverText === expectCoverText, `${coverText} vs ${expectCoverText}`);
+  check('图片缓存标题正确', settings.shadowRoot.querySelector('#coverUsage + span').textContent === '图片缓存', settings.shadowRoot.querySelector('#coverUsage + span').textContent);
+  check('配额提示含图片张数', quotaHint.includes('封面 2 张') && quotaHint.includes('自定义背景 0 张'), quotaHint);
 
   // 清理封面缓存
   settings.shadowRoot.getElementById('btnCleanCover').click();
@@ -242,6 +244,60 @@ TEST_JS = r"""
   settings.shadowRoot.getElementById('btnClose').click();
   await sleep(300);
 
+  // 0.1.14b b1：自定义背景处理与资产指针
+  const sourceCanvas = document.createElement('canvas');
+  sourceCanvas.width = 1600;
+  sourceCanvas.height = 900;
+  const sourceCtx = sourceCanvas.getContext('2d');
+  sourceCtx.fillStyle = '#1040d0';
+  sourceCtx.fillRect(0, 0, 1600, 900);
+  sourceCtx.fillStyle = '#d02020';
+  sourceCtx.fillRect(400, 0, 800, 900);
+  const sourceBlob = await new Promise((resolve) => sourceCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+  const sourceFile = new File([sourceBlob], 'wide-test.jpg', { type: 'image/jpeg' });
+  const processed = await bgStore.processCustomBackground(sourceFile);
+  check('自定义背景输出 1080×1440', processed.width === 1080 && processed.height === 1440, `${processed.width}×${processed.height}`);
+  check('自定义背景输出 JPEG 且 ≤900 KB', processed.mime === 'image/jpeg' && processed.bytes <= 900 * 1024, `${processed.mime}/${processed.bytes}`);
+  const pixelCanvas = document.createElement('canvas');
+  pixelCanvas.width = 1;
+  pixelCanvas.height = 1;
+  const pixelCtx = pixelCanvas.getContext('2d');
+  const pixelImg = new Image();
+  const pixelUrl = URL.createObjectURL(processed.blob);
+  await new Promise((resolve, reject) => {
+    pixelImg.onload = resolve;
+    pixelImg.onerror = reject;
+    pixelImg.src = pixelUrl;
+  });
+  pixelCtx.drawImage(pixelImg, 540, 720, 1, 1, 0, 0, 1, 1);
+  URL.revokeObjectURL(pixelUrl);
+  const px = pixelCtx.getImageData(0, 0, 1, 1).data;
+  check('自定义背景中心裁切保留中部', px[0] > 140 && px[2] < 100, `rgb=${px[0]},${px[1]},${px[2]}`);
+
+  const savedBg = await bgStore.saveCustomBackground(sourceFile);
+  const statsWithBg = await stats.collectStorageStats();
+  check('自定义背景资产 kind 正确', savedBg.asset.kind === 'share-bg' && !savedBg.asset.scoreId, savedBg.asset.kind);
+  check('自定义背景写入指针', bgStore.getActiveBackgroundAssetId() === savedBg.id && bgStore.getSelectedBackground() === 'custom', `${bgStore.getActiveBackgroundAssetId()}/${bgStore.getSelectedBackground()}`);
+  check('统计包含自定义背景', statsWithBg.backgroundCount === 1 && statsWithBg.backgroundBytes === savedBg.asset.bytes && statsWithBg.imageBytes === statsWithBg.coverBytes + savedBg.asset.bytes, `${statsWithBg.backgroundCount}/${statsWithBg.backgroundBytes}/${statsWithBg.imageBytes}`);
+  check('当前自定义背景不算孤儿', (await stats.findOrphanAssets()).every(a => a.id !== savedBg.id), `active=${savedBg.id}`);
+
+  await stats.clearCoverCache();
+  check('清封面缓存不删自定义背景', !!(await db.dbService.getAsset(savedBg.id)), `active=${savedBg.id}`);
+
+  const orphanBg = await db.dbService.addAsset({
+    kind: 'share-bg', blob: processed.blob, mime: 'image/jpeg',
+    width: 1080, height: 1440, bytes: processed.bytes
+  });
+  const bgOrphans = await stats.findOrphanAssets();
+  check('无指针自定义背景被判孤儿', bgOrphans.some(a => a.id === orphanBg), `orphans=${bgOrphans.length}`);
+  await stats.clearOrphanAssets();
+  check('孤儿清理保留当前自定义', !!(await db.dbService.getAsset(savedBg.id)), `active=${savedBg.id}`);
+  check('孤儿清理删除无指针自定义', !(await db.dbService.getAsset(orphanBg)), `orphan=${orphanBg}`);
+
+  const removedBg = await bgStore.removeCustomBackground();
+  check('移除自定义背景回退默认', removedBg.deleted && bgStore.getActiveBackgroundAssetId() === null && bgStore.getSelectedBackground() === 'walnut', `${removedBg.deleted}/${bgStore.getSelectedBackground()}`);
+  check('移除后资产已删除', !(await db.dbService.getAsset(savedBg.id)), `id=${savedBg.id}`);
+
   // 练习卡片
   await db.dbService.addLog({ name: '小星星练习', minutes: 25, bpm: 96 });
   await db.dbService.addLog({ name: '晨练和弦', minutes: 10, bpm: 120 });
@@ -265,8 +321,10 @@ TEST_JS = r"""
   check('卡片尺寸 1080×1440', canvas.width === 1080 && canvas.height === 1440, `${canvas.width}×${canvas.height}`);
   check('默认背景为深胡桃木', canvas.dataset.background === 'walnut', canvas.dataset.background);
   const swatches = preview.shadowRoot.getElementById('swatches');
-  check('背景色板共 6 个', swatches && swatches.querySelectorAll('.swatch').length === 6, swatches ? `${swatches.querySelectorAll('.swatch').length}` : 'missing');
+  check('背景色板共 7 个', swatches && swatches.querySelectorAll('.swatch').length === 7, swatches ? `${swatches.querySelectorAll('.swatch').length}` : 'missing');
   check('背景预设共 6 套', bgLib.SHARE_BACKGROUNDS.length === 6, `${bgLib.SHARE_BACKGROUNDS.length}`);
+  check('第 7 个为自定义入口', swatches.querySelectorAll('.swatch.custom').length === 1 && swatches.querySelector('.swatch.custom').dataset.bg === 'custom', '');
+  check('自定义入口占 28px', Math.round(swatches.querySelector('.swatch.custom').getBoundingClientRect().width) === 28, `${swatches.querySelector('.swatch.custom').getBoundingClientRect().width}`);
   check('背景预设 id 无重复', new Set(bgLib.SHARE_BACKGROUNDS.map(b => b.id)).size === 6, '');
   check('浅色预设为 2 套', bgLib.SHARE_BACKGROUNDS.filter(b => b.light).length === 2, '');
   const walnutSwatch = swatches.querySelector('[data-bg="walnut"]');
@@ -294,6 +352,86 @@ TEST_JS = r"""
     contrast(b.palette.muted, b.top) >= 4 && contrast(b.palette.muted, b.bottom) >= 4), '');
   check('6 套背景强调色对比度达标', bgLib.SHARE_BACKGROUNDS.every(b =>
     contrast(b.palette.accent, b.top) >= 3.5 && contrast(b.palette.accent, b.bottom) >= 3.5), '');
+
+  // 0.1.14b b2：裁切页、自定义背景、压暗滑块、替换与移除
+  const cropPromise = preview.openCrop(sourceFile, { replace: false });
+  const crop = await waitFor(() => {
+    const el = document.querySelector('guitar-share-bg-crop');
+    return el && el.dataset.zoom === '1.00' ? el : null;
+  }, 8000);
+  check('自定义背景裁切页打开', !!crop, '');
+  const cropFrame = crop && crop.shadowRoot.getElementById('cropFrame');
+  const cropRect = cropFrame.getBoundingClientRect();
+  check('裁切取景框为 3:4', Math.abs(cropRect.width / cropRect.height - 0.75) < 0.02, `${cropRect.width}×${cropRect.height}`);
+  const cropCanvas = crop.shadowRoot.getElementById('cropCanvas');
+  check('裁切页初始 1.0×', crop.dataset.zoom === '1.00', crop.dataset.zoom);
+  const firePointer = (type, id, x, y) => {
+    cropCanvas.dispatchEvent(new PointerEvent(type, {
+      pointerId: id, pointerType: 'touch', isPrimary: id === 1, buttons: type === 'pointerup' ? 0 : 1,
+      clientX: cropRect.left + x, clientY: cropRect.top + y, bubbles: true, cancelable: true
+    }));
+  };
+  firePointer('pointerdown', 1, 40, cropRect.height / 2);
+  firePointer('pointerdown', 2, 180, cropRect.height / 2);
+  firePointer('pointermove', 2, 320, cropRect.height / 2);
+  check('双指放大改变缩放', Number(crop.dataset.zoom) >= 1.7, crop.dataset.zoom);
+  firePointer('pointerup', 1, 40, cropRect.height / 2);
+  firePointer('pointerup', 2, 320, cropRect.height / 2);
+  crop.shadowRoot.getElementById('btnReset').click();
+  check('恢复居中回到 1.0×', crop.dataset.zoom === '1.00', crop.dataset.zoom);
+
+  crop.shadowRoot.getElementById('btnCropConfirm').click();
+  await cropPromise;
+  await sleep(280);
+  await waitFor(() => canvas.dataset.background === 'custom', 8000);
+  await sleep(160);
+  const customTools = preview.shadowRoot.getElementById('customTools');
+  const customSwatch = swatches.querySelector('.swatch.custom');
+  const dimRange = preview.shadowRoot.getElementById('dimRange');
+  check('确认后卡片使用自定义背景', canvas.dataset.background === 'custom', canvas.dataset.background);
+  check('自定义工具行出现', customTools.hidden === false, `${customTools.hidden}`);
+  check('自定义色板显示缩略图', customSwatch.classList.contains('has-image') && customSwatch.classList.contains('selected'), customSwatch.className);
+  check('默认压暗 60%', canvas.dataset.customDim === '60' && dimRange.value === '60', `${canvas.dataset.customDim}/${dimRange.value}`);
+  const customHash60 = cardHash(canvas);
+  dimRange.value = '70';
+  dimRange.dispatchEvent(new Event('input', { bubbles: true }));
+  await sleep(260);
+  check('压暗滑块实时重绘', canvas.dataset.customDim === '70' && cardHash(canvas) !== customHash60, `${canvas.dataset.customDim}/${cardHash(canvas)}`);
+  check('压暗值持久化', localStorage.getItem('gs_share_bg_dim') === '70', localStorage.getItem('gs_share_bg_dim'));
+  check('自定义背景主文字对比度达标', contrast(bgLib.CUSTOM_SHARE_BG.palette.strong, '#666666') >= 5, '');
+  check('自定义背景弱化文字对比度达标', contrast(bgLib.CUSTOM_SHARE_BG.palette.muted, '#666666') >= 4.5, '');
+  check('自定义背景强调色对比度达标', contrast(bgLib.CUSTOM_SHARE_BG.palette.accent, '#666666') >= 3, '');
+  dimRange.value = '60';
+  dimRange.dispatchEvent(new Event('input', { bubbles: true }));
+  await sleep(180);
+
+  const firstCustomId = bgStore.getActiveBackgroundAssetId();
+  const replacePromise = preview.openCrop(sourceFile, { replace: true });
+  await sleep(300);
+  const crop2 = await waitFor(() => {
+    const el = document.querySelector('guitar-share-bg-crop');
+    return el && el !== crop ? el : null;
+  }, 8000);
+  check('更换时再次进入裁切页', !!crop2, '');
+  crop2.shadowRoot.getElementById('btnCropConfirm').click();
+  await replacePromise;
+  await sleep(280);
+  const secondCustomId = bgStore.getActiveBackgroundAssetId();
+  check('更换后资产 id 更新', secondCustomId && secondCustomId !== firstCustomId, `${firstCustomId}→${secondCustomId}`);
+  check('更换后旧资产已删除', !(await db.dbService.getAsset(firstCustomId)), `old=${firstCustomId}`);
+
+  const removeBtn = preview.shadowRoot.getElementById('btnRemoveBg');
+  removeBtn.click();
+  check('移除需要二次确认', removeBtn.textContent.includes('再点一次'), removeBtn.textContent);
+  removeBtn.click();
+  await waitFor(() => canvas.dataset.background === 'walnut' && bgStore.getActiveBackgroundAssetId() === null, 8000);
+  await sleep(180);
+  check('移除后回退深胡桃木', canvas.dataset.background === 'walnut' && customTools.hidden === true, `${canvas.dataset.background}/${customTools.hidden}`);
+  check('移除后自定义色板恢复加号', !customSwatch.classList.contains('has-image'), customSwatch.className);
+
+  swatches.querySelector('[data-bg="felt"]').click();
+  await waitFor(() => canvas.dataset.background === 'felt', 8000);
+  await sleep(120);
 
   check('卡片有格言', Boolean(canvas.dataset.quoteId), `${canvas.dataset.quoteId}/${canvas.dataset.quoteLang}`);
   check('默认不显示曲名', canvas.dataset.showName === '0' && !preview.shadowRoot.getElementById('chkName').checked, '');

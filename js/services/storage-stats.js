@@ -1,12 +1,14 @@
 // ==========================================
 // js/services/storage-stats.js
-// 0.1.13 存储占用统计与缓存清理
-// 只算数与清理，不渲染 UI；只删 assets 里可重建的封面，用户曲谱永不自动删
+// 0.1.13 存储占用统计与缓存清理；0.1.14b 并入自定义背景资产
+// 只算数与清理，不渲染 UI；封面可重建，自定义背景只删失去引用的副本，用户曲谱永不自动删
 // ==========================================
 
 import { dbService } from './db.js';
+import { getActiveBackgroundAssetId } from './share-bg.js';
 
 const PERSIST_KEY = 'gs_storage_persist';
+const ASSET_KIND_BACKGROUND = 'share-bg';
 
 export function formatBytes(bytes) {
   const n = Number(bytes);
@@ -40,7 +42,7 @@ async function readEstimate() {
 
 /**
  * 汇总当前占用。不读 Blob 内容，只取 size / bytes 元数据。
- * exact=false 表示浏览器没给 estimate，总占用退化为两类缓存之和。
+ * exact=false 表示浏览器没给 estimate，总占用退化为曲谱 + 图片缓存。
  */
 export async function collectStorageStats() {
   const [scores, assets, estimate] = await Promise.all([
@@ -56,6 +58,9 @@ export async function collectStorageStats() {
 
   const coverAssets = assets.filter((asset) => asset && asset.kind === 'cover');
   const coverBytes = coverAssets.reduce((sum, asset) => sum + (Number(asset.bytes) || 0), 0);
+  const backgroundAssets = assets.filter((asset) => asset && asset.kind === 'share-bg');
+  const backgroundBytes = backgroundAssets.reduce((sum, asset) => sum + (Number(asset.bytes) || 0), 0);
+  const imageBytes = coverBytes + backgroundBytes;
 
   const exact = Boolean(estimate);
   return {
@@ -64,7 +69,11 @@ export async function collectStorageStats() {
     coverCount: coverAssets.length,
     scoreBytes,
     coverBytes,
-    usage: exact ? estimate.usage : scoreBytes + coverBytes,
+    backgroundCount: backgroundAssets.length,
+    backgroundBytes,
+    imageCount: coverAssets.length + backgroundAssets.length,
+    imageBytes,
+    usage: exact ? estimate.usage : scoreBytes + imageBytes,
     quota: exact ? estimate.quota : 0,
     exact
   };
@@ -96,14 +105,20 @@ export async function clearCoverCache() {
   return result;
 }
 
-/** 找出孤儿资产：所属乐谱已删，或没被乐谱当成封面引用 */
+/** 找出孤儿资产：失效封面、未被当前指针使用的自定义背景、未知类型 */
 export async function findOrphanAssets() {
   const [scores, assets] = await Promise.all([
     dbService.getAllScores(),
     dbService.getAllAssets()
   ]);
   const scoreMap = new Map(scores.map((score) => [score.id, score]));
+  const activeBackgroundId = getActiveBackgroundAssetId();
   return assets.filter((asset) => {
+    if (!asset) return true;
+    if (asset.kind === ASSET_KIND_BACKGROUND) {
+      return activeBackgroundId === null || Number(asset.id) !== activeBackgroundId;
+    }
+    if (asset.kind !== 'cover') return true;
     const owner = scoreMap.get(asset.scoreId);
     if (!owner) return true;
     return owner.coverAssetId !== asset.id;

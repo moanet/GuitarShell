@@ -187,14 +187,14 @@ const settingsHTML = `
           <div class="stats triple">
             <div class="stat"><b id="totalUsage">—</b><span>总占用</span></div>
             <div class="stat"><b id="scoreUsage">—</b><span>曲谱文件</span></div>
-            <div class="stat"><b id="coverUsage">—</b><span>封面缓存</span></div>
+            <div class="stat"><b id="coverUsage">—</b><span>图片缓存</span></div>
           </div>
           <p class="cap-hint" id="quotaHint">正在统计本机占用…</p>
           <div class="grid2">
             <button class="act" id="btnCleanCover" type="button">清理封面缓存</button>
             <button class="act" id="btnCleanOrphan" type="button">清理未引用缓存</button>
           </div>
-          <p class="hint">只删可重建的封面缓存，不动乐谱、阅读进度、书签和练习记录。清理前建议先做一次<b>本地备份</b>，封面在下次进书架时自动重建。</p>
+          <p class="hint">只删可重建的封面缓存和失去引用的自定义背景副本，不动乐谱、阅读进度、书签和练习记录。当前使用中的自定义背景不会被清理；封面在下次进书架时自动重建。</p>
           <div class="status" id="storageStatus"></div>
         </section>
 
@@ -362,18 +362,18 @@ class GuitarSettings extends HTMLElement {
       this.storageStats = stats;
       this.$('totalUsage').textContent = formatBytes(stats.usage);
       this.$('scoreUsage').textContent = formatBytes(stats.scoreBytes);
-      this.$('coverUsage').textContent = formatBytes(stats.coverBytes);
+      this.$('coverUsage').textContent = formatBytes(stats.imageBytes);
 
       const quotaText = stats.exact && stats.quota
         ? `系统统计（含网页缓存）· 配额约 ${formatBytes(stats.quota)}`
-        : '系统未提供精确占用，这里显示曲谱 + 封面合计';
+        : '系统未提供精确占用，这里显示曲谱 + 图片缓存合计';
       const persist = await ensurePersistentStorage();
       const persistText = persist === 'granted'
         ? '已申请持久存储'
         : persist === 'denied'
           ? '未授予持久存储，空间紧张时可能被回收'
           : '当前环境不支持持久存储申请';
-      this.$('quotaHint').textContent = `${quotaText} · ${persistText} · 封面 ${stats.coverCount} 张`;
+      this.$('quotaHint').textContent = `${quotaText} · ${persistText} · 封面 ${stats.coverCount} 张 · 自定义背景 ${stats.backgroundCount} 张`;
     } catch (err) {
       console.warn('[存储] 统计失败:', err.message);
       ['totalUsage', 'scoreUsage', 'coverUsage'].forEach((id) => { this.$(id).textContent = '—'; });
@@ -431,7 +431,7 @@ class GuitarSettings extends HTMLElement {
     const bytes = orphans.reduce((sum, asset) => sum + (Number(asset.bytes) || 0), 0);
     const ok = await showConfirm({
       title: '清理未引用缓存',
-      message: '只删除已失去引用关系的封面缓存，正在使用的封面与全部乐谱都不受影响。',
+      message: '只删除已失去引用关系的封面缓存和自定义背景副本，正在使用的封面/背景与全部乐谱都不受影响。',
       details: [
         { label: '缓存', value: `${orphans.length} 条` },
         { label: '预计释放', value: `约 ${formatBytes(bytes)}` }

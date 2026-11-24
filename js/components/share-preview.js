@@ -1,6 +1,6 @@
 // ==========================================
 // js/components/share-preview.js
-// 0.1.14a 练习卡片预览浮层：预览 / 曲名开关 / 六套背景 / 分享或保存
+// 0.1.14b 练习卡片预览浮层：预览 / 曲名开关 / 六套预设 + 自定义背景 / 分享或保存
 // 浮层挂在 document.body，注册 ui-layer，返回键与遮罩可关闭
 // ==========================================
 
@@ -8,23 +8,25 @@ import {
   drawShareCard, canvasToPngBlob, saveShareCard, shareShareCard, cardFileName,
   canWebShareCard, SHARE_BACKGROUNDS, DEFAULT_SHARE_BG, getShareBackground
 } from '../services/share-card.js';
+import {
+  CUSTOM_BG_ID, getSelectedBackground, setSelectedBackground, getBackgroundDim,
+  setBackgroundDim, loadCustomBackground, removeCustomBackground, pickCustomBackgroundFile
+} from '../services/share-bg.js';
 import { showToast } from '../services/toast.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
-
-const BG_STORAGE_KEY = 'gs_share_bg';
+import './share-bg-crop.js';
 
 function readShareBg() {
   try {
-    return getShareBackground(localStorage.getItem(BG_STORAGE_KEY)).id;
+    if (localStorage.getItem('gs_share_bg') === CUSTOM_BG_ID) return CUSTOM_BG_ID;
+    return getShareBackground(getSelectedBackground()).id;
   } catch (err) {
     return DEFAULT_SHARE_BG;
   }
 }
 
 function writeShareBg(id) {
-  try {
-    localStorage.setItem(BG_STORAGE_KEY, id);
-  } catch (err) {}
+  setSelectedBackground(id);
 }
 
 const previewCSS = `
@@ -86,6 +88,29 @@ const previewCSS = `
   }
   .swatch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
   .swatch:disabled { opacity: .55; cursor: wait; }
+  .swatch.custom {
+    border-radius: 9px; border: 1px dashed rgba(var(--primary-rgb), .55);
+    background: rgba(var(--primary-rgb), .08) center / cover no-repeat;
+    display: grid; place-items: center; color: var(--primary); font-size: 16px; font-weight: 600;
+  }
+  .swatch.custom.has-image { border-style: solid; color: transparent; }
+  .custom-tools {
+    display: flex; flex-direction: column; gap: 7px;
+    padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 10px;
+    background: rgba(var(--primary-rgb), .04);
+  }
+  .custom-tools[hidden] { display: none; }
+  .dim-row { display: flex; align-items: center; gap: 8px; }
+  .dim-row span { flex: 0 0 auto; font-size: 11px; color: var(--txt-soft); }
+  .dim-row .dim-value { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .dim-range { flex: 1; min-width: 80px; accent-color: var(--primary); }
+  .custom-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .custom-action {
+    border: none; background: transparent; color: var(--primary); font-family: inherit;
+    font-size: 12px; padding: 1px 0; cursor: pointer;
+  }
+  .custom-action.danger { color: var(--danger, #B94A3A); }
+  .custom-action:disabled { opacity: .5; cursor: wait; }
   .hint { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
   .footer { display: flex; gap: 10px; }
   .btn {
@@ -126,6 +151,17 @@ const previewHTML = `
         <span class="bg-label">背景</span>
         <div class="swatches" id="swatches" role="group" aria-label="卡片背景"></div>
       </div>
+      <div class="custom-tools" id="customTools" hidden>
+        <div class="dim-row">
+          <span>压暗</span>
+          <input class="dim-range" id="dimRange" type="range" min="60" max="90" step="2" value="60" aria-label="自定义背景压暗程度">
+          <span class="dim-value" id="dimValue">60%</span>
+        </div>
+        <div class="custom-actions">
+          <button class="custom-action" id="btnReplaceBg" type="button">更换图片</button>
+          <button class="custom-action danger" id="btnRemoveBg" type="button">移除</button>
+        </div>
+      </div>
       <p class="hint">卡片只在本机生成，不会上传任何练习数据。</p>
       <div class="footer">
         <button class="btn primary" id="btnSave" type="button">保存到相册</button>
@@ -144,8 +180,16 @@ class GuitarSharePreview extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this.busy = false;
+    this.cropOpen = false;
+    this.customImage = null;
+    this.customAsset = null;
+    this.dim = getBackgroundDim();
     this._layerOff = null;
+    this._thumbUrl = null;
+    this._renderRaf = 0;
+    this._removeTimer = 0;
     this._keyHandler = (e) => {
+      if (this.cropOpen) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         this.close();
@@ -172,6 +216,9 @@ class GuitarSharePreview extends HTMLElement {
     };
     this.$('btnSave').onclick = () => this.save();
     this.$('btnShare').onclick = () => this.share();
+    this.$('dimRange').oninput = (e) => this.onDimInput(e);
+    this.$('btnReplaceBg').onclick = () => this.chooseCustomBackground({ replace: true });
+    this.$('btnRemoveBg').onclick = () => this.armRemoveCustom();
     this.bgId = readShareBg();
     this.buildSwatches();
   }
@@ -191,7 +238,54 @@ class GuitarSharePreview extends HTMLElement {
       btn.onclick = () => this.selectBackground(bg.id);
       box.appendChild(btn);
     });
+
+    const custom = document.createElement('button');
+    custom.type = 'button';
+    custom.className = 'swatch custom';
+    custom.dataset.bg = CUSTOM_BG_ID;
+    custom.title = '自定义背景';
+    custom.setAttribute('aria-label', '自定义背景');
+    custom.onclick = () => this.selectBackground(CUSTOM_BG_ID);
+    box.appendChild(custom);
+
+    this._updateCustomThumb();
     this.syncSwatches();
+  }
+
+  _setCustomThumb() {
+    const btn = this.$('swatches')?.querySelector('.swatch.custom');
+    if (!btn) return;
+    if (this._thumbUrl) {
+      URL.revokeObjectURL(this._thumbUrl);
+      this._thumbUrl = null;
+    }
+    if (this.customAsset && this.customAsset.blob instanceof Blob) {
+      this._thumbUrl = URL.createObjectURL(this.customAsset.blob);
+      btn.style.backgroundImage = `url("${this._thumbUrl}")`;
+      btn.textContent = '';
+      btn.classList.add('has-image');
+      btn.setAttribute('aria-label', '自定义背景（已设置）');
+    } else {
+      btn.style.backgroundImage = '';
+      btn.textContent = '＋';
+      btn.classList.remove('has-image');
+      btn.setAttribute('aria-label', '添加自定义背景');
+    }
+  }
+
+  _updateCustomThumb() {
+    this._setCustomThumb();
+  }
+
+  syncCustomTools() {
+    const tools = this.$('customTools');
+    if (!tools) return;
+    const visible = this.bgId === CUSTOM_BG_ID && Boolean(this.customImage);
+    tools.hidden = !visible;
+    const range = this.$('dimRange');
+    if (range) range.value = String(this.dim);
+    const label = this.$('dimValue');
+    if (label) label.textContent = `${this.dim}%`;
   }
 
   syncSwatches() {
@@ -204,12 +298,17 @@ class GuitarSharePreview extends HTMLElement {
     });
   }
 
-  selectBackground(id) {
+  async selectBackground(id) {
     if (this.busy) return;
-    this.bgId = getShareBackground(id).id;
+    if (id === CUSTOM_BG_ID && !this.customImage) {
+      await this.chooseCustomBackground({ replace: false });
+      return;
+    }
+    this.bgId = id === CUSTOM_BG_ID ? CUSTOM_BG_ID : getShareBackground(id).id;
     writeShareBg(this.bgId);
     this.syncSwatches();
-    this.render();
+    this.syncCustomTools();
+    await this.render();
   }
 
   async open(summary) {
@@ -221,7 +320,19 @@ class GuitarSharePreview extends HTMLElement {
     chk.disabled = !hasName;
     this.$('nameHint').textContent = hasName ? '默认不显示曲名' : '今日没有可显示的曲名';
     this.bgId = readShareBg();
+    this.dim = getBackgroundDim();
+    if (this.bgId === CUSTOM_BG_ID) {
+      const loaded = await loadCustomBackground();
+      if (loaded) {
+        this.customImage = loaded.image;
+        this.customAsset = loaded.asset;
+      } else {
+        this.bgId = DEFAULT_SHARE_BG;
+      }
+    }
+    this._updateCustomThumb();
     this.syncSwatches();
+    this.syncCustomTools();
     this._setBusy(false);
     this.$('mask').classList.add('show');
     if (!this._layerOff) {
@@ -250,6 +361,10 @@ class GuitarSharePreview extends HTMLElement {
     this.$('swatches').querySelectorAll('.swatch').forEach((btn) => {
       btn.disabled = on;
     });
+    ['dimRange', 'btnReplaceBg', 'btnRemoveBg'].forEach((id) => {
+      const el = this.$(id);
+      if (el) el.disabled = on;
+    });
     save.textContent = on && action === 'save'
       ? '正在保存…'
       : (this.native ? '保存到相册' : '保存图片');
@@ -259,7 +374,148 @@ class GuitarSharePreview extends HTMLElement {
   async render() {
     if (!this.summary || this.busy) return;
     const showName = this.$('chkName').checked;
-    await drawShareCard(this.canvas, this.summary, { showName, background: this.bgId });
+    const useCustom = this.bgId === CUSTOM_BG_ID && Boolean(this.customImage);
+    await drawShareCard(this.canvas, this.summary, {
+      showName,
+      background: useCustom ? CUSTOM_BG_ID : this.bgId,
+      customImage: useCustom ? this.customImage : null,
+      customDim: this.dim
+    });
+  }
+
+  _scheduleRender() {
+    if (this.busy) return;
+    if (this._renderRaf) return;
+    this._renderRaf = requestAnimationFrame(() => {
+      this._renderRaf = 0;
+      this.render();
+    });
+  }
+
+  onDimInput(e) {
+    if (this.busy) return;
+    this.dim = setBackgroundDim(e.target.value);
+    this.$('dimValue').textContent = `${this.dim}%`;
+    this._scheduleRender();
+  }
+
+  async chooseCustomBackground({ replace = false } = {}) {
+    if (this.busy || this.cropOpen) return;
+    let file = null;
+    try {
+      if (this.native) file = await pickCustomBackgroundFile();
+      else file = await this._pickWebFile();
+    } catch (err) {
+      if (err && err.code === 'PICK_CANCELLED') return;
+      console.warn('[背景] 选图失败:', err.message);
+      showToast(`选图失败：${err.message}`);
+      return;
+    }
+    if (!file) return;
+    await this.openCrop(file, { replace });
+  }
+
+  _pickWebFile() {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.position = 'fixed';
+      input.style.left = '-9999px';
+      let done = false;
+      let focusTimer = 0;
+      let guardTimer = 0;
+      const finish = (file) => {
+        if (done) return;
+        done = true;
+        clearTimeout(focusTimer);
+        clearTimeout(guardTimer);
+        window.removeEventListener('focus', onFocus);
+        input.remove();
+        resolve(file || null);
+      };
+      const onFocus = () => {
+        focusTimer = setTimeout(() => finish(null), 320);
+      };
+      input.onchange = () => finish(input.files && input.files[0]);
+      if ('oncancel' in input) input.oncancel = () => finish(null);
+      window.addEventListener('focus', onFocus, { once: true });
+      document.body.appendChild(input);
+      input.click();
+      guardTimer = setTimeout(() => finish(null), 60000);
+    });
+  }
+
+  async openCrop(file, { replace = false } = {}) {
+    if (this.busy || this.cropOpen) return;
+    this.cropOpen = true;
+    this._setBusy(true, 'crop');
+    const crop = document.createElement('guitar-share-bg-crop');
+    document.body.appendChild(crop);
+    let result = null;
+    try {
+      result = await crop.open(file);
+    } catch (err) {
+      console.warn('[背景] 裁切失败:', err.message);
+      showToast(`背景处理失败：${err.message}`);
+    } finally {
+      this._setBusy(false);
+      this.cropOpen = false;
+      setTimeout(() => crop.remove(), 220);
+    }
+    if (!result) return;
+
+    this.customImage = result.image;
+    this.customAsset = result.asset;
+    this.bgId = CUSTOM_BG_ID;
+    writeShareBg(CUSTOM_BG_ID);
+    this._updateCustomThumb();
+    this.syncSwatches();
+    this.syncCustomTools();
+    await this.render();
+    showToast(replace ? '已更换自定义背景' : '已设置自定义背景');
+  }
+
+  armRemoveCustom() {
+    if (this.busy) return;
+    const btn = this.$('btnRemoveBg');
+    if (!btn) return;
+    if (!this._removeArmed) {
+      this._removeArmed = true;
+      btn.textContent = '再点一次移除';
+      clearTimeout(this._removeTimer);
+      this._removeTimer = setTimeout(() => {
+        this._removeArmed = false;
+        if (btn.isConnected) btn.textContent = '移除';
+      }, 3000);
+      return;
+    }
+    clearTimeout(this._removeTimer);
+    this._removeArmed = false;
+    btn.textContent = '移除';
+    this.removeCustom();
+  }
+
+  async removeCustom() {
+    if (this.busy) return;
+    this._setBusy(true, 'remove');
+    try {
+      await removeCustomBackground();
+      this.customImage = null;
+      this.customAsset = null;
+      this.bgId = DEFAULT_SHARE_BG;
+      this._updateCustomThumb();
+      this.syncSwatches();
+      this.syncCustomTools();
+      this._setBusy(false);
+      await this.render();
+      showToast('已移除自定义背景');
+    } catch (err) {
+      console.warn('[背景] 移除失败:', err.message);
+      showToast(`移除失败：${err.message}`);
+    } finally {
+      this._setBusy(false);
+    }
   }
 
   async save() {
@@ -296,8 +552,11 @@ class GuitarSharePreview extends HTMLElement {
   }
 
   close() {
+    if (this.cropOpen) return;
     document.removeEventListener('keydown', this._keyHandler);
     if (this._layerOff) { this._layerOff(); this._layerOff = null; }
+    if (this._thumbUrl) { URL.revokeObjectURL(this._thumbUrl); this._thumbUrl = null; }
+    if (this._renderRaf) { cancelAnimationFrame(this._renderRaf); this._renderRaf = 0; }
     const mask = this.$('mask');
     if (mask) mask.classList.remove('show');
     setTimeout(() => this.remove(), 180);

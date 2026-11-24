@@ -2,6 +2,7 @@ package com.guitarshell;
 
 import android.app.Activity;
 import android.content.ClipData;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.database.Cursor;
@@ -153,6 +154,11 @@ public class GalleryPickerPlugin extends Plugin {
     }
 
     private Intent buildPickerIntent(int limit) {
+        // MIUI 的 ACTION_PICK_IMAGES 会自行结束（MediaProvider 的 PhotoPickerActivity
+        // 创建后立刻 app-request finish），在小米设备上直接指定相册的选择页。
+        Intent miuiGallery = buildMiuiGalleryIntent(limit);
+        if (miuiGallery != null) return miuiGallery;
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Intent picker = new Intent(MediaStore.ACTION_PICK_IMAGES);
             picker.setType("image/*");
@@ -163,16 +169,30 @@ public class GalleryPickerPlugin extends Plugin {
         Intent openDocument = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         openDocument.addCategory(Intent.CATEGORY_OPENABLE);
         openDocument.setType("image/*");
-        openDocument.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        openDocument.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, limit > 1);
         if (canResolve(openDocument)) return openDocument;
 
         Intent getContent = new Intent(Intent.ACTION_GET_CONTENT);
         getContent.addCategory(Intent.CATEGORY_OPENABLE);
         getContent.setType("image/*");
-        getContent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        getContent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, limit > 1);
         if (canResolve(getContent)) return getContent;
 
         return null;
+    }
+
+    private Intent buildMiuiGalleryIntent(int limit) {
+        if (!"Xiaomi".equalsIgnoreCase(Build.MANUFACTURER)) return null;
+
+        Intent gallery = new Intent(Intent.ACTION_GET_CONTENT);
+        gallery.addCategory(Intent.CATEGORY_OPENABLE);
+        gallery.setType("image/*");
+        gallery.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, limit > 1);
+        gallery.setComponent(new ComponentName(
+            "com.miui.gallery",
+            "com.miui.gallery.picker.PickGalleryActivity"
+        ));
+        return canResolve(gallery) ? gallery : null;
     }
 
     private boolean canResolve(Intent intent) {
