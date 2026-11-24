@@ -1,21 +1,76 @@
 // ==========================================
 // js/services/share-card.js
-// 0.1.13 练习卡片：今日统计 + 1080×1440 木质卡片绘制 + 分享 / 下载
+// 0.1.14a 练习卡片：今日统计 + 1080×1440 参数化背景卡片 + 页脚题记
 // 纯本地 Canvas，不请求远程模板、不上传任何数据
 // ==========================================
+
+import { pickQuote } from './quotes.js';
 
 const CARD_W = 1080;
 const CARD_H = 1440;
 const FONT_STACK = '"PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Segoe UI", sans-serif';
+const QUOTE_FONT_STACK = '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif';
 
-const COLOR = {
-  bgTop: '#2B2019',
-  bgBottom: '#150F0C',
-  cream: '#F3E8D6',
-  muted: '#B9A995',
-  accent: '#B87B4C',
-  olive: '#6B8E23'
-};
+export const DEFAULT_SHARE_BG = 'walnut';
+
+function withAlpha(hex, alpha) {
+  const raw = String(hex || '').replace('#', '');
+  if (raw.length !== 6) return `rgba(0,0,0,${alpha})`;
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function makePalette(strong, muted, accent) {
+  return {
+    strong,
+    muted,
+    accent,
+    lineStrong: withAlpha(accent, 0.45),
+    lineSoft: withAlpha(accent, 0.30),
+    quote: withAlpha(strong, 0.55),
+    tileFill: withAlpha(accent, 0.20)
+  };
+}
+
+/** 六套背景只换参数，不写六份绘制代码 */
+export const SHARE_BACKGROUNDS = [
+  {
+    id: 'walnut', name: '深胡桃木', light: false, texture: 'none',
+    top: '#2B2019', bottom: '#150F0C', vignette: 'rgba(0,0,0,0.42)',
+    palette: makePalette('#F3E8D6', '#B9A995', '#B87B4C')
+  },
+  {
+    id: 'oak', name: '浅橡木', light: true, texture: 'wood',
+    top: '#EAD9BD', bottom: '#C9AC83', vignette: 'rgba(70,44,20,0.20)',
+    palette: makePalette('#2B2117', '#55412D', '#6E3B1A')
+  },
+  {
+    id: 'linen', name: '亚麻纸', light: true, texture: 'paper',
+    top: '#F2E8D6', bottom: '#DACBB3', vignette: 'rgba(80,60,35,0.16)',
+    palette: makePalette('#2C2720', '#5F5546', '#7A4725')
+  },
+  {
+    id: 'felt', name: '墨绿台呢', light: false, texture: 'felt',
+    top: '#1B3A2F', bottom: '#091B15', vignette: 'rgba(0,0,0,0.38)',
+    palette: makePalette('#F0E8D7', '#A8B5A5', '#C99A5E')
+  },
+  {
+    id: 'brass', name: '炭黑黄铜', light: false, texture: 'metal',
+    top: '#1D1B18', bottom: '#090807', vignette: 'rgba(0,0,0,0.40)',
+    palette: makePalette('#F2E8D5', '#B9AC96', '#D2A451')
+  },
+  {
+    id: 'midnight', name: '午夜蓝', light: false, texture: 'grain',
+    top: '#1A2433', bottom: '#070B13', vignette: 'rgba(0,0,0,0.42)',
+    palette: makePalette('#ECE9DF', '#A7B0C2', '#9EB2CF')
+  }
+];
+
+export function getShareBackground(id) {
+  return SHARE_BACKGROUNDS.find((bg) => bg.id === id) || SHARE_BACKGROUNDS[0];
+}
 
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 
@@ -69,14 +124,6 @@ export function getTodayPracticeSummary(logs = [], now = new Date()) {
 
   const minutes = Math.round(todayLogs.reduce((sum, log) => sum + logMinutes(log), 0));
 
-  let maxBpm = 0;
-  todayLogs.forEach((log) => {
-    [log.bpmEnd, log.bpm, log.bpmStart].forEach((raw) => {
-      const n = Number(raw);
-      if (Number.isFinite(n) && n > maxBpm && n > 0) maxBpm = n;
-    });
-  });
-
   const topLog = todayLogs
     .slice()
     .sort((a, b) => (logMinutes(b) - logMinutes(a)) || (Number(b.createdAt) - Number(a.createdAt)))[0] || null;
@@ -84,7 +131,6 @@ export function getTodayPracticeSummary(logs = [], now = new Date()) {
   return {
     date: now,
     minutes,
-    maxBpm: maxBpm || null,
     count: todayLogs.length,
     topName: topLog ? String(topLog.name || '').trim() : '',
     streak: countStreak(logs, now)
@@ -94,6 +140,25 @@ export function getTodayPracticeSummary(logs = [], now = new Date()) {
 function setFont(ctx, size, weight = 700, spacing = 0) {
   ctx.font = `${weight} ${size}px ${FONT_STACK}`;
   try { ctx.letterSpacing = `${spacing}px`; } catch (err) {}
+}
+
+function setQuoteFont(ctx, size, lang = 'zh') {
+  ctx.font = `${lang === 'en' ? 'italic ' : ''}${size}px ${QUOTE_FONT_STACK}`;
+  try { ctx.letterSpacing = lang === 'en' ? '0.4px' : '1px'; } catch (err) {}
+}
+
+function truncateLine(ctx, line, maxWidth, isEnglish) {
+  let text = line;
+  if (isEnglish) {
+    while (text && ctx.measureText(`${text}…`).width > maxWidth) {
+      text = text.replace(/\s*\S+$/, '');
+    }
+  } else {
+    while (text && ctx.measureText(`${text}…`).width > maxWidth) {
+      text = text.slice(0, -1);
+    }
+  }
+  return text ? `${text}…` : '…';
 }
 
 function roundRect(ctx, x, y, w, h, radius) {
@@ -107,187 +172,340 @@ function roundRect(ctx, x, y, w, h, radius) {
   ctx.closePath();
 }
 
-function drawWoodBackground(ctx) {
-  const grad = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
-  grad.addColorStop(0, COLOR.bgTop);
-  grad.addColorStop(1, COLOR.bgBottom);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, CARD_W, CARD_H);
+const textureCache = new Map();
 
-  // 木纹：竖向细线，轻微正弦弯曲
-  ctx.save();
-  ctx.strokeStyle = 'rgba(184, 123, 76, 0.075)';
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 26; i += 1) {
-    const x = 40 + i * 42;
-    ctx.beginPath();
-    for (let y = 0; y <= CARD_H; y += 24) {
-      const offset = Math.sin((y / CARD_H) * Math.PI * 2 + i) * 5;
-      if (y === 0) ctx.moveTo(x + offset, y);
-      else ctx.lineTo(x + offset, y);
+function hashSeed(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** 生成可重复的噪点瓦片，避免每次切背景都逐像素重算整张卡 */
+function noiseTile(key, size, density, alpha, light) {
+  const cacheKey = `${key}:${size}:${density}:${alpha}:${light ? 1 : 0}`;
+  if (textureCache.has(cacheKey)) return textureCache.get(cacheKey);
+
+  const tile = document.createElement('canvas');
+  tile.width = size;
+  tile.height = size;
+  const tctx = tile.getContext('2d');
+  const img = tctx.createImageData(size, size);
+  const data = img.data;
+  const rnd = mulberry32(hashSeed(cacheKey));
+  const tone = light ? 0 : 255;
+  for (let i = 0; i < size * size; i += 1) {
+    if (rnd() < density) {
+      const a = Math.round(alpha * 255 * (0.35 + rnd() * 0.65));
+      const p = i * 4;
+      data[p] = tone;
+      data[p + 1] = tone;
+      data[p + 2] = tone;
+      data[p + 3] = a;
     }
+  }
+  tctx.putImageData(img, 0, 0);
+  textureCache.set(cacheKey, tile);
+  return tile;
+}
+
+function fillNoise(ctx, key, { size = 160, density = 0.34, alpha = 0.05, light = false } = {}) {
+  const pattern = ctx.createPattern(noiseTile(key, size, density, alpha, light), 'repeat');
+  if (!pattern) return;
+  ctx.save();
+  ctx.fillStyle = pattern;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+  ctx.restore();
+}
+
+function drawWoodTexture(ctx, preset) {
+  const rnd = mulberry32(hashSeed(`${preset.id}-wood`));
+  ctx.save();
+  for (let i = 0; i < 80; i += 1) {
+    const x = rnd() * CARD_W;
+    const amp = 2 + rnd() * 5;
+    const dark = preset.light ? '90,60,35' : '255,242,222';
+    ctx.strokeStyle = `rgba(${dark},${(preset.light ? 0.012 : 0.02) + rnd() * 0.022})`;
+    ctx.lineWidth = 0.5 + rnd() * 1.0;
+    ctx.beginPath();
+    ctx.moveTo(x - amp, -20);
+    ctx.bezierCurveTo(x + amp * 0.7, CARD_H * 0.3, x - amp * 0.9, CARD_H * 0.72, x + amp, CARD_H + 20);
     ctx.stroke();
   }
   ctx.restore();
+}
 
-  // 四周压暗，避免平铺感
+function drawPaperTexture(ctx, preset) {
+  const rnd = mulberry32(hashSeed(`${preset.id}-paper`));
+  fillNoise(ctx, `${preset.id}-paper`, { size: 180, density: 0.30, alpha: 0.04, light: true });
+  ctx.save();
+  for (let i = 0; i < 260; i += 1) {
+    const x = rnd() * CARD_W;
+    const y = rnd() * CARD_H;
+    const angle = (rnd() < 0.5 ? 0 : Math.PI / 2) + (rnd() - 0.5) * 0.35;
+    const len = 16 + rnd() * 58;
+    ctx.strokeStyle = `rgba(110,85,55,${0.03 + rnd() * 0.045})`;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawLinenTexture(ctx, preset) {
+  const rnd = mulberry32(hashSeed(`${preset.id}-linen`));
+  fillNoise(ctx, `${preset.id}-linen`, { size: 140, density: 0.30, alpha: 0.03, light: true });
+  ctx.save();
+  ctx.lineWidth = 1;
+  for (let y = 0; y < CARD_H; y += 5) {
+    ctx.strokeStyle = `rgba(78,66,50,${0.018 + rnd() * 0.020})`;
+    ctx.beginPath();
+    ctx.moveTo(0, y + (rnd() - 0.5) * 1.2);
+    ctx.lineTo(CARD_W, y + (rnd() - 0.5) * 1.2);
+    ctx.stroke();
+  }
+  for (let x = 0; x < CARD_W; x += 5) {
+    ctx.strokeStyle = `rgba(110,95,75,${0.014 + rnd() * 0.016})`;
+    ctx.beginPath();
+    ctx.moveTo(x + (rnd() - 0.5) * 1.2, 0);
+    ctx.lineTo(x + (rnd() - 0.5) * 1.2, CARD_H);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawFeltTexture(ctx, preset) {
+  const rnd = mulberry32(hashSeed(`${preset.id}-felt`));
+  fillNoise(ctx, `${preset.id}-felt`, { size: 150, density: 0.38, alpha: 0.045 });
+  ctx.save();
+  for (let i = 0; i < 22; i += 1) {
+    const x = rnd() * CARD_W;
+    const y = rnd() * CARD_H;
+    const r = 70 + rnd() * 190;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(220,235,220,${0.006 + rnd() * 0.012})`);
+    g.addColorStop(1, 'rgba(220,235,220,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ctx.restore();
+}
+
+function drawMetalTexture(ctx, preset) {
+  const rnd = mulberry32(hashSeed(`${preset.id}-metal`));
+  fillNoise(ctx, `${preset.id}-metal`, { size: 160, density: 0.26, alpha: 0.035 });
+  ctx.save();
+  for (let i = 0; i < 120; i += 1) {
+    const y = rnd() * CARD_H;
+    ctx.strokeStyle = `rgba(214,176,108,${0.006 + rnd() * 0.016})`;
+    ctx.lineWidth = 0.5 + rnd() * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(CARD_W, y + (rnd() - 0.5) * 1.2);
+    ctx.stroke();
+  }
+  const sheen = ctx.createRadialGradient(CARD_W * 0.86, CARD_H * 0.10, 0, CARD_W * 0.86, CARD_H * 0.10, CARD_W * 0.74);
+  sheen.addColorStop(0, 'rgba(214,170,92,0.12)');
+  sheen.addColorStop(0.55, 'rgba(214,170,92,0.030)');
+  sheen.addColorStop(1, 'rgba(214,170,92,0)');
+  ctx.fillStyle = sheen;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+  ctx.restore();
+}
+
+function drawGrainTexture(ctx, preset) {
+  fillNoise(ctx, `${preset.id}-grain`, { size: 170, density: 0.32, alpha: 0.045 });
+  const rnd = mulberry32(hashSeed(`${preset.id}-grain-bands`));
+  ctx.save();
+  for (let i = 0; i < 8; i += 1) {
+    const x = rnd() * CARD_W;
+    const w = 80 + rnd() * 180;
+    const g = ctx.createLinearGradient(x - w, 0, x + w, 0);
+    g.addColorStop(0, 'rgba(160,185,220,0)');
+    g.addColorStop(0.5, 'rgba(160,185,220,0.018)');
+    g.addColorStop(1, 'rgba(160,185,220,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - w, 0, w * 2, CARD_H);
+  }
+  ctx.restore();
+}
+
+function drawBackground(ctx, preset) {
+  const grad = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
+  grad.addColorStop(0, preset.top);
+  grad.addColorStop(1, preset.bottom);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+  if (preset.texture === 'wood') drawWoodTexture(ctx, preset);
+  else if (preset.texture === 'paper') drawPaperTexture(ctx, preset);
+  else if (preset.texture === 'linen') drawLinenTexture(ctx, preset);
+  else if (preset.texture === 'felt') drawFeltTexture(ctx, preset);
+  else if (preset.texture === 'metal') drawMetalTexture(ctx, preset);
+  else if (preset.texture === 'grain') drawGrainTexture(ctx, preset);
+
   const vignette = ctx.createRadialGradient(CARD_W / 2, CARD_H / 2, CARD_H * 0.22, CARD_W / 2, CARD_H / 2, CARD_H * 0.78);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.42)');
+  vignette.addColorStop(1, preset.vignette);
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 }
 
-function drawHeader(ctx, summary, logo) {
+function drawHeader(ctx, logo, p) {
   if (logo) {
-    ctx.drawImage(logo, 96, 92, 112, 112);
+    ctx.drawImage(logo, 96, 96, 48, 48);
   } else {
-    ctx.fillStyle = 'rgba(184, 123, 76, 0.22)';
-    roundRect(ctx, 96, 92, 112, 112, 24);
+    ctx.fillStyle = p.tileFill;
+    roundRect(ctx, 96, 96, 48, 48, 12);
     ctx.fill();
-    setFont(ctx, 44, 800);
-    ctx.fillStyle = COLOR.cream;
+    setFont(ctx, 20, 800);
+    ctx.fillStyle = p.strong;
     ctx.textAlign = 'center';
-    ctx.fillText('GS', 152, 168);
+    ctx.fillText('GS', 120, 128);
   }
 
   ctx.textAlign = 'left';
-  setFont(ctx, 34, 800, 1);
-  ctx.fillStyle = COLOR.cream;
-  ctx.fillText('GUITAR SHELL', 240, 148);
+  setFont(ctx, 26, 600, 0.5);
+  ctx.fillStyle = p.strong;
+  ctx.fillText('Guitar Shell', 160, 128);
 
-  setFont(ctx, 21, 500, 1);
-  ctx.fillStyle = COLOR.muted;
-  ctx.fillText('练 琴 记 录', 242, 186);
-
-  const d = summary.date;
-  ctx.textAlign = 'right';
-  setFont(ctx, 28, 600);
-  ctx.fillStyle = COLOR.cream;
-  ctx.fillText(`${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`, 984, 148);
-  setFont(ctx, 22, 400);
-  ctx.fillStyle = COLOR.muted;
-  ctx.fillText(WEEKDAYS[d.getDay()], 984, 186);
-
-  ctx.strokeStyle = 'rgba(184, 123, 76, 0.45)';
+  ctx.strokeStyle = p.lineStrong;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(96, 246);
-  ctx.lineTo(984, 246);
+  ctx.moveTo(96, 166);
+  ctx.lineTo(984, 166);
   ctx.stroke();
 }
 
-function drawTodayBlock(ctx, summary) {
+function drawTodayBlock(ctx, summary, p) {
+  const d = summary.date;
   ctx.textAlign = 'left';
   setFont(ctx, 26, 600, 3);
-  ctx.fillStyle = COLOR.muted;
-  ctx.fillText('今 日 练 习', 96, 402);
+  ctx.fillStyle = p.muted;
+  ctx.fillText('今 日 练 习', 96, 240);
 
+  ctx.textAlign = 'right';
+  setFont(ctx, 24, 500, 0.6);
+  ctx.fillStyle = p.muted;
+  ctx.fillText(
+    `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} · ${WEEKDAYS[d.getDay()]}`,
+    984,
+    240
+  );
+
+  ctx.textAlign = 'left';
   const text = String(summary.minutes);
-  let size = 208;
+  let size = 190;
   setFont(ctx, size, 800);
   while (ctx.measureText(text).width > 620 && size > 92) {
     size -= 10;
     setFont(ctx, size, 800);
   }
-  ctx.fillStyle = COLOR.cream;
-  const baseline = 700;
+  ctx.fillStyle = p.strong;
+  const baseline = 610;
   ctx.fillText(text, 96, baseline);
 
   setFont(ctx, 42, 600);
-  ctx.fillStyle = COLOR.accent;
+  ctx.fillStyle = p.accent;
   // 量一次大字号宽度，单位紧跟在数字右侧
   setFont(ctx, size, 800);
   const bigWidth = ctx.measureText(text).width;
   setFont(ctx, 42, 600);
   ctx.fillText('分钟', 96 + bigWidth + 22, baseline - 8);
-
-  // 主数字下沿的短装饰线
-  ctx.strokeStyle = 'rgba(184, 123, 76, 0.65)';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(98, baseline + 34);
-  ctx.lineTo(98 + Math.max(180, bigWidth), baseline + 34);
-  ctx.stroke();
-
-  setFont(ctx, 22, 400);
-  ctx.fillStyle = COLOR.muted;
-  ctx.fillText(`今日打卡 ${summary.count} 次 · 累计 ${summary.minutes} 分钟`, 96, 756);
 }
 
-function drawTile(ctx, x, y, w, h, label, value, suffix) {
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.045)';
-  roundRect(ctx, x, y, w, h, 26);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(184, 123, 76, 0.38)';
-  ctx.lineWidth = 1.5;
-  roundRect(ctx, x, y, w, h, 26);
-  ctx.stroke();
-
+function drawStatLine(ctx, x, baseline, label, value, suffix, p) {
+  let tx = x;
   ctx.textAlign = 'left';
-  setFont(ctx, 23, 500, 1);
-  ctx.fillStyle = COLOR.muted;
-  ctx.fillText(label, x + 32, y + 62);
+  setFont(ctx, 34, 500, 6);
+  ctx.fillStyle = p.muted;
+  ctx.fillText(label, tx, baseline);
+  tx += ctx.measureText(label).width + 16;
 
   const valueText = String(value);
-  setFont(ctx, 62, 800);
-  ctx.fillStyle = COLOR.cream;
-  ctx.fillText(valueText, x + 32, y + 154);
-  const valueWidth = ctx.measureText(valueText).width;
+  setFont(ctx, 44, 800);
+  ctx.fillStyle = p.strong;
+  ctx.fillText(valueText, tx, baseline);
+  tx += ctx.measureText(valueText).width + 9;
 
-  if (suffix) {
-    setFont(ctx, 24, 500);
-    ctx.fillStyle = COLOR.accent;
-    ctx.fillText(suffix, x + 32 + valueWidth + 12, y + 152);
-  }
+  setFont(ctx, 24, 500);
+  ctx.fillStyle = p.accent;
+  ctx.fillText(suffix, tx, baseline - 1);
 }
 
-function drawMeta(ctx, summary, showName) {
-  const y = 812;
-  drawTile(ctx, 96, y, 424, 208, '今日最高 BPM', summary.maxBpm || '—', summary.maxBpm ? '' : '');
-  drawTile(ctx, 560, y, 424, 208, '连续打卡', summary.streak || 0, '天');
-
-  if (showName && summary.topName) {
-    ctx.textAlign = 'left';
-    setFont(ctx, 24, 500, 2);
-    ctx.fillStyle = COLOR.muted;
-    ctx.fillText('今 日 主 练', 96, 1112);
-
-    let name = summary.topName;
-    setFont(ctx, 46, 700);
-    while (name.length > 1 && ctx.measureText(`${name}…`).width > 888) {
-      name = name.slice(0, -1);
-    }
-    if (name !== summary.topName) name = `${name}…`;
-    ctx.fillStyle = COLOR.cream;
-    ctx.fillText(name, 96, 1192);
-  } else {
-    ctx.strokeStyle = 'rgba(184, 123, 76, 0.16)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(96, 1130);
-    ctx.lineTo(984, 1130);
-    ctx.stroke();
-  }
+function drawStatsLine(ctx, summary, p) {
+  drawStatLine(ctx, 96, 730, '今日打卡', summary.count || 0, '次', p);
+  drawStatLine(ctx, 560, 730, '连续打卡', summary.streak || 0, '天', p);
 }
 
-function drawFooter(ctx) {
+function drawName(ctx, summary, showName, p) {
+  if (!showName || !summary.topName) return;
+
+  ctx.strokeStyle = p.lineStrong;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(96, 848);
+  ctx.lineTo(140, 848);
+  ctx.stroke();
+
   ctx.textAlign = 'left';
-  setFont(ctx, 24, 400);
-  ctx.fillStyle = COLOR.muted;
-  ctx.fillText('本地练习记录 · 不上传任何数据', 96, 1330);
+  setFont(ctx, 32, 500, 2);
+  ctx.fillStyle = p.muted;
+  ctx.fillText('主练', 96, 898);
 
-  ctx.textAlign = 'right';
-  setFont(ctx, 22, 700, 2);
-  ctx.fillStyle = COLOR.olive;
-  ctx.fillText('GUITAR SHELL', 984, 1330);
+  let name = summary.topName;
+  setFont(ctx, 49, 700);
+  while (name.length > 1 && ctx.measureText(`${name}…`).width > 888) {
+    name = name.slice(0, -1);
+  }
+  if (name !== summary.topName) name = `${name}…`;
+  ctx.fillStyle = p.strong;
+  ctx.fillText(name, 96, 988);
+}
 
-  ctx.strokeStyle = 'rgba(184, 123, 76, 0.3)';
+function stripTrailingStop(text) {
+  return String(text || '').replace(/[。.]+$/u, '').trimEnd();
+}
+
+function drawFooter(ctx, quote, p) {
+  ctx.strokeStyle = p.lineSoft;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(96, 1280);
-  ctx.lineTo(984, 1280);
+  ctx.moveTo(96, 1242);
+  ctx.lineTo(984, 1242);
   ctx.stroke();
+
+  const text = stripTrailingStop(quote && quote.text);
+  if (!text) return;
+
+  const lang = quote.lang === 'en' ? 'en' : 'zh';
+  const isEnglish = lang === 'en';
+  const maxWidth = 888;
+  let size = 26;
+  setQuoteFont(ctx, size, lang);
+  while (size > 22 && ctx.measureText(text).width > maxWidth) {
+    size -= 1;
+    setQuoteFont(ctx, size, lang);
+  }
+  const fitted = ctx.measureText(text).width > maxWidth ? truncateLine(ctx, text, maxWidth, isEnglish) : text;
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = p.quote;
+  ctx.fillText(fitted, 984, 1338);
 }
 
 /**
@@ -295,20 +513,28 @@ function drawFooter(ctx) {
  */
 export async function drawShareCard(canvas, summary, options = {}) {
   const showName = Boolean(options.showName);
+  const quote = options.quote === undefined ? pickQuote(summary.date) : options.quote;
+  const preset = getShareBackground(options.background);
+  const p = preset.palette;
   canvas.width = CARD_W;
   canvas.height = CARD_H;
   const ctx = canvas.getContext('2d');
   const logo = await loadLogo();
 
-  drawWoodBackground(ctx);
-  drawHeader(ctx, summary, logo);
-  drawTodayBlock(ctx, summary);
-  drawMeta(ctx, summary, showName);
-  drawFooter(ctx);
+  drawBackground(ctx, preset);
+  drawHeader(ctx, logo, p);
+  drawTodayBlock(ctx, summary, p);
+  drawStatsLine(ctx, summary, p);
+  drawName(ctx, summary, showName, p);
+  drawFooter(ctx, quote, p);
 
   canvas.dataset.rendered = '1';
+  canvas.dataset.background = preset.id;
   canvas.dataset.showName = showName ? '1' : '0';
   canvas.dataset.minutes = String(summary.minutes);
+  canvas.dataset.quoteId = quote ? String(quote.id || '') : '';
+  canvas.dataset.quoteLang = quote ? String(quote.lang || 'zh') : '';
+  canvas.dataset.quoteText = quote ? stripTrailingStop(quote.text) : '';
   return canvas;
 }
 
@@ -330,14 +556,25 @@ function blobToDataUrl(blob) {
   });
 }
 
-function getNativeShare() {
+function getNativeShareCard() {
   try {
     const cap = window.Capacitor;
     if (!cap) return null;
     if (typeof cap.isNativePlatform === 'function' && !cap.isNativePlatform()) return null;
-    if (cap.Plugins && cap.Plugins.ShareCard) return cap.Plugins.ShareCard;
+    const plugin = cap.Plugins && cap.Plugins.ShareCard;
+    if (plugin) {
+      return {
+        share: (opts) => plugin.share(opts),
+        saveToGallery: typeof plugin.saveToGallery === 'function'
+          ? (opts) => plugin.saveToGallery(opts)
+          : null
+      };
+    }
     if (typeof cap.nativePromise === 'function') {
-      return { share: (opts) => cap.nativePromise('ShareCard', 'share', opts) };
+      return {
+        share: (opts) => cap.nativePromise('ShareCard', 'share', opts),
+        saveToGallery: (opts) => cap.nativePromise('ShareCard', 'saveToGallery', opts)
+      };
     }
   } catch (err) {}
   return null;
@@ -348,15 +585,7 @@ export function cardFileName(now = new Date()) {
   return `GuitarShell-practice-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.png`;
 }
 
-/** 原生壳走系统分享面板，网页端下载 PNG；两条通道都不发网络请求 */
-export async function exportShareCard(blob, fileName = cardFileName()) {
-  const plugin = getNativeShare();
-  if (plugin) {
-    const dataUrl = await blobToDataUrl(blob);
-    const result = await plugin.share({ fileName, dataUrl });
-    return { channel: 'native', fileName, result };
-  }
-
+function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -365,5 +594,68 @@ export async function exportShareCard(blob, fileName = cardFileName()) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1200);
-  return { channel: 'web', fileName };
+  return { channel: 'web-download', fileName };
+}
+
+/** 原生壳保存到系统相册；网页端沿用下载 */
+export async function saveShareCard(blob, fileName = cardFileName()) {
+  const plugin = getNativeShareCard();
+  if (plugin && typeof plugin.saveToGallery === 'function') {
+    const dataUrl = await blobToDataUrl(blob);
+    const result = await plugin.saveToGallery({ fileName, dataUrl });
+    return { channel: 'native-gallery', fileName, result };
+  }
+  return downloadBlob(blob, fileName);
+}
+
+function canSharePngFile(file) {
+  try {
+    return typeof navigator !== 'undefined'
+      && typeof navigator.share === 'function'
+      && typeof navigator.canShare === 'function'
+      && navigator.canShare({ files: [file] });
+  } catch (err) {
+    return false;
+  }
+}
+
+/** 网页端是否具备分享 PNG 文件的能力（决定预览底栏是否显示分享按钮） */
+export function canWebShareCard() {
+  if (typeof navigator === 'undefined'
+    || typeof File === 'undefined'
+    || typeof navigator.share !== 'function'
+    || typeof navigator.canShare !== 'function') return false;
+  try {
+    const probe = new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], 'card-probe.png', { type: 'image/png' });
+    return canSharePngFile(probe);
+  } catch (err) {
+    return false;
+  }
+}
+
+/** 原生壳走系统分享面板；网页优先 Web Share，失败或不可用时回退下载 */
+export async function shareShareCard(blob, fileName = cardFileName()) {
+  const plugin = getNativeShareCard();
+  if (plugin && typeof plugin.share === 'function') {
+    const dataUrl = await blobToDataUrl(blob);
+    const result = await plugin.share({ fileName, dataUrl });
+    return { channel: 'native', fileName, result };
+  }
+
+  const file = new File([blob], fileName, { type: 'image/png' });
+  const canWebShare = canSharePngFile(file);
+
+  if (canWebShare) {
+    try {
+      await navigator.share({ files: [file], title: '练习卡片' });
+      return { channel: 'web-share', fileName };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        return { channel: 'web-share', fileName, cancelled: true };
+      }
+      throw err;
+    }
+  }
+
+  return downloadBlob(blob, fileName);
 }

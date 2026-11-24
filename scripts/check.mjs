@@ -29,19 +29,23 @@ function walkJs(dirRel) {
 }
 
 const packageVersion = JSON.parse(read('package.json')).version;
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(packageVersion)) {
+  fail(`package.json=${packageVersion} 不是合法 semver`);
+}
+const displayVersion = packageVersion.replace(/-([0-9A-Za-z]+)$/, '$1');
 const versionJs = read('js/services/version.js').match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
 const swVersion = read('sw.js').match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
 const gradleVersion = read('android/app/build.gradle').match(/versionName\s+["']([^"']+)["']/);
 
 if (!versionJs) fail('js/services/version.js 找不到 APP_VERSION');
-else if (versionJs[1] !== packageVersion) fail(`version.js=${versionJs[1]}，package.json=${packageVersion}`);
+else if (versionJs[1] !== displayVersion) fail(`version.js=${versionJs[1]}，展示版本=${displayVersion}`);
 if (!swVersion) fail('sw.js 找不到 APP_VERSION');
-else if (swVersion[1] !== packageVersion) fail(`sw.js=${swVersion[1]}，package.json=${packageVersion}`);
+else if (swVersion[1] !== displayVersion) fail(`sw.js=${swVersion[1]}，展示版本=${displayVersion}`);
 if (!gradleVersion) fail('build.gradle 找不到 versionName');
-else if (gradleVersion[1] !== packageVersion) fail(`build.gradle=${gradleVersion[1]}，package.json=${packageVersion}`);
+else if (gradleVersion[1] !== displayVersion) fail(`build.gradle=${gradleVersion[1]}，展示版本=${displayVersion}`);
 
 const readme = read('README.md');
-if (!readme.includes(`version-${packageVersion}-`)) fail(`README 版本徽标不是 ${packageVersion}`);
+if (!readme.includes(`version-${displayVersion}-`)) fail(`README 版本徽标不是 ${displayVersion}`);
 
 const sw = read('sw.js');
 const jsFiles = walkJs('js');
@@ -72,4 +76,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`检查通过：v${packageVersion}，${jsFiles.length} 个 JS 文件，SW 缓存与版本一致。`);
+console.log(`检查通过：v${displayVersion}，${jsFiles.length} 个 JS 文件，SW 缓存与版本一致。`);

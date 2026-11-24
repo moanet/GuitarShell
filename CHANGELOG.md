@@ -3,6 +3,44 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
+## 0.1.14a — 练习卡片核心（已构建并真机验收，2026-11-24）
+
+> 版本号 `0.1.14a` / `versionCode 118`。只做分享卡片：新版式、60 条格言、6 套参数化背景、原生保存相册与预览底栏。六套背景视觉仍是**暂定稿**，后续会继续调整；不改读谱、书架、禅定、拆分与云同步，不升 IndexedDB 版本。
+
+**版式与格言**
+
+- 卡片重新收口为 1080×1440：logo 48px 与品牌中线对齐；标题 / 日期 baseline 240；主数字 190px；两列裸文字统计 baseline 730；主练标签 32px / 898、曲名 49px / 988；页脚线 1242、题记右对齐 1338。
+- 去掉 BPM、竖纹、35 下划线、统计盒框、底部 `GUITAR SHELL` 和「本地练习记录」；`walnut` 保持原渐变 + 暗角，不再加竖向木纹。
+- 新增 `js/services/quotes.js`：60 条格言全部启用，字段压到 `{id,text,lang,author,source}`；FNV-1a 32bit + `gs-quote-v1-YYYYMMDD` 按日抽取，同日稳定；卡片只显示正文，不显示作者 / 出处，句尾不画 `。` / `.`。
+- 曲名独立开关：默认隐藏；打开后显示今日时长最长的一条，超宽截断；格言始终留在页脚，不随曲名开关变化。
+
+**六套背景（暂定）**
+
+- `walnut` 深胡桃木、`oak` 浅橡木、`linen` 亚麻纸、`felt` 墨绿台呢、`brass` 炭黑黄铜、`midnight` 午夜蓝。
+- 统一 `drawBackground(ctx, preset)` + 种子化纹理 / 噪点瓦片，避免六份绘制代码；浅色两套用深墨文字，深色四套用米白文字。
+- 预览曲名开关下加 6 个 28px 色板，选中暖色描边；选择写入 `localStorage gs_share_bg`，重开沿用。
+- 当前纹理、配色与色板样式均标记为暂定，后续仍会继续改；参数化结构、持久化与对比度验收不回退。
+
+**保存与分享**
+
+- `ShareCardPlugin.java` 重写为分享 / 保存共用 PNG 解码校验；新增 `saveToGallery`：Android 10+ 走 MediaStore 写 `Pictures/GuitarShell`（`IS_PENDING`），Android 6–9 申请 `WRITE_EXTERNAL_STORAGE` 后写公共 Pictures 并扫描；失败删除半成品，文件名清洗并强制 `.png`。
+- JS 新增 `saveShareCard` / `shareShareCard`：原生走相册或系统分享；网页保存走下载，分享仅在 `navigator.canShare({ files })` 时显示并优先 `navigator.share`。
+- 预览底栏改为「保存到相册」主按钮 `flex:2` + 「分享」次按钮 `flex:1`，去掉底部「取消」；保存 / 分享完成后都不自动关闭预览。
+- 忙时按钮文案「正在保存… / 正在打开…」，两按钮、曲名开关和背景色板互斥禁用；保存失败 toast 明确原因，预览仍可重试。
+
+**验证**
+
+- `npm run check` 通过：`v0.1.14a，36 个 JS 文件，SW 缓存与版本一致`；`package.json` 使用合法 semver `0.1.14-a`，展示版本统一为 `0.1.14a`。
+- `gs_023.py` 在 360 / 320 均 **75/75 通过**：统计与 Blob 大小、封面 / 孤儿清理、卡片尺寸、60 条格言、6 套背景 hash 互异、色板 28px、默认 / 持久化、文字对比度、底栏 2:1 与无取消、网页分享显隐、保存 / 分享忙时互斥、保存失败提示、预览保持打开、原生 `saveToGallery` / `share` mock 和全程零 WebDAV。
+- release APK `4,448,777` 字节，SHA-256 `929E3A3C3E241A46E28D9146E1E4A3EA6036ADE80AD66FC3AB15502C71D5C084`；`versionCode 118` / `versionName 0.1.14a`，证书 SHA-256 保持 `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E`。
+- 真机 `ca14b16` 覆盖安装：10 张谱、13 条练习与封面保留；首页徽标 `v0.1.14a`；记录页 155 分钟 / 今日 3 次 / 连续 3 天。
+- 真机保存：`/sdcard/Pictures/GuitarShell/GuitarShell-practice-20261124-2121.png`，626,207 字节，PNG 1080×1440；MediaStore 行 `width=1080 / height=1440 / relative_path=Pictures/GuitarShell/`；系统相册打开可看，保存后预览不关闭并 toast「已保存到相册」。
+- 真机分享：MIUI 系统分享面板显示 PNG 缩略图与文件名；取消返回后预览仍在。
+
+**状态**
+
+- 功能与文档完成后提交并推送 `main`；tag / GitHub Release 仍按既有节奏压到 `0.1.14c` 验收后统一发布。
+
 ## 0.1.13 — 存储与缓存 + 练习卡片分享（已构建并真机验收，2026-11-24）
 
 > 版本号 `0.1.13` / `versionCode 117`。只加「能看清空间、能安全清缓存」和「把今天的练习生成一张图」两件事；不改读谱、禅定、书架、拆分与云同步，不升 IndexedDB 版本。

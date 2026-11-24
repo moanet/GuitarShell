@@ -124,6 +124,25 @@ TEST_JS = r"""
   const settings = document.querySelector('guitar-settings');
   const db = await import('/js/services/db.js');
   const stats = await import('/js/services/storage-stats.js');
+  const bgLib = await import('/js/services/share-card.js');
+
+  const cardHash = (c) => {
+    const data = c.getContext('2d').getImageData(0, 0, 1080, 1440).data;
+    let hash = 0;
+    for (let i = 0; i < data.length; i += 337) hash = (hash * 31 + data[i]) % 2147483647;
+    return hash;
+  };
+  const hexLum = (hex) => {
+    const raw = String(hex).replace('#', '');
+    const rgb = [0, 2, 4].map((i) => parseInt(raw.slice(i, i + 2), 16) / 255)
+      .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  };
+  const contrast = (a, b) => {
+    const x = hexLum(a), y = hexLum(b);
+    const hi = Math.max(x, y), lo = Math.min(x, y);
+    return (hi + 0.05) / (lo + 0.05);
+  };
 
   // 记录清理 / 分享过程中的可疑外网请求
   let netCalls = 0;
@@ -244,35 +263,214 @@ TEST_JS = r"""
   if (!preview) throw new Error('练习卡片预览未打开');
   const canvas = preview.shadowRoot.getElementById('cardCanvas');
   check('卡片尺寸 1080×1440', canvas.width === 1080 && canvas.height === 1440, `${canvas.width}×${canvas.height}`);
+  check('默认背景为深胡桃木', canvas.dataset.background === 'walnut', canvas.dataset.background);
+  const swatches = preview.shadowRoot.getElementById('swatches');
+  check('背景色板共 6 个', swatches && swatches.querySelectorAll('.swatch').length === 6, swatches ? `${swatches.querySelectorAll('.swatch').length}` : 'missing');
+  check('背景预设共 6 套', bgLib.SHARE_BACKGROUNDS.length === 6, `${bgLib.SHARE_BACKGROUNDS.length}`);
+  check('背景预设 id 无重复', new Set(bgLib.SHARE_BACKGROUNDS.map(b => b.id)).size === 6, '');
+  check('浅色预设为 2 套', bgLib.SHARE_BACKGROUNDS.filter(b => b.light).length === 2, '');
+  const walnutSwatch = swatches.querySelector('[data-bg="walnut"]');
+  check('默认选中深胡桃木', walnutSwatch.classList.contains('selected'), '');
+  const swatchRect = walnutSwatch.getBoundingClientRect();
+  check('色板直径 28px', Math.round(swatchRect.width) === 28 && Math.round(swatchRect.height) === 28, `${swatchRect.width}×${swatchRect.height}`);
+
+  const bgHashes = {};
+  for (const bg of bgLib.SHARE_BACKGROUNDS) {
+    swatches.querySelector(`[data-bg="${bg.id}"]`).click();
+    await waitFor(() => canvas.dataset.background === bg.id, 8000);
+    await sleep(120);
+    bgHashes[bg.id] = cardHash(canvas);
+  }
+  check('6 套背景都能渲染', Object.keys(bgHashes).length === 6, Object.keys(bgHashes).join(','));
+  check('6 套背景画面互不相同', new Set(Object.values(bgHashes)).size === 6, Object.values(bgHashes).join(','));
+
+  swatches.querySelector('[data-bg="felt"]').click();
+  await waitFor(() => canvas.dataset.background === 'felt', 8000);
+  await sleep(120);
+  check('切换背景写入 gs_share_bg', localStorage.getItem('gs_share_bg') === 'felt', localStorage.getItem('gs_share_bg'));
+  check('6 套背景主文字对比度达标', bgLib.SHARE_BACKGROUNDS.every(b =>
+    contrast(b.palette.strong, b.top) >= 7 && contrast(b.palette.strong, b.bottom) >= 7), '');
+  check('6 套背景弱化文字对比度达标', bgLib.SHARE_BACKGROUNDS.every(b =>
+    contrast(b.palette.muted, b.top) >= 4 && contrast(b.palette.muted, b.bottom) >= 4), '');
+  check('6 套背景强调色对比度达标', bgLib.SHARE_BACKGROUNDS.every(b =>
+    contrast(b.palette.accent, b.top) >= 3.5 && contrast(b.palette.accent, b.bottom) >= 3.5), '');
+
+  check('卡片有格言', Boolean(canvas.dataset.quoteId), `${canvas.dataset.quoteId}/${canvas.dataset.quoteLang}`);
   check('默认不显示曲名', canvas.dataset.showName === '0' && !preview.shadowRoot.getElementById('chkName').checked, '');
   check('今日分钟正确', canvas.dataset.minutes === '35', canvas.dataset.minutes);
   check('网页端走下载通道', preview.dataset.shareChannel === 'web', preview.dataset.shareChannel);
 
-  const pixelHash = (c) => {
+  const quotes = await import('/js/services/quotes.js');
+  const ids = new Set(quotes.QUOTES.map(q => q.id));
+  check('格言库共 60 条', quotes.QUOTES.length === 60, `count=${quotes.QUOTES.length}`);
+  check('60 条格言 id 无重复', ids.size === 60, `unique=${ids.size}`);
+  check('60 条格言全部可抽取', quotes.QUOTES.every(q => q.text && q.lang), '');
+  const dayA = quotes.pickQuote(new Date(2026, 10, 24, 9, 0, 0));
+  const dayB = quotes.pickQuote(new Date(2026, 10, 24, 21, 0, 0));
+  check('同日格言稳定', dayA && dayB && dayA.id === dayB.id, `${dayA && dayA.id} / ${dayB && dayB.id}`);
+
+  const probe = document.createElement('canvas').getContext('2d');
+  const quoteFont = '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif';
+  const stripStop = (text) => String(text).replace(/[。.]+$/u, '').trimEnd();
+  const quoteFits = quotes.QUOTES.every(q => {
+    const text = stripStop(q.text);
+    let size = 26;
+    probe.font = `${q.lang === 'en' ? 'italic ' : ''}${size}px ${quoteFont}`;
+    while (size > 22 && probe.measureText(text).width > 888) {
+      size -= 1;
+      probe.font = `${q.lang === 'en' ? 'italic ' : ''}${size}px ${quoteFont}`;
+    }
+    return probe.measureText(text).width <= 888;
+  });
+  check('60 条格言在 22px 下可单行放下', quoteFits, '');
+  check('页脚格言不带句号', canvas.dataset.quoteText && !/[。.]$/.test(canvas.dataset.quoteText), canvas.dataset.quoteText);
+
+  const regionHash = (c, y, h) => {
     const ctx = c.getContext('2d');
-    const data = ctx.getImageData(96, 930, 888, 130).data;
-    let h = 0;
-    for (let i = 0; i < data.length; i += 61) h = (h * 31 + data[i]) % 2147483647;
-    return h;
+    const data = ctx.getImageData(96, y, 888, h).data;
+    let hash = 0;
+    for (let i = 0; i < data.length; i += 61) hash = (hash * 31 + data[i]) % 2147483647;
+    return hash;
   };
-  const hashBefore = pixelHash(canvas);
+  const nameHashBefore = regionHash(canvas, 980, 200);
+  const footerHashBefore = regionHash(canvas, 1240, 200);
+  const quoteBefore = canvas.dataset.quoteId;
+
+  const emptyCard = document.createElement('canvas');
+  await bgLib.drawShareCard(emptyCard, preview.summary, { quote: null, background: 'felt' });
+  check('页脚格言已绘制', regionHash(emptyCard, 1240, 200) !== footerHashBefore, '');
+
   const chk = preview.shadowRoot.getElementById('chkName');
   chk.checked = true;
   chk.onchange();
   await waitFor(() => canvas.dataset.showName === '1');
   await sleep(220);
-  const hashAfter = pixelHash(canvas);
-  check('打开开关后显示曲名', canvas.dataset.showName === '1' && hashBefore !== hashAfter, `${hashBefore} → ${hashAfter}`);
+  const nameHashAfter = regionHash(canvas, 980, 200);
+  const footerHashAfter = regionHash(canvas, 1240, 200);
+  check('打开开关后显示曲名', canvas.dataset.showName === '1' && nameHashBefore !== nameHashAfter, `${nameHashBefore} → ${nameHashAfter}`);
+  check('格言 id 不随曲名开关变化', canvas.dataset.quoteId === quoteBefore, `${quoteBefore} → ${canvas.dataset.quoteId}`);
+  check('页脚格言不随曲名开关变化', footerHashBefore === footerHashAfter, `${footerHashBefore} / ${footerHashAfter}`);
+
+  const saveBtn = preview.shadowRoot.getElementById('btnSave');
+  const shareBtn2 = preview.shadowRoot.getElementById('btnShare');
+  check('底栏没有取消按钮', !preview.shadowRoot.getElementById('btnCancel'), '');
+  check('网页保存按钮文案', saveBtn && saveBtn.textContent === '保存图片', saveBtn ? saveBtn.textContent : 'missing');
+  check('网页分享按钮按能力显隐', shareBtn2.hidden === !preview.canWebShare, `hidden=${shareBtn2.hidden}/can=${preview.canWebShare}`);
+  check('保存与分享按钮 2:1', getComputedStyle(saveBtn).flexGrow === '2' && getComputedStyle(shareBtn2).flexGrow === '1', `${getComputedStyle(saveBtn).flexGrow}:${getComputedStyle(shareBtn2).flexGrow}`);
 
   let downloads = 0;
   const origClick = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function () { downloads += 1; };
-  preview.shadowRoot.getElementById('btnShare').click();
+  saveBtn.click();
   await waitFor(() => downloads > 0);
   await sleep(260);
   HTMLAnchorElement.prototype.click = origClick;
   check('保存图片触发下载', downloads > 0, `downloads=${downloads}`);
-  check('分享卡已关闭', !document.querySelector('guitar-share-preview'), '');
+  check('保存后预览不关闭', Boolean(document.querySelector('guitar-share-preview')), '');
+  check('网页保存反馈正确', document.querySelector('.app-toast') && document.querySelector('.app-toast').textContent === '图片已下载', document.querySelector('.app-toast') ? document.querySelector('.app-toast').textContent : 'missing');
+  check('网页保存按钮恢复可点', saveBtn.textContent === '保存图片' && !saveBtn.disabled, `${saveBtn.textContent}/${saveBtn.disabled}`);
+  preview.shadowRoot.getElementById('btnClose').click();
+  await sleep(220);
+  check('关闭按钮可关闭', !document.querySelector('guitar-share-preview'), '');
+
+  practice.shadowRoot.getElementById('btnShare').click();
+  const reopened = await waitFor(() => {
+    const el = document.querySelector('guitar-share-preview');
+    const c = el && el.shadowRoot && el.shadowRoot.getElementById('cardCanvas');
+    return c && c.dataset.rendered === '1' ? el : null;
+  });
+  check('重新打开沿用上次背景', Boolean(reopened) && reopened.shadowRoot.getElementById('cardCanvas').dataset.background === 'felt', reopened ? reopened.shadowRoot.getElementById('cardCanvas').dataset.background : 'missing');
+  reopened?.shadowRoot.getElementById('btnClose').click();
+  await sleep(220);
+
+  const originalCapacitor = window.Capacitor;
+  let savedGalleryOpts = null;
+  let releaseGallery = null;
+  let shareCalls = 0;
+  let releaseShare = null;
+  window.Capacitor = {
+    isNativePlatform: () => true,
+    Plugins: {
+      ShareCard: {
+        saveToGallery: (opts) => {
+          savedGalleryOpts = opts;
+          return new Promise((resolve) => {
+            releaseGallery = () => resolve({ channel: 'gallery', path: 'Pictures/GuitarShell/test.png' });
+          });
+        },
+        share: (opts) => {
+          shareCalls += 1;
+          return new Promise((resolve) => {
+            releaseShare = () => resolve({ channel: 'native' });
+          });
+        }
+      }
+    }
+  };
+  practice.shadowRoot.getElementById('btnShare').click();
+  const nativePreview = await waitFor(() => {
+    const el = document.querySelector('guitar-share-preview');
+    const c = el && el.shadowRoot && el.shadowRoot.getElementById('cardCanvas');
+    return c && c.dataset.rendered === '1' ? el : null;
+  });
+  check('原生预览识别为原生', Boolean(nativePreview) && nativePreview.native === true && nativePreview.dataset.shareChannel === 'native', nativePreview ? nativePreview.dataset.shareChannel : 'missing');
+  const nativeSaveBtn = nativePreview && nativePreview.shadowRoot.getElementById('btnSave');
+  const nativeShareBtn = nativePreview && nativePreview.shadowRoot.getElementById('btnShare');
+  check('原生主按钮文案', Boolean(nativeSaveBtn) && nativeSaveBtn.textContent === '保存到相册', nativeSaveBtn ? nativeSaveBtn.textContent : 'missing');
+  check('原生分享按钮可见', Boolean(nativeShareBtn) && !nativeShareBtn.hidden && nativeShareBtn.textContent === '分享', nativeShareBtn ? `${nativeShareBtn.hidden}/${nativeShareBtn.textContent}` : 'missing');
+  check('原生按钮仍为 2:1', Boolean(nativeSaveBtn) && getComputedStyle(nativeSaveBtn).flexGrow === '2' && getComputedStyle(nativeShareBtn).flexGrow === '1', '');
+
+  nativeSaveBtn.click();
+  await waitFor(() => typeof releaseGallery === 'function', 8000);
+  check('保存中按钮文案与互斥', nativeSaveBtn.textContent === '正在保存…' && nativeSaveBtn.disabled && nativeShareBtn.disabled && nativePreview.shadowRoot.getElementById('chkName').disabled, `${nativeSaveBtn.textContent}/${nativeSaveBtn.disabled}/${nativeShareBtn.disabled}`);
+  releaseGallery();
+  await waitFor(() => !nativeSaveBtn.disabled, 8000);
+  await sleep(120);
+  check('原生保存写入相册分支', Boolean(savedGalleryOpts && savedGalleryOpts.dataUrl.startsWith('data:image/png;base64,') && savedGalleryOpts.fileName.endsWith('.png')), savedGalleryOpts ? savedGalleryOpts.fileName : 'missing');
+  check('原生保存后预览不关闭', Boolean(document.querySelector('guitar-share-preview')), '');
+  check('原生保存反馈正确', document.querySelector('.app-toast') && document.querySelector('.app-toast').textContent === '已保存到相册', document.querySelector('.app-toast') ? document.querySelector('.app-toast').textContent : 'missing');
+  check('原生保存按钮复原', nativeSaveBtn.textContent === '保存到相册' && !nativeSaveBtn.disabled, `${nativeSaveBtn.textContent}/${nativeSaveBtn.disabled}`);
+
+  window.Capacitor.Plugins.ShareCard.saveToGallery = async () => { throw new Error('没有写入权限'); };
+  nativeSaveBtn.click();
+  await waitFor(() => {
+    const t = document.querySelector('.app-toast');
+    return Boolean(t && t.textContent.includes('保存失败') && !nativeSaveBtn.disabled);
+  }, 8000);
+  check('保存失败有明确提示', document.querySelector('.app-toast').textContent.includes('保存失败：没有写入权限'), document.querySelector('.app-toast').textContent);
+  check('保存失败后预览仍在且可重试', Boolean(document.querySelector('guitar-share-preview')) && nativeSaveBtn.textContent === '保存到相册' && !nativeSaveBtn.disabled, `${nativeSaveBtn.textContent}/${nativeSaveBtn.disabled}`);
+
+  nativeShareBtn.click();
+  await waitFor(() => typeof releaseShare === 'function', 8000);
+  check('分享中按钮文案与互斥', nativeShareBtn.textContent === '正在打开…' && nativeShareBtn.disabled && nativeSaveBtn.disabled, `${nativeShareBtn.textContent}/${nativeShareBtn.disabled}`);
+  releaseShare();
+  await waitFor(() => !nativeShareBtn.disabled, 8000);
+  await sleep(120);
+  check('原生分享调用系统面板', shareCalls === 1, `shareCalls=${shareCalls}`);
+  check('原生分享后预览不关闭', Boolean(document.querySelector('guitar-share-preview')), '');
+  check('原生分享反馈正确', document.querySelector('.app-toast') && document.querySelector('.app-toast').textContent === '已打开系统分享', document.querySelector('.app-toast') ? document.querySelector('.app-toast').textContent : 'missing');
+  nativePreview.shadowRoot.getElementById('btnClose').click();
+  await sleep(220);
+
+  savedGalleryOpts = null;
+  window.Capacitor = {
+    isNativePlatform: () => true,
+    Plugins: {
+      ShareCard: {
+        saveToGallery: async (opts) => {
+          savedGalleryOpts = opts;
+          return { channel: 'gallery', path: 'Pictures/GuitarShell/test.png' };
+        },
+        share: async () => ({ channel: 'native' })
+      }
+    }
+  };
+  const galleryResult = await bgLib.saveShareCard(pngBlob, 'test.png');
+  check('saveShareCard 走原生相册', galleryResult.channel === 'native-gallery', galleryResult.channel);
+  check('saveToGallery 收到 PNG dataUrl', Boolean(savedGalleryOpts && savedGalleryOpts.dataUrl.startsWith('data:image/png;base64,')) && savedGalleryOpts.fileName === 'test.png', savedGalleryOpts ? savedGalleryOpts.fileName : 'missing');
+  const nativeShareResult = await bgLib.shareShareCard(pngBlob, 'test.png');
+  check('shareShareCard 走原生分享', nativeShareResult.channel === 'native', nativeShareResult.channel);
+  window.Capacitor = originalCapacitor;
 
   check('全程无 WebDAV 请求', netCalls === 0, `netCalls=${netCalls}`);
 
