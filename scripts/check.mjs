@@ -17,6 +17,8 @@ function read(rel) {
 }
 
 function walkJs(dirRel) {
+  // 制谱引擎原型是本地实验区，不进 SW 缓存，也不参与发行检查
+  if (dirRel === 'js/sheet' || dirRel.startsWith('js/sheet/')) return [];
   const abs = join(root, dirRel);
   const out = [];
   for (const name of readdirSync(abs)) {
