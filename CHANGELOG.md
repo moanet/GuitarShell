@@ -3,7 +3,7 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
-## 0.1.18 — BPM 圆盘非线性（真机验收通过，2026-11-26）
+## 0.1.18 — BPM 圆盘非线性（已发布，2026-11-26）
 
 > 版本号 `0.1.18` / `versionCode 124`。只调节拍器 BPM 圆盘的数值分布与刻度，不改节拍、音频、计时、变速和记录逻辑。
 
@@ -30,7 +30,10 @@
 
 **发布**
 
-- 待执行。
+- 提交 `dd2a853 feat: 0.1.18 BPM 圆盘非线性与刻度`，推送 `main`；tag `v0.1.18` 指向 `dd2a853`。
+- GitHub Release 标题 `v0.1.18`，Release ID `459581100`，https://github.com/moanet/GuitarShell/releases/tag/v0.1.18 。
+- APK asset ID `796473888`，https://github.com/moanet/GuitarShell/releases/download/v0.1.18/GuitarShell-0.1.18-release.apk 。
+- 远端 APK 复核 `4,501,168` 字节、SHA-256 `389623266D3E90131CA1B6C9D02F6D64599F1226E76324D176274DCBD83AB568`，与本地一致。
 
 ## 0.1.17 — 线性图标与搜索行收口（已发布，2026-11-26）
 
