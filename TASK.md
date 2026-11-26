@@ -9,7 +9,7 @@
 | 项 | 当前值 |
 | --- | --- |
 | 最新正式版 | `0.1.15` / `versionCode 121`（2026-11-26） |
-| GitHub Release | `v0.1.15`（待创建） |
+| GitHub Release | `v0.1.15`（Release `459320875`，2026-11-26） |
 | 最终 APK | `dist/GuitarShell-0.1.15-release.apk`，`4,485,708` 字节 |
 | APK SHA-256 | `32C4A077031656F5B65126F6A3B1E8A819475505ED302D242548613F33E444B2` |
 | Android 包 | `com.guitarshell`，`minSdk 22` / `targetSdk 34` |
