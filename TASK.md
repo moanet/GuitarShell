@@ -15,7 +15,7 @@
 | Android 包 | `com.guitarshell`，`minSdk 22` / `targetSdk 34` |
 | 签名证书 SHA-256 | `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E` |
 | 验证基线 | Web 360 主基线 / 320 仅保留既有边界；真机 `ca14b16`（Android 13+） |
-| 当前阶段 | `0.1.16` 已完成 Android 13 真机验收（`122`），待提交 / 发布 |
+| 当前阶段 | `0.1.16` 已完成 Android 13 真机验收（`122`），已推送 `main`，待发布 |
 | 历史入口 | `0.1.0` / `0.1.1` 见 [docs/archive](docs/archive)；其余版本见 [CHANGELOG.md](CHANGELOG.md) |
 | 并入关系 | `0.1.12a` → `v0.1.12b`；`0.1.13` → `v0.1.14c`；`0.1.15` 独立发布 |
 
