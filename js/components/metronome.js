@@ -631,6 +631,30 @@ class GuitarMetronome extends HTMLElement {
 
     const MIN_BPM = 30, MAX_BPM = 250;
     const START_ANG = 0.75 * Math.PI, SWEEP_ANG = 1.5 * Math.PI;
+    // 非线性锚点：120 在顶部中心，60–180 占约 75% 弧长，两端压缩。
+    const BPM_ANCHORS = [
+      [30, 0], [60, 34], [90, 78], [120, 135],
+      [150, 192], [180, 236], [250, 270]
+    ];
+    const BPM_LABELS = [30, 60, 90, 120, 150, 180, 250];
+    const bpmAngle = (bpm) => {
+      const v = Math.min(MAX_BPM, Math.max(MIN_BPM, bpm));
+      for (let i = 1; i < BPM_ANCHORS.length; i++) {
+        const [b0, a0] = BPM_ANCHORS[i - 1];
+        const [b1, a1] = BPM_ANCHORS[i];
+        if (v <= b1) return a0 + (v - b0) / (b1 - b0) * (a1 - a0);
+      }
+      return 270;
+    };
+    const angleBpm = (deg) => {
+      const d = Math.min(270, Math.max(0, deg));
+      for (let i = 1; i < BPM_ANCHORS.length; i++) {
+        const [b0, a0] = BPM_ANCHORS[i - 1];
+        const [b1, a1] = BPM_ANCHORS[i];
+        if (d <= a1) return Math.round(b0 + (d - a0) / (a1 - a0) * (b1 - b0));
+      }
+      return MAX_BPM;
+    };
     const knob = { ctx: knobCanvas.getContext('2d'), size: 0, cx: 0, cy: 0, r: 0 };
 
     const TIME_SIGS = [
@@ -876,17 +900,18 @@ class GuitarMetronome extends HTMLElement {
       ctx.clearRect(0, 0, knob.size, knob.size);
 
       const lineW = Math.max(10, r * 0.13);
-      const t = (this.bpm - MIN_BPM) / (MAX_BPM - MIN_BPM);
-      const curA = START_ANG + t * SWEEP_ANG;
+      const curA = START_ANG + bpmAngle(this.bpm) * Math.PI / 180;
       const trackColor = themeColor('--line', '#2c2622');
       const handleColor = themeColor('--heading', '#f3e8d6');
       const handleEdge = themeColor('--edge-handle', '#8a6a4a');
       const accentRgb = themeColor('--accent-rgb', '217, 158, 106');
+      const tickColor = themeColor('--muted', '#8b7d70');
+      const labelSize = Math.max(8, Math.min(10, r * 0.072));
 
       ctx.beginPath(); ctx.arc(cx, cy, r, START_ANG, START_ANG + SWEEP_ANG);
       ctx.strokeStyle = trackColor; ctx.lineWidth = lineW; ctx.lineCap = 'round'; ctx.stroke();
 
-      if (t > 0.002) {
+      if (curA > START_ANG + 0.002) {
         const grad = ctx.createLinearGradient(0, 0, knob.size, knob.size);
         grad.addColorStop(0, handleColor);
         grad.addColorStop(0.55, themeColor('--accent', '#d99e6a'));
@@ -894,6 +919,34 @@ class GuitarMetronome extends HTMLElement {
         ctx.beginPath(); ctx.arc(cx, cy, r, START_ANG, curA);
         ctx.strokeStyle = grad; ctx.lineWidth = lineW; ctx.lineCap = 'round'; ctx.stroke();
       }
+
+      // 非线性刻度：每 10 BPM 一格，30 的整数倍加长；关键数值标在环外。
+      ctx.save();
+      ctx.strokeStyle = tickColor;
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'butt';
+      for (let bpm = MIN_BPM; bpm <= MAX_BPM; bpm += 10) {
+        const a = START_ANG + bpmAngle(bpm) * Math.PI / 180;
+        const major = bpm % 30 === 0;
+        const inner = r + lineW * 0.58;
+        const outer = r + lineW * (major ? 0.92 : 0.78);
+        ctx.globalAlpha = major ? 0.72 : 0.38;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+        ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+        ctx.stroke();
+      }
+      ctx.fillStyle = tickColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `600 ${labelSize}px "Segoe UI", system-ui, sans-serif`;
+      const labelR = r + lineW * 1.45;
+      for (const bpm of BPM_LABELS) {
+        const a = START_ANG + bpmAngle(bpm) * Math.PI / 180;
+        ctx.globalAlpha = 0.92;
+        ctx.fillText(String(bpm), cx + Math.cos(a) * labelR, cy + Math.sin(a) * labelR);
+      }
+      ctx.restore();
 
       const hx = cx + Math.cos(curA) * r, hy = cy + Math.sin(curA) * r;
       const hr = Math.max(6, lineW * 0.85);
@@ -2024,8 +2077,7 @@ class GuitarMetronome extends HTMLElement {
       if (deg < 0) deg += 360;
       if (deg < 45) deg += 360;
       if (deg < 135) deg = (deg < 90) ? 405 : 135;
-      const t = (deg - 135) / 270;
-      return MIN_BPM + t * (MAX_BPM - MIN_BPM);
+      return angleBpm(deg - 135);
     };
 
     knobWrap.addEventListener('pointerdown', (e) => {

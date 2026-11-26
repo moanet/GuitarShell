@@ -22,6 +22,7 @@ python tests/browser/gs_021.py
 python tests/browser/gs_022.py
 python tests/browser/gs_023.py
 python tests/browser/gs_024.py
+python tests/browser/gs_025.py
 ```
 
 脚本会：
@@ -34,9 +35,9 @@ python tests/browser/gs_024.py
 
 - `GS_BROWSER`：浏览器可执行文件路径。
 - `GS_BASE_URL`：默认 `http://127.0.0.1:8123/`。
-- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`，`gs_023.py` 默认 `9395`，`gs_024.py` 默认 `9367`。
-- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` / `gs_023.py` / `gs_024.py` 视口宽度；`gs_022.py` / `gs_023.py` / `gs_024.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
-- `GS_THEME`：仅 `gs_020.py`，`deep`（默认）或 `light`，用于检查两套主题下的设置卡片。
+- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`，`gs_023.py` 默认 `9395`，`gs_024.py` 默认 `9367`，`gs_025.py` 默认 `9368`。
+- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` / `gs_023.py` / `gs_024.py` / `gs_025.py` 视口宽度；`gs_022.py` / `gs_023.py` / `gs_024.py` / `gs_025.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
+- `GS_THEME`：`gs_020.py` / `gs_025.py`，`deep`（默认）或 `light`，用于检查两套主题下的设置卡片 / BPM 圆盘。
 
 ## 当前覆盖
 
@@ -134,5 +135,13 @@ python tests/browser/gs_024.py
 - 书架卡片编辑、封面格式占位、顶部设置的图标均为 SVG；设置、节拍器、调音器、练习记录的分区 / 按钮图标齐全。
 - 遍历主文档与所有 shadow root 的可见文本，确认不含 `Extended_Pictographic`。
 - 运行期无异常；截图保存到 `%TEMP%\gs_024_<width>_*.png`。
+
+`gs_025.py`：
+
+- 点击节拍器后按 30 / 60 / 90 / 120 / 150 / 180 / 250 的锚点角度派发指针事件，读数与目标误差 ≤ 1 BPM。
+- 120 在圆盘顶部中心；90–150 弧长是 30–60 的 3.35 倍，60–180 覆盖 270° 的 74.8%。
+- 沿 135° → 405° 每 5° 采样，BPM 单调递增，首尾为 30 / 250，无空洞或回跳。
+- 中心输入、`− / +` 步进仍按 1 BPM 工作；环外标签有实际像素，320 / 360 无横向溢出。
+- 支持 `GS_THEME=light` 重载后检查浅色画布；截图保存到 `%TEMP%\gs_025_<width>_dial_*.png`。
 
 CI 只做 Python 语法编译；浏览器交互需要本机浏览器，仍在本地执行。
