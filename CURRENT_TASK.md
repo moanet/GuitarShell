@@ -1,6 +1,6 @@
 # CURRENT_TASK — 0.1.20 调音设置打开闪现修复
 
-> 状态：已实现并真机验收通过，待发布。
+> 状态：已发布（GitHub Release `v0.1.20`）。
 > 版本：`0.1.20` / `versionCode 126`；构建日期 2026-11-27。
 > 范围：只修复调音设置打开时主界面“开始调音”按钮上移闪动；不改调音算法、调弦数据、设置内容与面板视觉。
 
@@ -37,3 +37,11 @@
 
 - 个别旧 WebView 若不支持 `preventScroll`，会走普通 `focus()` 回退；当前验证基线 Android 13 正常。
 - 本次只按真机逐帧 + 浏览器回归验证闪现，不额外扩大 UI 改动面。
+
+## 7. 发布
+
+- 代码提交：`7459b62`（`fix(tuner): 修复调音设置打开时主界面上移闪现`）。
+- tag：`v0.1.20`。
+- GitHub Release：ID `459714769`，<https://github.com/moanet/GuitarShell/releases/tag/v0.1.20>。
+- APK asset：ID `796953683`，`GuitarShell-0.1.20-release.apk`，`4,510,404` 字节，digest `sha256:74bc76be1e1394195a5d8d15645e041646cc382d62f9ff674f6991b1dcc70e56`，与本地产物一致。
+- 发布后官方最新版为 `v0.1.20`；调音器与调音设置视觉打磨转入 backlog / 下一版专项讨论。
