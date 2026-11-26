@@ -68,16 +68,25 @@ export const SHARE_BACKGROUNDS = [
   }
 ];
 
+export const CUSTOM_SHARE_BG_IDS = Object.freeze(['custom', 'custom2']);
+
 export function getShareBackground(id) {
   if (id === CUSTOM_SHARE_BG.id) return CUSTOM_SHARE_BG;
+  if (id === CUSTOM_SHARE_BG_2.id) return CUSTOM_SHARE_BG_2;
   return SHARE_BACKGROUNDS.find((bg) => bg.id === id) || SHARE_BACKGROUNDS[0];
 }
 
 /** 第 7 套自定义背景：图片 + 压暗蒙版，固定深色文字 */
 export const CUSTOM_SHARE_BG = {
-  id: 'custom', name: '自定义', light: false, texture: 'photo',
+  id: 'custom', name: '自定义 1', light: false, texture: 'photo',
   top: '#000000', bottom: '#000000', vignette: 'rgba(0,0,0,0.38)',
   palette: makePalette('#FBF4E9', '#F1E9DE', '#F0B67A')
+};
+
+/** 第 8 套自定义背景：与第 7 套同版式同配色，只换图片与独立压暗值 */
+export const CUSTOM_SHARE_BG_2 = {
+  ...CUSTOM_SHARE_BG,
+  id: 'custom2', name: '自定义 2'
 };
 
 const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
@@ -373,8 +382,14 @@ function drawBackground(ctx, preset) {
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 }
 
+function normalizeDimPercent(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 30;
+  return Math.max(0, Math.min(90, Math.round(n)));
+}
+
 function drawCustomBackground(ctx, image, dimPercent) {
-  const dim = Math.max(0.60, Math.min(0.90, Number(dimPercent) / 100 || 0.60));
+  const dim = normalizeDimPercent(dimPercent) / 100;
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, CARD_W, CARD_H);
   if (image) {
@@ -402,7 +417,7 @@ function drawCustomBackground(ctx, image, dimPercent) {
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 }
 
-function drawHeader(ctx, logo, p) {
+function drawHeader(ctx, logo, date, p) {
   if (logo) {
     ctx.drawImage(logo, 96, 96, 48, 48);
   } else {
@@ -420,98 +435,139 @@ function drawHeader(ctx, logo, p) {
   ctx.fillStyle = p.strong;
   ctx.fillText('Guitar Shell', 160, 128);
 
-  ctx.strokeStyle = p.lineStrong;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(96, 166);
-  ctx.lineTo(984, 166);
-  ctx.stroke();
-}
-
-function drawTodayBlock(ctx, summary, p) {
-  const d = summary.date;
-  ctx.textAlign = 'left';
-  setFont(ctx, 26, 600, 3);
-  ctx.fillStyle = p.muted;
-  ctx.fillText('今 日 练 习', 96, 240);
-
   ctx.textAlign = 'right';
   setFont(ctx, 24, 500, 0.6);
   ctx.fillStyle = p.muted;
   ctx.fillText(
-    `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} · ${WEEKDAYS[d.getDay()]}`,
+    `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} · ${WEEKDAYS[date.getDay()]}`,
     984,
-    240
+    128
   );
+}
 
+/** 页脚蜗牛：细线壳与触角，身体只留外侧曲线与头部弧线 */
+function drawFooterSnail(ctx, p) {
+  const ink = withAlpha(p.accent, p.light ? 0.62 : 0.55);
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 1;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // 用 24×24 的细线蜗牛轮廓，按横线左端等比放大
+  const s = 4;
+  ctx.save();
+  ctx.translate(392, 1158);
+  ctx.scale(s, s);
+  ctx.lineWidth = 1 / s;
+
+  // 身体只保留外侧曲线和头部弧线；原来那道竖线已去掉，不再填充
+  const bodyCurve = new Path2D('M14 21c4.4 0 8-3.6 8-8');
+  const headArc = new Path2D();
+  headArc.arc(20, 13, 2, Math.PI, 0, false);
+
+  // 尾部贴地线、身体外侧线与头部弧线
+  ctx.beginPath();
+  ctx.moveTo(2, 21);
+  ctx.lineTo(14, 21);
+  ctx.stroke();
+  ctx.stroke(bodyCurve);
+  ctx.stroke(headArc);
+
+  const shell = new Path2D('M2 13a6 6 0 1 0 12 0 4 4 0 1 0-8 0 2 2 0 0 0 4 0');
+  const shellRing = new Path2D();
+  shellRing.arc(10, 13, 8, 0, Math.PI * 2);
+  const antennae = new Path2D('M19 11.3Q17.9 10.2 17.8 8.8M21 11.3Q22.1 10.2 22.2 8.8');
+
+  ctx.stroke(shellRing);
+  ctx.stroke(shell);
+  ctx.stroke(antennae);
+  ctx.restore();
+
+  ctx.restore();
+}
+
+function drawTodayBlock(ctx, summary, p) {
   ctx.textAlign = 'left';
+  setFont(ctx, 32, 500, 2);
+  ctx.fillStyle = p.muted;
+  ctx.fillText('今日练习时长', 96, 420);
+
   const text = String(summary.minutes);
   let size = 190;
   setFont(ctx, size, 800);
-  while (ctx.measureText(text).width > 620 && size > 92) {
+  while (ctx.measureText(text).width > 470 && size > 92) {
     size -= 10;
     setFont(ctx, size, 800);
   }
   ctx.fillStyle = p.strong;
-  const baseline = 610;
+  const baseline = 620;
   ctx.fillText(text, 96, baseline);
 
-  setFont(ctx, 42, 600);
-  ctx.fillStyle = p.accent;
-  // 量一次大字号宽度，单位紧跟在数字右侧
   setFont(ctx, size, 800);
   const bigWidth = ctx.measureText(text).width;
-  setFont(ctx, 42, 600);
-  ctx.fillText('分钟', 96 + bigWidth + 22, baseline - 8);
+  setFont(ctx, 40, 600);
+  ctx.fillStyle = p.accent;
+  ctx.fillText('分钟', 96 + bigWidth + 24, baseline - Math.round(size * 0.35));
 }
 
-function drawStatLine(ctx, x, baseline, label, value, suffix, p) {
-  let tx = x;
+/** 右侧上下两行统计：标签与数值分开，数值用强调色后缀 */
+function drawStatBlock(ctx, x, labelBaseline, label, value, suffix, p) {
   ctx.textAlign = 'left';
-  setFont(ctx, 34, 500, 6);
+  setFont(ctx, 32, 500, 3);
   ctx.fillStyle = p.muted;
-  ctx.fillText(label, tx, baseline);
-  tx += ctx.measureText(label).width + 16;
+  ctx.fillText(label, x, labelBaseline);
+  const labelWidth = ctx.measureText(label).width;
+  const tx = x + labelWidth + 14;
 
   const valueText = String(value);
-  setFont(ctx, 44, 800);
-  ctx.fillStyle = p.strong;
-  ctx.fillText(valueText, tx, baseline);
-  tx += ctx.measureText(valueText).width + 9;
+  let valueSize = 48;
+  setFont(ctx, valueSize, 800);
+  const suffixSize = 24;
+  const suffixWidth = (() => {
+    const current = ctx.font;
+    setFont(ctx, suffixSize, 500);
+    const width = ctx.measureText(suffix).width;
+    ctx.font = current;
+    return width;
+  })();
 
-  setFont(ctx, 24, 500);
+  while (valueSize > 32) {
+    setFont(ctx, valueSize, 800);
+    if (tx + ctx.measureText(valueText).width + 8 + suffixWidth <= 984) break;
+    valueSize -= 2;
+  }
+
+  ctx.fillStyle = p.strong;
+  ctx.fillText(valueText, tx, labelBaseline + 56);
+  const valueWidth = ctx.measureText(valueText).width;
+
+  setFont(ctx, suffixSize, 500);
   ctx.fillStyle = p.accent;
-  ctx.fillText(suffix, tx, baseline - 1);
+  ctx.fillText(suffix, tx + valueWidth + 8, labelBaseline + 50);
 }
 
-function drawStatsLine(ctx, summary, p) {
-  drawStatLine(ctx, 96, 730, '今日打卡', summary.count || 0, '次', p);
-  drawStatLine(ctx, 560, 730, '连续打卡', summary.streak || 0, '天', p);
+function drawStatsBlock(ctx, summary, p) {
+  drawStatBlock(ctx, 750, 540, '今日打卡', summary.count || 0, '次', p);
+  drawStatBlock(ctx, 750, 706, '连续打卡', summary.streak || 0, '天', p);
 }
 
 function drawName(ctx, summary, showName, p) {
   if (!showName || !summary.topName) return;
 
-  ctx.strokeStyle = p.lineStrong;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(96, 848);
-  ctx.lineTo(140, 848);
-  ctx.stroke();
-
   ctx.textAlign = 'left';
   setFont(ctx, 32, 500, 2);
   ctx.fillStyle = p.muted;
-  ctx.fillText('主练', 96, 898);
+  ctx.fillText('今日主练', 96, 900);
 
   let name = summary.topName;
-  setFont(ctx, 49, 700);
+  setFont(ctx, 50, 700);
   while (name.length > 1 && ctx.measureText(`${name}…`).width > 888) {
     name = name.slice(0, -1);
   }
   if (name !== summary.topName) name = `${name}…`;
   ctx.fillStyle = p.strong;
-  ctx.fillText(name, 96, 988);
+  ctx.fillText(name, 96, 974);
 }
 
 function stripTrailingStop(text) {
@@ -522,19 +578,21 @@ function drawFooter(ctx, quote, p) {
   ctx.strokeStyle = p.lineSoft;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(96, 1242);
+  ctx.moveTo(400, 1242);
   ctx.lineTo(984, 1242);
   ctx.stroke();
+
+  drawFooterSnail(ctx, p);
 
   const text = stripTrailingStop(quote && quote.text);
   if (!text) return;
 
   const lang = quote.lang === 'en' ? 'en' : 'zh';
   const isEnglish = lang === 'en';
-  const maxWidth = 888;
+  const maxWidth = 640;
   let size = 26;
   setQuoteFont(ctx, size, lang);
-  while (size > 22 && ctx.measureText(text).width > maxWidth) {
+  while (size > 20 && ctx.measureText(text).width > maxWidth) {
     size -= 1;
     setQuoteFont(ctx, size, lang);
   }
@@ -553,11 +611,12 @@ export async function drawShareCard(canvas, summary, options = {}) {
   const quote = options.quote === undefined ? pickQuote(summary.date) : options.quote;
   const customImage = options.customImage || null;
   const requested = String(options.background || '');
-  const useCustom = requested === CUSTOM_SHARE_BG.id && Boolean(customImage);
+  const requestedCustom = CUSTOM_SHARE_BG_IDS.includes(requested);
+  const useCustom = requestedCustom && Boolean(customImage);
   const preset = useCustom
-    ? CUSTOM_SHARE_BG
-    : getShareBackground(requested === CUSTOM_SHARE_BG.id ? DEFAULT_SHARE_BG : requested);
-  const dimPercent = Math.max(60, Math.min(90, Math.round(Number(options.customDim) || 60)));
+    ? getShareBackground(requested)
+    : getShareBackground(requestedCustom ? DEFAULT_SHARE_BG : requested);
+  const dimPercent = normalizeDimPercent(options.customDim);
   const p = preset.palette;
   canvas.width = CARD_W;
   canvas.height = CARD_H;
@@ -566,14 +625,14 @@ export async function drawShareCard(canvas, summary, options = {}) {
 
   if (useCustom) drawCustomBackground(ctx, customImage, dimPercent);
   else drawBackground(ctx, preset);
-  drawHeader(ctx, logo, p);
+  drawHeader(ctx, logo, summary.date, p);
   drawTodayBlock(ctx, summary, p);
-  drawStatsLine(ctx, summary, p);
+  drawStatsBlock(ctx, summary, p);
   drawName(ctx, summary, showName, p);
   drawFooter(ctx, quote, p);
 
   canvas.dataset.rendered = '1';
-  canvas.dataset.background = useCustom ? CUSTOM_SHARE_BG.id : preset.id;
+  canvas.dataset.background = useCustom ? requested : preset.id;
   canvas.dataset.customDim = useCustom ? String(dimPercent) : '';
   canvas.dataset.showName = showName ? '1' : '0';
   canvas.dataset.minutes = String(summary.minutes);

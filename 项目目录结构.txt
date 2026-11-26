@@ -1,4 +1,4 @@
-Guitar Shell · 项目目录速览（与 README.md「项目结构」同步维护 · 2026-11-25 · v0.1.14c）
+Guitar Shell · 项目目录速览（与 README.md「项目结构」同步维护 · 2026-11-26 · v0.1.15）
 说明：只列主干与常用落点；node_modules、www、dist、Android 构建产物与签名材料按 .gitignore 排除在本机。
 
 GuitarShell/
@@ -23,12 +23,13 @@ GuitarShell/
 │  │  ├─ share-preview.js        今日练习卡片预览与保存 / 分享
 │  │  ├─ share-bg-crop.js        自定义背景 3:4 裁切
 │  │  └─ app-dialog.js           统一确认弹窗
+│  ├─ sheet/                     制谱引擎 M1–M3 本地草案（未接入界面）
 │  ├─ services/
 │  │  ├─ db.js                   IndexedDB：乐谱、练习记录、标签、阅读进度
 │  │  ├─ backup.js               完整备份 / 恢复 / 清空
 │  │  ├─ webdav.js               坚果云 WebDAV 上传、下载、探测与冲突检测
 │  │  ├─ share-card.js           练习卡片绘制、排版与导出
-│  │  ├─ share-bg.js             6 套预设背景与自定义背景
+│  │  ├─ share-bg.js             6 套预设背景 + 2 套自定义背景
 │  │  ├─ cover-cache.js          封面缓存与孤儿清理
 │  │  ├─ storage-stats.js        存储占用、配额与资产统计
 │  │  ├─ pdf-split.js            PDF 页段拆分
@@ -44,6 +45,7 @@ GuitarShell/
 │  ├─ build-www.mjs              生成可部署的 www
 │  └─ check.mjs                  版本、语法、SW 缓存一致性检查
 ├─ tests/browser/                gs_015–gs_023 浏览器回归与 README
+├─ tests/sheet-m*.test.mjs       制谱引擎 M1–M3 本地单元测试
 ├─ android/
 │  ├─ app/src/main/java/com/guitarshell/
 │  │  ├─ MainActivity.java

@@ -1,5 +1,5 @@
 // 改版本时两处同步：这里 + js/services/version.js（SW 是 classic script，无法 import）
-const APP_VERSION = '0.1.14c';
+const APP_VERSION = '0.1.15';
 const CACHE_NAME = 'guitar-shell-v' + APP_VERSION;
 
 const ASSETS_TO_CACHE = [
@@ -46,6 +46,13 @@ const ASSETS_TO_CACHE = [
   './js/lib/pdf.worker.js',
   './js/lib/pdf-lib.esm.min.js',
   './js/lib/pinyin.js',
+  './js/sheet/normalize.js',
+  './js/sheet/model.js',
+  './js/sheet/parser.js',
+  './js/sheet/layout.js',
+  './js/sheet/render-svg.js',
+  './js/sheet/tab-layout.js',
+  './js/sheet/tab-render-svg.js',
   './manifest.json',
   './icon-gShell-32.png',
   './icon-gShell-192.png',

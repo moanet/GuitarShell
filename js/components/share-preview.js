@@ -9,7 +9,8 @@ import {
   canWebShareCard, SHARE_BACKGROUNDS, DEFAULT_SHARE_BG, getShareBackground
 } from '../services/share-card.js';
 import {
-  CUSTOM_BG_ID, getSelectedBackground, setSelectedBackground, getBackgroundDim,
+  CUSTOM_BG_ID, CUSTOM_BG_2_ID, CUSTOM_BG_IDS, isCustomBgId,
+  getSelectedBackground, setSelectedBackground, getBackgroundDim,
   setBackgroundDim, loadCustomBackground, removeCustomBackground, pickCustomBackgroundFile
 } from '../services/share-bg.js';
 import { showToast } from '../services/toast.js';
@@ -18,7 +19,8 @@ import './share-bg-crop.js';
 
 function readShareBg() {
   try {
-    if (localStorage.getItem('gs_share_bg') === CUSTOM_BG_ID) return CUSTOM_BG_ID;
+    const stored = localStorage.getItem('gs_share_bg');
+    if (isCustomBgId(stored)) return stored;
     return getShareBackground(getSelectedBackground()).id;
   } catch (err) {
     return DEFAULT_SHARE_BG;
@@ -154,8 +156,8 @@ const previewHTML = `
       <div class="custom-tools" id="customTools" hidden>
         <div class="dim-row">
           <span>压暗</span>
-          <input class="dim-range" id="dimRange" type="range" min="60" max="90" step="2" value="60" aria-label="自定义背景压暗程度">
-          <span class="dim-value" id="dimValue">60%</span>
+          <input class="dim-range" id="dimRange" type="range" min="0" max="90" step="2" value="30" aria-label="自定义背景压暗程度">
+          <span class="dim-value" id="dimValue">30%</span>
         </div>
         <div class="custom-actions">
           <button class="custom-action" id="btnReplaceBg" type="button">更换图片</button>
@@ -181,11 +183,16 @@ class GuitarSharePreview extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.busy = false;
     this.cropOpen = false;
-    this.customImage = null;
-    this.customAsset = null;
-    this.dim = getBackgroundDim();
+    this.customs = {};
+    CUSTOM_BG_IDS.forEach((slotId) => {
+      this.customs[slotId] = {
+        image: null,
+        asset: null,
+        dim: getBackgroundDim(slotId)
+      };
+    });
     this._layerOff = null;
-    this._thumbUrl = null;
+    this._thumbUrls = {};
     this._renderRaf = 0;
     this._removeTimer = 0;
     this._keyHandler = (e) => {
@@ -223,6 +230,14 @@ class GuitarSharePreview extends HTMLElement {
     this.buildSwatches();
   }
 
+  _customLabel(slotId) {
+    return slotId === CUSTOM_BG_2_ID ? '自定义背景 2' : '自定义背景 1';
+  }
+
+  _activeCustom() {
+    return isCustomBgId(this.bgId) ? this.customs[this.bgId] : null;
+  }
+
   buildSwatches() {
     const box = this.$('swatches');
     box.innerHTML = '';
@@ -239,53 +254,58 @@ class GuitarSharePreview extends HTMLElement {
       box.appendChild(btn);
     });
 
-    const custom = document.createElement('button');
-    custom.type = 'button';
-    custom.className = 'swatch custom';
-    custom.dataset.bg = CUSTOM_BG_ID;
-    custom.title = '自定义背景';
-    custom.setAttribute('aria-label', '自定义背景');
-    custom.onclick = () => this.selectBackground(CUSTOM_BG_ID);
-    box.appendChild(custom);
+    CUSTOM_BG_IDS.forEach((slotId) => {
+      const custom = document.createElement('button');
+      custom.type = 'button';
+      custom.className = 'swatch custom';
+      custom.dataset.bg = slotId;
+      custom.dataset.slot = slotId;
+      custom.title = this._customLabel(slotId);
+      custom.setAttribute('aria-label', this._customLabel(slotId));
+      custom.onclick = () => this.selectBackground(slotId);
+      box.appendChild(custom);
+    });
 
-    this._updateCustomThumb();
+    this._updateCustomThumbs();
     this.syncSwatches();
   }
 
-  _setCustomThumb() {
-    const btn = this.$('swatches')?.querySelector('.swatch.custom');
+  _setCustomThumb(slotId) {
+    const btn = this.$('swatches')?.querySelector(`.swatch.custom[data-bg="${slotId}"]`);
     if (!btn) return;
-    if (this._thumbUrl) {
-      URL.revokeObjectURL(this._thumbUrl);
-      this._thumbUrl = null;
+    if (this._thumbUrls[slotId]) {
+      URL.revokeObjectURL(this._thumbUrls[slotId]);
+      this._thumbUrls[slotId] = null;
     }
-    if (this.customAsset && this.customAsset.blob instanceof Blob) {
-      this._thumbUrl = URL.createObjectURL(this.customAsset.blob);
-      btn.style.backgroundImage = `url("${this._thumbUrl}")`;
+    const slot = this.customs[slotId];
+    if (slot && slot.asset && slot.asset.blob instanceof Blob) {
+      this._thumbUrls[slotId] = URL.createObjectURL(slot.asset.blob);
+      btn.style.backgroundImage = `url("${this._thumbUrls[slotId]}")`;
       btn.textContent = '';
       btn.classList.add('has-image');
-      btn.setAttribute('aria-label', '自定义背景（已设置）');
+      btn.setAttribute('aria-label', `${this._customLabel(slotId)}（已设置）`);
     } else {
       btn.style.backgroundImage = '';
       btn.textContent = '＋';
       btn.classList.remove('has-image');
-      btn.setAttribute('aria-label', '添加自定义背景');
+      btn.setAttribute('aria-label', `添加${this._customLabel(slotId)}`);
     }
   }
 
-  _updateCustomThumb() {
-    this._setCustomThumb();
+  _updateCustomThumbs() {
+    CUSTOM_BG_IDS.forEach((slotId) => this._setCustomThumb(slotId));
   }
 
   syncCustomTools() {
     const tools = this.$('customTools');
     if (!tools) return;
-    const visible = this.bgId === CUSTOM_BG_ID && Boolean(this.customImage);
+    const active = this._activeCustom();
+    const visible = Boolean(active && active.image);
     tools.hidden = !visible;
     const range = this.$('dimRange');
-    if (range) range.value = String(this.dim);
+    if (range) range.value = String(active ? active.dim : 30);
     const label = this.$('dimValue');
-    if (label) label.textContent = `${this.dim}%`;
+    if (label) label.textContent = `${active ? active.dim : 30}%`;
   }
 
   syncSwatches() {
@@ -300,11 +320,11 @@ class GuitarSharePreview extends HTMLElement {
 
   async selectBackground(id) {
     if (this.busy) return;
-    if (id === CUSTOM_BG_ID && !this.customImage) {
-      await this.chooseCustomBackground({ replace: false });
+    if (isCustomBgId(id) && !this.customs[id].image) {
+      await this.chooseCustomBackground({ replace: false, slotId: id });
       return;
     }
-    this.bgId = id === CUSTOM_BG_ID ? CUSTOM_BG_ID : getShareBackground(id).id;
+    this.bgId = isCustomBgId(id) ? id : getShareBackground(id).id;
     writeShareBg(this.bgId);
     this.syncSwatches();
     this.syncCustomTools();
@@ -320,17 +340,17 @@ class GuitarSharePreview extends HTMLElement {
     chk.disabled = !hasName;
     this.$('nameHint').textContent = hasName ? '默认不显示曲名' : '今日没有可显示的曲名';
     this.bgId = readShareBg();
-    this.dim = getBackgroundDim();
-    if (this.bgId === CUSTOM_BG_ID) {
-      const loaded = await loadCustomBackground();
-      if (loaded) {
-        this.customImage = loaded.image;
-        this.customAsset = loaded.asset;
-      } else {
-        this.bgId = DEFAULT_SHARE_BG;
-      }
+    const customLoads = CUSTOM_BG_IDS.map(async (slotId) => {
+      const loaded = await loadCustomBackground(slotId);
+      this.customs[slotId] = loaded
+        ? { image: loaded.image, asset: loaded.asset, dim: getBackgroundDim(slotId) }
+        : { image: null, asset: null, dim: getBackgroundDim(slotId) };
+    });
+    await Promise.all(customLoads);
+    if (isCustomBgId(this.bgId) && !this.customs[this.bgId].image) {
+      this.bgId = DEFAULT_SHARE_BG;
     }
-    this._updateCustomThumb();
+    this._updateCustomThumbs();
     this.syncSwatches();
     this.syncCustomTools();
     this._setBusy(false);
@@ -374,12 +394,13 @@ class GuitarSharePreview extends HTMLElement {
   async render() {
     if (!this.summary || this.busy) return;
     const showName = this.$('chkName').checked;
-    const useCustom = this.bgId === CUSTOM_BG_ID && Boolean(this.customImage);
+    const active = this._activeCustom();
+    const useCustom = Boolean(active && active.image);
     await drawShareCard(this.canvas, this.summary, {
       showName,
-      background: useCustom ? CUSTOM_BG_ID : this.bgId,
-      customImage: useCustom ? this.customImage : null,
-      customDim: this.dim
+      background: this.bgId,
+      customImage: useCustom ? active.image : null,
+      customDim: active ? active.dim : 30
     });
   }
 
@@ -394,13 +415,18 @@ class GuitarSharePreview extends HTMLElement {
 
   onDimInput(e) {
     if (this.busy) return;
-    this.dim = setBackgroundDim(e.target.value);
-    this.$('dimValue').textContent = `${this.dim}%`;
+    const active = this._activeCustom();
+    if (!active) return;
+    const slotId = this.bgId;
+    const dim = setBackgroundDim(e.target.value, slotId);
+    active.dim = dim;
+    this.$('dimValue').textContent = `${dim}%`;
     this._scheduleRender();
   }
 
-  async chooseCustomBackground({ replace = false } = {}) {
+  async chooseCustomBackground({ replace = false, slotId = this.bgId } = {}) {
     if (this.busy || this.cropOpen) return;
+    const targetSlot = isCustomBgId(slotId) ? slotId : CUSTOM_BG_ID;
     let file = null;
     try {
       if (this.native) file = await pickCustomBackgroundFile();
@@ -412,7 +438,7 @@ class GuitarSharePreview extends HTMLElement {
       return;
     }
     if (!file) return;
-    await this.openCrop(file, { replace });
+    await this.openCrop(file, { replace, slotId: targetSlot });
   }
 
   _pickWebFile() {
@@ -446,15 +472,16 @@ class GuitarSharePreview extends HTMLElement {
     });
   }
 
-  async openCrop(file, { replace = false } = {}) {
+  async openCrop(file, { replace = false, slotId = this.bgId } = {}) {
     if (this.busy || this.cropOpen) return;
+    const targetSlot = isCustomBgId(slotId) ? slotId : CUSTOM_BG_ID;
     this.cropOpen = true;
     this._setBusy(true, 'crop');
     const crop = document.createElement('guitar-share-bg-crop');
     document.body.appendChild(crop);
     let result = null;
     try {
-      result = await crop.open(file);
+      result = await crop.open(file, { slotId: targetSlot });
     } catch (err) {
       console.warn('[背景] 裁切失败:', err.message);
       showToast(`背景处理失败：${err.message}`);
@@ -465,15 +492,20 @@ class GuitarSharePreview extends HTMLElement {
     }
     if (!result) return;
 
-    this.customImage = result.image;
-    this.customAsset = result.asset;
-    this.bgId = CUSTOM_BG_ID;
-    writeShareBg(CUSTOM_BG_ID);
-    this._updateCustomThumb();
+    this.customs[targetSlot] = {
+      image: result.image,
+      asset: result.asset,
+      dim: getBackgroundDim(targetSlot)
+    };
+    this.bgId = targetSlot;
+    writeShareBg(targetSlot);
+    this._updateCustomThumbs();
     this.syncSwatches();
     this.syncCustomTools();
     await this.render();
-    showToast(replace ? '已更换自定义背景' : '已设置自定义背景');
+    showToast(replace
+      ? `已更换${this._customLabel(targetSlot)}`
+      : `已设置${this._customLabel(targetSlot)}`);
   }
 
   armRemoveCustom() {
@@ -498,18 +530,22 @@ class GuitarSharePreview extends HTMLElement {
 
   async removeCustom() {
     if (this.busy) return;
+    const slotId = isCustomBgId(this.bgId) ? this.bgId : CUSTOM_BG_ID;
     this._setBusy(true, 'remove');
     try {
-      await removeCustomBackground();
-      this.customImage = null;
-      this.customAsset = null;
+      await removeCustomBackground(slotId);
+      this.customs[slotId] = {
+        image: null,
+        asset: null,
+        dim: getBackgroundDim(slotId)
+      };
       this.bgId = DEFAULT_SHARE_BG;
-      this._updateCustomThumb();
+      this._updateCustomThumbs();
       this.syncSwatches();
       this.syncCustomTools();
       this._setBusy(false);
       await this.render();
-      showToast('已移除自定义背景');
+      showToast(`已移除${this._customLabel(slotId)}`);
     } catch (err) {
       console.warn('[背景] 移除失败:', err.message);
       showToast(`移除失败：${err.message}`);
@@ -555,7 +591,12 @@ class GuitarSharePreview extends HTMLElement {
     if (this.cropOpen) return;
     document.removeEventListener('keydown', this._keyHandler);
     if (this._layerOff) { this._layerOff(); this._layerOff = null; }
-    if (this._thumbUrl) { URL.revokeObjectURL(this._thumbUrl); this._thumbUrl = null; }
+    if (this._thumbUrls) {
+      Object.values(this._thumbUrls).forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+      this._thumbUrls = {};
+    }
     if (this._renderRaf) { cancelAnimationFrame(this._renderRaf); this._renderRaf = 0; }
     const mask = this.$('mask');
     if (mask) mask.classList.remove('show');

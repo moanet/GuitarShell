@@ -1,7 +1,7 @@
 // ==========================================
 // js/services/share-bg.js
-// 0.1.14b 分享卡片第 7 套自定义背景：指针、选图、中心裁切、压缩、资产增删
-// 内容只存本机 IndexedDB，不上传
+// 0.1.15 分享卡片第 7、8 套自定义背景：双槽位指针、选图、中心裁切、压缩、资产增删
+// 两套自定义背景各自一张图、各自压暗值；内容只存本机 IndexedDB，不上传
 // ==========================================
 
 import { dbService } from './db.js';
@@ -9,13 +9,17 @@ import { pickGalleryImages } from './gallery-picker.js';
 
 export const SHARE_BG_KEY = 'gs_share_bg';
 export const SHARE_BG_ASSET_KEY = 'gs_share_bg_asset';
+export const SHARE_BG_ASSET_2_KEY = 'gs_share_bg_asset_2';
 export const SHARE_BG_DIM_KEY = 'gs_share_bg_dim';
+export const SHARE_BG_DIM_2_KEY = 'gs_share_bg_dim_2';
 export const CUSTOM_BG_ID = 'custom';
+export const CUSTOM_BG_2_ID = 'custom2';
+export const CUSTOM_BG_IDS = Object.freeze([CUSTOM_BG_ID, CUSTOM_BG_2_ID]);
 export const DEFAULT_BG_ID = 'walnut';
 
-export const BG_DIM_MIN = 60;
+export const BG_DIM_MIN = 0;
 export const BG_DIM_MAX = 90;
-export const BG_DIM_DEFAULT = 60;
+export const BG_DIM_DEFAULT = 30;
 
 export const BG_SOURCE_MAX_BYTES = 20 * 1024 * 1024;
 export const BG_STORED_MAX_BYTES = 900 * 1024;
@@ -62,55 +66,78 @@ export function setSelectedBackground(id) {
   writeStorage(SHARE_BG_KEY, String(id || DEFAULT_BG_ID));
 }
 
-/** assets 里当前自定义背景的 id；非法值返回 null 并清指针 */
-export function getActiveBackgroundAssetId() {
-  const raw = readStorage(SHARE_BG_ASSET_KEY);
+export function isCustomBgId(id) {
+  return CUSTOM_BG_IDS.includes(id);
+}
+
+const slotAssetKey = (slotId) => (
+  slotId === CUSTOM_BG_2_ID ? SHARE_BG_ASSET_2_KEY : SHARE_BG_ASSET_KEY
+);
+
+const slotDimKey = (slotId) => (
+  slotId === CUSTOM_BG_2_ID ? SHARE_BG_DIM_2_KEY : SHARE_BG_DIM_KEY
+);
+
+/** 指定自定义槽位在 assets 里的背景 id；非法值返回 null 并清指针 */
+export function getActiveBackgroundAssetId(slotId = CUSTOM_BG_ID) {
+  const key = slotAssetKey(slotId);
+  const raw = readStorage(key);
   const id = Number(raw);
   if (!raw || !Number.isFinite(id) || id <= 0) {
-    if (raw) removeStorage(SHARE_BG_ASSET_KEY);
+    if (raw) removeStorage(key);
     return null;
   }
   return id;
 }
 
-export function setActiveBackgroundAssetId(id) {
-  const next = Number(id);
-  if (!Number.isFinite(next) || next <= 0) {
-    removeStorage(SHARE_BG_ASSET_KEY);
-    return;
-  }
-  writeStorage(SHARE_BG_ASSET_KEY, String(next));
+/** 两套自定义背景当前引用的资产 id，供孤儿清理使用 */
+export function getActiveBackgroundAssetIds() {
+  return CUSTOM_BG_IDS
+    .map((slotId) => getActiveBackgroundAssetId(slotId))
+    .filter((id) => id !== null);
 }
 
-export function getBackgroundDim() {
-  const raw = readStorage(SHARE_BG_DIM_KEY);
+export function setActiveBackgroundAssetId(id, slotId = CUSTOM_BG_ID) {
+  const key = slotAssetKey(slotId);
+  const next = Number(id);
+  if (!Number.isFinite(next) || next <= 0) {
+    removeStorage(key);
+    return;
+  }
+  writeStorage(key, String(next));
+}
+
+export function getBackgroundDim(slotId = CUSTOM_BG_ID) {
+  const raw = readStorage(slotDimKey(slotId));
   if (raw === null || raw === '') return BG_DIM_DEFAULT;
   const n = Number(raw);
   if (!Number.isFinite(n)) return BG_DIM_DEFAULT;
   return Math.max(BG_DIM_MIN, Math.min(BG_DIM_MAX, Math.round(n)));
 }
 
-export function setBackgroundDim(value) {
+export function setBackgroundDim(value, slotId = CUSTOM_BG_ID) {
   const n = Number(value);
   const next = Number.isFinite(n)
     ? Math.max(BG_DIM_MIN, Math.min(BG_DIM_MAX, Math.round(n)))
     : BG_DIM_DEFAULT;
-  writeStorage(SHARE_BG_DIM_KEY, String(next));
+  writeStorage(slotDimKey(slotId), String(next));
   return next;
 }
 
-/** 清掉自定义指针；若当前正用自定义，回退默认背景 */
-export function clearActiveBackground({ keepSelection = false } = {}) {
-  removeStorage(SHARE_BG_ASSET_KEY);
-  if (!keepSelection && getSelectedBackground() === CUSTOM_BG_ID) {
+/** 清掉指定自定义槽位指针；若当前正用该槽位，回退默认背景 */
+export function clearActiveBackground({ slotId = CUSTOM_BG_ID, keepSelection = false } = {}) {
+  removeStorage(slotAssetKey(slotId));
+  if (!keepSelection && getSelectedBackground() === slotId) {
     setSelectedBackground(DEFAULT_BG_ID);
   }
 }
 
 export function clearCustomBackgroundState() {
-  removeStorage(SHARE_BG_ASSET_KEY);
+  CUSTOM_BG_IDS.forEach((slotId) => {
+    removeStorage(slotAssetKey(slotId));
+    removeStorage(slotDimKey(slotId));
+  });
   removeStorage(SHARE_BG_KEY);
-  removeStorage(SHARE_BG_DIM_KEY);
 }
 
 function loadImageFromObjectUrl(file) {
@@ -237,9 +264,9 @@ function loadImage(blob) {
   });
 }
 
-/** 读当前自定义资产；损坏或类型不符时清指针并返回 null */
-export async function loadCustomBackground() {
-  const id = getActiveBackgroundAssetId();
+/** 读指定自定义槽位的资产；损坏或类型不符时清指针并返回 null */
+export async function loadCustomBackground(slotId = CUSTOM_BG_ID) {
+  const id = getActiveBackgroundAssetId(slotId);
   if (!id) return null;
   let asset = null;
   try {
@@ -249,7 +276,7 @@ export async function loadCustomBackground() {
     return null;
   }
   if (!asset || asset.kind !== ASSET_KIND || !(asset.blob instanceof Blob)) {
-    clearActiveBackground();
+    clearActiveBackground({ slotId });
     return null;
   }
   try {
@@ -257,7 +284,7 @@ export async function loadCustomBackground() {
     return { id, asset, image };
   } catch (err) {
     console.warn('[背景] 图片损坏:', err.message);
-    clearActiveBackground();
+    clearActiveBackground({ slotId });
     return null;
   }
 }
@@ -275,15 +302,15 @@ async function createAsset(processed) {
   });
 }
 
-/** 裁切页已经压好 1080×1440 JPEG，这里只负责落库和指针 */
-export async function saveCustomBackgroundAsset(processed) {
+/** 裁切页已经压好 1080×1440 JPEG，这里只负责落库和槽位指针 */
+export async function saveCustomBackgroundAsset(processed, slotId = CUSTOM_BG_ID) {
   if (!processed || !(processed.blob instanceof Blob)) {
     throw asError('没有可保存的图片', 'BG_EMPTY');
   }
-  const previousId = getActiveBackgroundAssetId();
+  const previousId = getActiveBackgroundAssetId(slotId);
   const assetId = await createAsset(processed);
-  setActiveBackgroundAssetId(assetId);
-  setSelectedBackground(CUSTOM_BG_ID);
+  setActiveBackgroundAssetId(assetId, slotId);
+  setSelectedBackground(slotId);
   if (previousId && previousId !== assetId) {
     try {
       await dbService.deleteAsset(previousId);
@@ -300,15 +327,15 @@ export async function saveCustomBackgroundAsset(processed) {
 }
 
 /** 自动中心裁切并保存；没有裁切页时的回退入口 */
-export async function saveCustomBackground(file) {
+export async function saveCustomBackground(file, slotId = CUSTOM_BG_ID) {
   const processed = await processCustomBackground(file);
-  return saveCustomBackgroundAsset(processed);
+  return saveCustomBackgroundAsset(processed, slotId);
 }
 
-/** 只清指针并回退；删除失败也不阻断界面回退 */
-export async function removeCustomBackground() {
-  const id = getActiveBackgroundAssetId();
-  clearActiveBackground();
+/** 只清指定槽位指针并回退；删除失败也不阻断界面回退 */
+export async function removeCustomBackground(slotId = CUSTOM_BG_ID) {
+  const id = getActiveBackgroundAssetId(slotId);
+  clearActiveBackground({ slotId });
   if (!id) return { id: null, deleted: true };
   try {
     await dbService.deleteAsset(id);

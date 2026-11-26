@@ -391,10 +391,10 @@ TEST_JS = r"""
   check('卡片尺寸 1080×1440', canvas.width === 1080 && canvas.height === 1440, `${canvas.width}×${canvas.height}`);
   check('默认背景为深胡桃木', canvas.dataset.background === 'walnut', canvas.dataset.background);
   const swatches = preview.shadowRoot.getElementById('swatches');
-  check('背景色板共 7 个', swatches && swatches.querySelectorAll('.swatch').length === 7, swatches ? `${swatches.querySelectorAll('.swatch').length}` : 'missing');
+  check('背景色板共 8 个', swatches && swatches.querySelectorAll('.swatch').length === 8, swatches ? `${swatches.querySelectorAll('.swatch').length}` : 'missing');
   check('背景预设共 6 套', bgLib.SHARE_BACKGROUNDS.length === 6, `${bgLib.SHARE_BACKGROUNDS.length}`);
-  check('第 7 个为自定义入口', swatches.querySelectorAll('.swatch.custom').length === 1 && swatches.querySelector('.swatch.custom').dataset.bg === 'custom', '');
-  check('自定义入口占 28px', Math.round(swatches.querySelector('.swatch.custom').getBoundingClientRect().width) === 28, `${swatches.querySelector('.swatch.custom').getBoundingClientRect().width}`);
+  check('第 7、8 个为自定义入口', swatches.querySelectorAll('.swatch.custom').length === 2 && swatches.querySelector('[data-bg="custom"]') && swatches.querySelector('[data-bg="custom2"]'), '');
+  check('自定义入口占 28px', Math.round(swatches.querySelector('[data-bg="custom"]').getBoundingClientRect().width) === 28 && Math.round(swatches.querySelector('[data-bg="custom2"]').getBoundingClientRect().width) === 28, '');
   check('背景预设 id 无重复', new Set(bgLib.SHARE_BACKGROUNDS.map(b => b.id)).size === 6, '');
   check('浅色预设为 2 套', bgLib.SHARE_BACKGROUNDS.filter(b => b.light).length === 2, '');
   const walnutSwatch = swatches.querySelector('[data-bg="walnut"]');
@@ -461,12 +461,12 @@ TEST_JS = r"""
   check('确认后卡片使用自定义背景', canvas.dataset.background === 'custom', canvas.dataset.background);
   check('自定义工具行出现', customTools.hidden === false, `${customTools.hidden}`);
   check('自定义色板显示缩略图', customSwatch.classList.contains('has-image') && customSwatch.classList.contains('selected'), customSwatch.className);
-  check('默认压暗 60%', canvas.dataset.customDim === '60' && dimRange.value === '60', `${canvas.dataset.customDim}/${dimRange.value}`);
-  const customHash60 = cardHash(canvas);
+  check('默认压暗 30%', canvas.dataset.customDim === '30' && dimRange.value === '30', `${canvas.dataset.customDim}/${dimRange.value}`);
+  const customHash30 = cardHash(canvas);
   dimRange.value = '70';
   dimRange.dispatchEvent(new Event('input', { bubbles: true }));
   await sleep(260);
-  check('压暗滑块实时重绘', canvas.dataset.customDim === '70' && cardHash(canvas) !== customHash60, `${canvas.dataset.customDim}/${cardHash(canvas)}`);
+  check('压暗滑块实时重绘', canvas.dataset.customDim === '70' && cardHash(canvas) !== customHash30, `${canvas.dataset.customDim}/${cardHash(canvas)}`);
   check('压暗值持久化', localStorage.getItem('gs_share_bg_dim') === '70', localStorage.getItem('gs_share_bg_dim'));
   check('自定义背景主文字对比度达标', contrast(bgLib.CUSTOM_SHARE_BG.palette.strong, '#666666') >= 5, '');
   check('自定义背景弱化文字对比度达标', contrast(bgLib.CUSTOM_SHARE_BG.palette.muted, '#666666') >= 4.5, '');
@@ -498,6 +498,33 @@ TEST_JS = r"""
   await sleep(180);
   check('移除后回退深胡桃木', canvas.dataset.background === 'walnut' && customTools.hidden === true, `${canvas.dataset.background}/${customTools.hidden}`);
   check('移除后自定义色板恢复加号', !customSwatch.classList.contains('has-image'), customSwatch.className);
+
+  // 0.1.15：第二套自定义背景，独立图片与独立压暗
+  const custom2Swatch = swatches.querySelector('[data-bg="custom2"]');
+  const custom2Promise = preview.openCrop(sourceFile, { replace: false, slotId: 'custom2' });
+  await sleep(300);
+  const crop3 = await waitFor(() => {
+    const el = document.querySelector('guitar-share-bg-crop');
+    return el && el !== crop2 ? el : null;
+  }, 8000);
+  check('第二套自定义进入裁切页', !!crop3, '');
+  crop3.shadowRoot.getElementById('btnCropConfirm').click();
+  await custom2Promise;
+  await sleep(280);
+  await waitFor(() => canvas.dataset.background === 'custom2', 8000);
+  check('第二套自定义卡片生效', canvas.dataset.background === 'custom2' && localStorage.getItem('gs_share_bg') === 'custom2', `${canvas.dataset.background}/${localStorage.getItem('gs_share_bg')}`);
+  check('第二套自定义色板有缩略图并选中', custom2Swatch.classList.contains('has-image') && custom2Swatch.classList.contains('selected'), custom2Swatch.className);
+  check('第二套自定义压暗默认 30%', canvas.dataset.customDim === '30' && dimRange.value === '30', `${canvas.dataset.customDim}/${dimRange.value}`);
+  dimRange.value = '0';
+  dimRange.dispatchEvent(new Event('input', { bubbles: true }));
+  await sleep(220);
+  check('压暗可降到 0%', canvas.dataset.customDim === '0' && dimRange.value === '0', `${canvas.dataset.customDim}/${dimRange.value}`);
+  check('第二套压暗值独立持久化', localStorage.getItem('gs_share_bg_dim_2') === '0' && localStorage.getItem('gs_share_bg_dim') === '60', `${localStorage.getItem('gs_share_bg_dim_2')}/${localStorage.getItem('gs_share_bg_dim')}`);
+  removeBtn.click();
+  removeBtn.click();
+  await waitFor(() => canvas.dataset.background === 'walnut' && bgStore.getActiveBackgroundAssetId('custom2') === null, 8000);
+  await sleep(180);
+  check('移除第二套后色板恢复加号', !custom2Swatch.classList.contains('has-image'), custom2Swatch.className);
 
   swatches.querySelector('[data-bg="felt"]').click();
   await waitFor(() => canvas.dataset.background === 'felt', 8000);
@@ -540,7 +567,7 @@ TEST_JS = r"""
     for (let i = 0; i < data.length; i += 61) hash = (hash * 31 + data[i]) % 2147483647;
     return hash;
   };
-  const nameHashBefore = regionHash(canvas, 980, 200);
+  const nameHashBefore = regionHash(canvas, 880, 220);
   const footerHashBefore = regionHash(canvas, 1240, 200);
   const quoteBefore = canvas.dataset.quoteId;
 
@@ -553,7 +580,7 @@ TEST_JS = r"""
   chk.onchange();
   await waitFor(() => canvas.dataset.showName === '1');
   await sleep(220);
-  const nameHashAfter = regionHash(canvas, 980, 200);
+  const nameHashAfter = regionHash(canvas, 880, 220);
   const footerHashAfter = regionHash(canvas, 1240, 200);
   check('打开开关后显示曲名', canvas.dataset.showName === '1' && nameHashBefore !== nameHashAfter, `${nameHashBefore} → ${nameHashAfter}`);
   check('格言 id 不随曲名开关变化', canvas.dataset.quoteId === quoteBefore, `${quoteBefore} → ${canvas.dataset.quoteId}`);

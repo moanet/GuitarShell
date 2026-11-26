@@ -16,7 +16,7 @@
   <a href="https://moanet.github.io/GuitarShell/">
     <img src="https://img.shields.io/badge/Open-Web%20App-C7863F" alt="打开网页版">
   </a>
-  <img src="https://img.shields.io/badge/version-0.1.14c-8A8075" alt="当前版本 0.1.14c">
+  <img src="https://img.shields.io/badge/version-0.1.15-8A8075" alt="当前版本 0.1.15">
   <img src="https://img.shields.io/badge/data-local--first-6B8E23" alt="本地优先">
 </p>
 
@@ -31,7 +31,7 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 | 乐谱 | PDF / 图片导入、内容哈希去重、书架与标签、批量管理（批量标签 / 批量删除）、拼音搜索、手势缩放、PDF 页段拆分建卡（起止页缩略图 / 页码选择 / 顺序自动纠正）、页级书签、阅读进度恢复、迷你节拍器、全屏阅读 |
 | 节拍器 | 高精度调度、旋钮 / 长按步进 / TAP、8 组拍号 + 自定义拍号、11 种细分（含休止位）、6 种音色、逐拍重音、Swing 1% 步进、变速练习、倒计时、节奏型、音频跟练 / 音频测速、震动反馈、拍点色块 / 计时变速进度、拍号推测、双行练习 HUD |
 | 调音器 | 麦克风采集、YIN 基频检测、自动 / 手动选弦、A4 校准、音名与音分显示、标准音试听、音分曲线 |
-| 练习记录 | 时长 / BPM / 页码打卡、计时 / 变速自然结束自动记录、累计统计、SVG 趋势、TOP5、页面实时刷新、今日练习卡片（6 套预设 + 自定义背景 / 曲名开关 / 保存相册 / 系统分享） |
+| 练习记录 | 时长 / BPM / 页码打卡、计时 / 变速自然结束自动记录、累计统计、SVG 趋势、TOP5、页面实时刷新、今日练习卡片（6 套预设 + 2 套自定义背景 / 曲名开关 / 保存相册 / 系统分享） |
 | 数据与同步 | IndexedDB 本地存储、完整备份与恢复、坚果云 WebDAV 手动同步、可恢复写入（临时文件 + 校验 + MOVE，MOVE 不可用时 PUT 回退）、非阻塞同步状态与取消 / 重试、同步中退出确认、密码本机加密 |
 | 外观 | 深色 / 浅色双主题、全局设置抽屉、Android 系统栏同步、启动动画（总时长约 1 秒） |
 
@@ -143,9 +143,11 @@ Guitar Shell
 │  ├─ main.js                  入口、Tab 切换、组件加载、SW 注册
 │  ├─ components/              书架读谱、节拍器、调音器、练习记录、设置、分享预览、背景裁切、通用弹窗
 │  ├─ services/                IndexedDB、备份、WebDAV、分享卡、缓存、存储统计、主题、音频、版本
+│  ├─ sheet/                   制谱引擎 M1–M3 草案（未接入界面）
 │  └─ lib/                     PDF.js、pdf-lib、拼音字典
 ├─ scripts/                    build-www.mjs、check.mjs
 ├─ tests/browser/              gs_015–gs_023 浏览器回归
+├─ tests/sheet-m*.test.mjs     制谱引擎本地单元测试
 ├─ android/                    Capacitor Android 壳与原生插件
 ├─ www/                        构建产物（Git 忽略）
 ├─ proxy/                      Node / Cloudflare WebDAV 代理

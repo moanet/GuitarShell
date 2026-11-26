@@ -6,7 +6,7 @@
 
 import {
   decodeBackgroundSource, encodeBackgroundCanvas, saveCustomBackgroundAsset,
-  BG_SOURCE_MAX_BYTES, BG_WIDTH, BG_HEIGHT
+  BG_SOURCE_MAX_BYTES, BG_WIDTH, BG_HEIGHT, CUSTOM_BG_ID
 } from '../services/share-bg.js';
 import { showToast } from '../services/toast.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
@@ -143,7 +143,8 @@ class GuitarShareBgCrop extends HTMLElement {
     this.canvas.addEventListener('pointercancel', (e) => this._onPointerUp(e));
   }
 
-  async open(file) {
+  async open(file, { slotId = CUSTOM_BG_ID } = {}) {
+    this.slotId = slotId;
     return new Promise((resolve, reject) => {
       this._resolve = resolve;
       this._reject = reject;
@@ -358,7 +359,7 @@ class GuitarShareBgCrop extends HTMLElement {
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(this.source.image, sx, sy, sw, sh, 0, 0, BG_WIDTH, BG_HEIGHT);
       const processed = await encodeBackgroundCanvas(out, '');
-      const saved = await saveCustomBackgroundAsset(processed);
+      const saved = await saveCustomBackgroundAsset(processed, this.slotId || CUSTOM_BG_ID);
       this._finish(saved);
     } catch (err) {
       console.warn('[背景裁切] 处理失败:', err.message);

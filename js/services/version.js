@@ -6,7 +6,7 @@
 //   - sw.js                   (APP_VERSION，同时升 CACHE_NAME)
 // ==========================================
 
-export const APP_VERSION = '0.1.14c';
+export const APP_VERSION = '0.1.15';
 
 // 备份载荷的 schema 版本：字段增删 / 语义变化时才升，与 APP_VERSION 解耦
 export const BACKUP_SCHEMA = 3;

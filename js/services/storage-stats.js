@@ -5,7 +5,7 @@
 // ==========================================
 
 import { dbService } from './db.js';
-import { getActiveBackgroundAssetId } from './share-bg.js';
+import { getActiveBackgroundAssetIds } from './share-bg.js';
 
 const PERSIST_KEY = 'gs_storage_persist';
 const ASSET_KIND_BACKGROUND = 'share-bg';
@@ -105,18 +105,18 @@ export async function clearCoverCache() {
   return result;
 }
 
-/** 找出孤儿资产：失效封面、未被当前指针使用的自定义背景、未知类型 */
+/** 找出孤儿资产：失效封面、未被任一自定义槽位引用的背景、未知类型 */
 export async function findOrphanAssets() {
   const [scores, assets] = await Promise.all([
     dbService.getAllScores(),
     dbService.getAllAssets()
   ]);
   const scoreMap = new Map(scores.map((score) => [score.id, score]));
-  const activeBackgroundId = getActiveBackgroundAssetId();
+  const activeBackgroundIds = new Set(getActiveBackgroundAssetIds().map((id) => Number(id)));
   return assets.filter((asset) => {
     if (!asset) return true;
     if (asset.kind === ASSET_KIND_BACKGROUND) {
-      return activeBackgroundId === null || Number(asset.id) !== activeBackgroundId;
+      return activeBackgroundIds.size === 0 || !activeBackgroundIds.has(Number(asset.id));
     }
     if (asset.kind !== 'cover') return true;
     const owner = scoreMap.get(asset.scoreId);
