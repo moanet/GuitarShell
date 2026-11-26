@@ -162,12 +162,13 @@ export function detectYin(buffer, sampleRate, options = {}) {
 // 低音弦衰减到后期，基频变弱、二次谐音占主导时，YIN 会锁到 2 倍频（E2 82.4 → 164.8，
 // 自动模式会被误判成 D3）。这里把明显落在弦目标之外的 2/3/4 倍频折回基频。
 // 注意：原频率本身已贴近某根弦时不折叠，避免把真正的 E4（329.6）折成 A2（110）。
-export function foldToGuitarFundamental(freq, a4 = A4_DEFAULT, targetNote = 'auto') {
+export function foldToGuitarFundamental(freq, a4 = A4_DEFAULT, targetSlot = null, targets = null) {
   if (!(freq > 0)) return freq;
-  const targets = guitarStringTargets(a4);
+  const list = targets && targets.length ? targets : guitarStringTargets(a4);
 
-  if (targetNote && targetNote !== 'auto') {
-    const target = targets.find(t => t.name === targetNote);
+  if (targetSlot !== null && targetSlot !== undefined && targetSlot !== 'auto') {
+    const target = list.find(t => t.slot === Number(targetSlot)) ||
+      list.find(t => t.name === targetSlot);
     if (!target) return freq;
 
     if (Math.abs(centsBetween(freq, target.frequency)) <= 60) return freq;
@@ -183,7 +184,7 @@ export function foldToGuitarFundamental(freq, a4 = A4_DEFAULT, targetNote = 'aut
   }
 
   let nearestCents = Infinity;
-  for (const t of targets) {
+  for (const t of list) {
     nearestCents = Math.min(nearestCents, Math.abs(centsBetween(freq, t.frequency)));
   }
   if (nearestCents <= 60) return freq;
@@ -192,7 +193,7 @@ export function foldToGuitarFundamental(freq, a4 = A4_DEFAULT, targetNote = 'aut
   let bestCents = Infinity;
   for (let n = 2; n <= 4; n++) {
     const sub = freq / n;
-    for (const t of targets) {
+    for (const t of list) {
       const c = Math.abs(centsBetween(sub, t.frequency));
       if (c <= 60 && c < bestCents) { best = sub; bestCents = c; }
     }

@@ -1,7 +1,7 @@
 # CURRENT_TASK — 0.1.19 调音器主界面收口与预设调弦
 
-> 状态：规格已定，待开发。
-> 版本：`0.1.19` / `versionCode 125`（计划）；构建日期待定。
+> 状态：已实现，浏览器回归与真机验收通过，待提交与发布。
+> 版本：`0.1.19` / `versionCode 125`；构建日期 2026-11-27。
 > 范围：只调音器主界面、调音设置、预设 / 自定义调弦；不改 YIN 检测、音频引擎、节拍器、乐谱、全局设置和练习记录。
 
 ## 1. 目标
@@ -94,14 +94,27 @@
 - 回归：新增 `tests/browser/gs_026.py`；`gs_024` 360 / 320 通过；发版冒烟跑 `gs_018` / `gs_020` / `gs_022` / `gs_023` / `gs_025`；`npm run check` 通过。
 - 真机：Android 13+ 覆盖安装，验证点弦试听、预设切换、自定义重复音高、A4 442 显示、设置持久化、开始 / 停止与麦克风授权；logcat 无运行期异常。
 
-## 9. 构建与发布
+## 9. 构建记录
 
-- 版本同步：`package.json` / `package-lock.json` → `0.1.19`；`js/services/version.js`、`sw.js`、`android/app/build.gradle` → `0.1.19` / `125`。
-- `tests/browser/README.md` 补 `gs_026`；`docs/RELEASE_CHECKLIST.md` 增加调音器主界面 / 调弦 / A4 / 反馈映射，L3 范围改为 `gs_015–gs_026`。
-- 构建正式包，记录字节数、SHA-256、`aapt` 版本与 `apksigner` 证书；真机验收通过后直接打 tag、发布 GitHub Release。
-- `CHANGELOG.md` 与 `CURRENT_TASK.md` 补实现、构建、真机与发布记录；发布后归档为 `docs/archive/CURRENT_TASK-0.1.19.md`。
+- 版本同步：`package.json` / `package-lock.json`、`js/services/version.js`、`sw.js`、`android/app/build.gradle` 均为 `0.1.19` / `versionCode 125`；`sw.js` 缓存加入 `js/services/tunings.js`。
+- 新增 `js/services/tunings.js` 与 `tests/browser/gs_026.py`；`gs_024` 改为检查新调音器控件并等待动态导入，`gs_025` 版本断言改为 `v0.1.19`。
+- 浏览器：`gs_026` 360 深色 / 320 深色 / 360 浅色均通过；覆盖默认状态、A4 440/442、五个预设、自定义重复 E2、弦号、点弦试听与自动收束，以及返回键先退编辑器、再关设置。
+- 回归：`gs_024` 360 / 320、`gs_025` 360、`gs_018` 360、`gs_020` 360 / 320、`gs_022` 360、`gs_023` 360 / 320 `138/138` 均通过。
+- 静态检查：`npm run check` 通过，`v0.1.19，40 个 JS 文件`；ES module 语法用 `node --input-type=module --check` 复核 `tuner.js`。
+- 首次真机验收发现「调音设置」未注册统一层级栈，按返回键会直接退出应用；已补 `registerLayer`、编辑器两级返回与统一遮罩 `bindBackdrop`，重新构建并复验。
+- APK：`dist/GuitarShell-0.1.19-release.apk`，`4,510,209` 字节，SHA-256 `4AD4214104B49EECAD119FBB4E2F0294BE1625F2ED8E6C5A669EAB9D8EE65942`。
+- `aapt` 版本 `versionCode 125` / `versionName 0.1.19`；`apksigner` 证书 SHA-256 与 0.1.18 一致。
 
-## 10. 风险
+## 10. 真机记录
+
+- Android 13 真机 `ca14b16` 覆盖安装 `adb install -r` 成功；原有乐谱、练习记录、主题与调音设置保留。
+- 393dp：调音器五段完整；状态条常驻「标准调弦」，切 Drop D 后名称与六弦音名同步；A4 442 显示 `· A4 442`，设置底部「调准提示音 / 调准震动」完整可见。
+- 自定义调弦保存为「自定义调弦」，第 3 弦与第 1 弦同为 E4，主界面仍显示 `e/3` 与 `e/1` 两个独立弦位；点第 3 弦出现「第3弦 E4 试听中…」，约 1 秒后自动收束且高亮保留。
+- 开始调音后状态切「拨动琴弦…」，麦克风指示正常；播放第 3 弦标准音时检测到 `331.2 Hz`、显示 `e` 与「音准完美！」（A4 442 下 E4 目标约 329.9 Hz）。
+- 调音设置打开时按原生返回键只关闭面板、留在调音器；自定义编辑器内按返回先退回设置主页。
+- logcat 未出现 `FATAL EXCEPTION` / `AndroidRuntime` / `Uncaught TypeError`。
+
+## 11. 风险
 
 - A4 默认隐藏可能让人忘记已改过；用“偏离 440 才显示”兜底，设置面板始终可查。
 - 点弦就响会打断正在拨弦的人；标准音缩到约 1 秒，并沿用检测暂停与淡出。

@@ -23,6 +23,7 @@ python tests/browser/gs_022.py
 python tests/browser/gs_023.py
 python tests/browser/gs_024.py
 python tests/browser/gs_025.py
+python tests/browser/gs_026.py
 ```
 
 脚本会：
@@ -35,9 +36,9 @@ python tests/browser/gs_025.py
 
 - `GS_BROWSER`：浏览器可执行文件路径。
 - `GS_BASE_URL`：默认 `http://127.0.0.1:8123/`。
-- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`，`gs_023.py` 默认 `9395`，`gs_024.py` 默认 `9367`，`gs_025.py` 默认 `9368`。
-- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` / `gs_023.py` / `gs_024.py` / `gs_025.py` 视口宽度；`gs_022.py` / `gs_023.py` / `gs_024.py` / `gs_025.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
-- `GS_THEME`：`gs_020.py` / `gs_025.py`，`deep`（默认）或 `light`，用于检查两套主题下的设置卡片 / BPM 圆盘。
+- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`，`gs_023.py` 默认 `9395`，`gs_024.py` 默认 `9367`，`gs_025.py` 默认 `9368`，`gs_026.py` 默认 `9369`。
+- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` / `gs_023.py` / `gs_024.py` / `gs_025.py` / `gs_026.py` 视口宽度；`gs_022.py` / `gs_023.py` / `gs_024.py` / `gs_025.py` / `gs_026.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
+- `GS_THEME`：`gs_020.py` / `gs_025.py` / `gs_026.py`，`deep`（默认）或 `light`，用于检查两套主题下的设置卡片 / BPM 圆盘 / 调音设置。
 
 ## 当前覆盖
 
@@ -143,5 +144,14 @@ python tests/browser/gs_025.py
 - 沿 135° → 405° 每 5° 采样，BPM 单调递增，首尾为 30 / 250，无空洞或回跳。
 - 中心输入、`− / +` 步进仍按 1 BPM 工作；环外标签有实际像素，320 / 360 无横向溢出。
 - 支持 `GS_THEME=light` 重载后检查浅色画布；截图保存到 `%TEMP%\gs_025_<width>_dial_*.png`。
+
+`gs_026.py`：
+
+- 调音器默认状态条常驻「标准调弦」；A4 为 440 时状态条不显示，442 时显示「A4 442」并可恢复。
+- 六根弦音名与弦位序号 `6–1` 齐全，主按钮文案为「开始调音」，旧的单独「标准音」按钮不存在。
+- 五个预设与自定义入口在「调音设置」二级面板；切换 Drop D 后音名与 localStorage 同步，A4 偏离只在状态条提示。
+- 点第 1 弦会选中 `slot 5` 并进入试听，不依赖「调准提示音」开关；自定义六根重复 E2 仍按 slot 建目标、可持久化。
+- 返回键先退自定义调弦编辑、再关「调音设置」，不退出应用；遮罩外点使用统一 pointer 判定。
+- 支持 `GS_WIDTH=320` 与 `GS_THEME=light`；截图保存到 `%TEMP%\gs_026_<width>_<theme>_*.png`。
 
 CI 只做 Python 语法编译；浏览器交互需要本机浏览器，仍在本地执行。

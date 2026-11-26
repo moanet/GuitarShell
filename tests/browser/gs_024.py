@@ -256,13 +256,15 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
   await sleep(200);
 
   document.querySelector('.tab-btn[data-target="view-tuner"]').click();
+  for (let i = 0; i < 40 && !document.querySelector('guitar-tuner')?.shadowRoot; i++) await sleep(50);
   await sleep(300);
   const tuner = document.querySelector('guitar-tuner');
   out.tuner = {
-    refSvg: !!tuner?.shadowRoot?.getElementById('refTone')?.querySelector('svg'),
-    feedbackSvg: tuner?.shadowRoot?.querySelectorAll('.feedback-btn svg').length || 0,
+    settingsSvg: !!tuner?.shadowRoot?.getElementById('openSettings')?.querySelector('svg'),
+    closeSvg: !!tuner?.shadowRoot?.getElementById('closeSettings')?.querySelector('svg'),
     toggleSvg: !!tuner?.shadowRoot?.getElementById('btnToggle')?.querySelector('svg'),
-    stepSvg: ['a4Minus', 'a4Plus'].filter((id) => tuner?.shadowRoot?.getElementById(id)?.querySelector('svg')).length,
+    stepSvg: ['a4SheetMinus', 'a4SheetPlus'].filter((id) => tuner?.shadowRoot?.getElementById(id)?.querySelector('svg')).length,
+    stringNums: tuner?.shadowRoot?.querySelectorAll('.string-num').length || 0,
     emoji: emojiHits(tuner),
   };
 
@@ -314,7 +316,7 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
         check("书架无 Emoji", r["emoji"]["count"] == 0, str(r["emoji"]["chars"]))
         check("节拍器图标齐全", out["metronome"]["settingsBtnSvg"] and out["metronome"]["cardIcoSvg"] == 5 and out["metronome"]["stepSvg"] == 2, f"card={out['metronome']['cardIcoSvg']} step={out['metronome']['stepSvg']}")
         check("节拍器无 Emoji", out["metronome"]["emoji"]["count"] == 0, str(out["metronome"]["emoji"]["chars"]))
-        check("调音器图标齐全", out["tuner"]["refSvg"] and out["tuner"]["feedbackSvg"] == 2 and out["tuner"]["toggleSvg"] and out["tuner"]["stepSvg"] == 2, f"fb={out['tuner']['feedbackSvg']} step={out['tuner']['stepSvg']}")
+        check("调音器图标齐全", out["tuner"]["settingsSvg"] and out["tuner"]["closeSvg"] and out["tuner"]["toggleSvg"] and out["tuner"]["stepSvg"] == 2 and out["tuner"]["stringNums"] == 6, f"close={out['tuner']['closeSvg']} step={out['tuner']['stepSvg']} nums={out['tuner']['stringNums']}")
         check("调音器无 Emoji", out["tuner"]["emoji"]["count"] == 0, str(out["tuner"]["emoji"]["chars"]))
         check("练习记录图标齐全", out["log"]["submitSvg"] and out["log"]["trendSvg"] and out["log"]["shareSvg"])
         check("练习记录条目图标渲染", out["log"]["logCards"] >= 1 and out["log"]["detailSvg"] == 3, f"cards={out['log']['logCards']} icons={out['log']['detailSvg']}")

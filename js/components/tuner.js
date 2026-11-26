@@ -3,7 +3,6 @@ import { wakeLock } from '../services/wakelock.js';
 import { showToast } from '../services/toast.js';
 import {
   detectYin,
-  guitarStringTargets,
   clampA4,
   A4_DEFAULT,
   A4_MIN,
@@ -11,7 +10,19 @@ import {
   medianFrequency,
   foldToGuitarFundamental
 } from '../services/pitch.js';
+import {
+  TUNING_PRESETS,
+  CUSTOM_TUNING_ID,
+  getPresetById,
+  readTuningState,
+  writeTuningState,
+  createTuningTargets,
+  normalizeCustomTuning,
+  guitarNoteOptions,
+  formatTuningNotes
+} from '../services/tunings.js';
 import { icon } from '../services/icons.js';
+import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 
 // 提示音本身会被麦克风收进去：叮响的 0.32s 加上扬声器/采集尾音，
 // 这期间暂停 YIN，避免把提示音的低阶谐波当成琴声，把指针拽向右侧。
@@ -31,11 +42,16 @@ const writeBoolSetting = (key, value) => {
 // 标准音试听响度补偿：手机小喇叭对 82/110Hz 的低音衰减很厉害，
 // 低音 E/A 给更高电平，高音 e 保持原电平，避免六根弦试听响度差太多。
 const REFERENCE_LEVELS = {
+  D2: 0.36,
   E2: 0.36,
+  G2: 0.35,
   A2: 0.34,
   D3: 0.3,
+  'F#3': 0.29,
   G3: 0.28,
+  A3: 0.27,
   B3: 0.25,
+  D4: 0.23,
   E4: 0.22
 };
 
@@ -112,14 +128,95 @@ const tunerCSS = `
   .btn-toggle.start { background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.3); }
   .btn-toggle.stop { background: var(--danger); color: var(--on-danger); box-shadow: 0 6px 20px rgba(var(--danger-rgb), 0.28); }
   .btn-toggle:active { transform: scale(0.95); }
+
+  /* 0.1.19：状态条、弦位行与调音设置 */
+  :host { position: relative; }
+  .container { padding: 14px 20px; gap: 14px; }
+  .tuning-strip { width: 100%; max-width: 460px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-raised); color: var(--txt); cursor: pointer; font-family: inherit; text-align: left; transition: 0.2s; }
+  .tuning-strip:hover { border-color: var(--line-strong); background: var(--surface-hover); }
+  .tuning-summary { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+  .tuning-name { min-width: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; color: var(--heading); }
+  .tuning-a4 { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tuning-settings { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--accent-text); }
+  .string-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 7px 0 6px; line-height: 1.1; min-width: 0; }
+  .string-note { font-size: 16px; font-weight: 700; line-height: 1.05; }
+  .string-num { font-size: 9px; font-weight: 600; color: var(--muted-soft); line-height: 1.05; }
+  .strings-row { gap: 6px; }
+  .string-btn.auto { max-width: 72px; font-size: 13px; }
+  .string-btn.playing { animation: tuner-pulse 0.95s ease-in-out infinite; }
+  @keyframes tuner-pulse { 0%, 100% { box-shadow: 0 0 0 rgba(var(--accent-rgb), 0); } 50% { box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.4); } }
+
+  .settings-mask { position: absolute; inset: 0; z-index: 500; display: flex; align-items: flex-end; justify-content: center; background: rgba(var(--shadow-rgb), 0.66); opacity: 0; pointer-events: none; transition: opacity 0.18s; }
+  .settings-mask.show { opacity: 1; pointer-events: auto; }
+  .settings-sheet { width: 100%; max-width: 500px; max-height: 90%; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; }
+  .settings-mask.show .settings-sheet { transform: translateY(0); }
+  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .sheet-eyebrow { font-size: 9px; letter-spacing: 2px; color: var(--muted-soft); margin-bottom: 2px; }
+  .sheet-title { margin: 0; font-size: 18px; color: var(--heading); }
+  .icon-btn { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-hover); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+  .settings-page { display: flex; flex-direction: column; gap: 12px; }
+  .settings-page[hidden], .settings-mask[hidden], [hidden] { display: none !important; }
+  .sheet-section { display: flex; flex-direction: column; gap: 6px; padding: 9px; border-radius: 12px; background: var(--surface-deep); border: 1px solid var(--line); }
+  .section-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--heading); }
+  .preset-list { display: flex; flex-direction: column; gap: 4px; }
+  .preset-item { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: var(--surface-raised); color: var(--txt); cursor: pointer; text-align: left; font-family: inherit; }
+  .preset-item:hover { background: var(--surface-hover); }
+  .preset-item.active { border-color: var(--accent); background: rgba(var(--primary-rgb), 0.13); }
+  .preset-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .preset-name { font-size: 13px; font-weight: 600; color: var(--heading); }
+  .preset-notes { font-size: 10px; color: var(--muted); }
+  .preset-check { flex: none; color: var(--success); display: inline-flex; }
+  .custom-entry { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 8px; border-radius: 9px; border: 1px dashed var(--line-strong); background: transparent; color: var(--txt); cursor: pointer; text-align: left; font-family: inherit; }
+  .custom-entry.active { border-style: solid; border-color: var(--accent); background: rgba(var(--primary-rgb), 0.13); }
+  .custom-entry-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .custom-entry-name { font-size: 13px; font-weight: 600; color: var(--heading); }
+  .custom-entry-hint { font-size: 10px; color: var(--muted); }
+  .custom-entry-icon { flex: none; color: var(--muted); }
+  .a4-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .a4-value { font-size: 18px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .a4-value small { font-size: 11px; color: var(--muted); font-weight: 500; margin-left: 3px; }
+  .a4-actions { display: flex; align-items: center; gap: 6px; }
+  .a4-quick { display: flex; gap: 6px; }
+  .mini-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); font-size: 11px; cursor: pointer; }
+  .mini-chip.active { border-color: var(--accent); color: var(--accent-text); background: rgba(var(--primary-rgb), 0.12); }
+  .link-btn { align-self: flex-start; border: none; background: transparent; color: var(--muted); padding: 0; font-size: 11px; cursor: pointer; text-decoration: underline; }
+  .switch-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-raised); color: var(--txt); text-align: left; cursor: pointer; font-family: inherit; }
+  .switch-row:disabled { opacity: 0.55; cursor: not-allowed; }
+  .switch-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .switch-title { font-size: 13px; font-weight: 600; color: var(--heading); }
+  .switch-help { font-size: 10px; color: var(--muted); }
+  .switch-track { flex: none; width: 38px; height: 22px; border-radius: 999px; background: var(--line-strong); position: relative; transition: 0.2s; }
+  .switch-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--heading); transition: 0.2s; }
+  .switch-row[aria-pressed="true"] .switch-track { background: var(--success); }
+  .switch-row[aria-pressed="true"] .switch-thumb { transform: translateX(16px); background: var(--on-success, #fff); }
+  .sheet-subhead { display: flex; align-items: center; gap: 8px; }
+  .sheet-subhead h3 { margin: 0; font-size: 16px; color: var(--heading); }
+  .custom-field { display: flex; flex-direction: column; gap: 5px; }
+  .custom-field label, .note-field label { font-size: 11px; color: var(--muted); }
+  .custom-name { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--surface-deep); color: var(--txt); font-size: 14px; font-family: inherit; }
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .note-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .note-select { width: 100%; box-sizing: border-box; padding: 8px 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-family: inherit; font-size: 13px; }
+  .editor-actions { display: flex; gap: 8px; margin-top: 2px; }
+  .editor-actions button { flex: 1; padding: 11px 10px; border-radius: 9px; border: 1px solid var(--line-strong); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .btn-reset { background: var(--surface-hover); color: var(--txt); }
+  .btn-save { background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border-color: transparent; }
 `;
 
 const tunerHTML = `
   <div class="container">
+    <button class="tuning-strip" id="openSettings" type="button" aria-haspopup="dialog" aria-controls="settingsMask">
+      <span class="tuning-summary">
+        <span class="tuning-name" id="tuningName">标准调弦</span>
+        <span class="tuning-a4" id="a4Status" hidden></span>
+      </span>
+      <span class="tuning-settings">${icon('settings', 14)} 调音设置</span>
+    </button>
+
     <div class="display-area">
       <div class="note-name" id="noteName">--</div>
       <div class="freq-val" id="freqVal">0.0 Hz</div>
-      <div class="status-text" id="statusText">点击下方按钮开启麦克风</div>
+      <div class="status-text" id="statusText">点击下方按钮开始调音</div>
     </div>
 
     <div class="meter-wrap">
@@ -146,31 +243,92 @@ const tunerHTML = `
     </div>
 
     <div class="strings-row" id="stringsRow">
-      <button class="string-btn auto active" data-note="auto">自动</button>
-      <button class="string-btn" data-note="E2">E</button>
-      <button class="string-btn" data-note="A2">A</button>
-      <button class="string-btn" data-note="D3">D</button>
-      <button class="string-btn" data-note="G3">G</button>
-      <button class="string-btn" data-note="B3">B</button>
-      <button class="string-btn" data-note="E4">e</button>
+      <button class="string-btn auto active" data-slot="auto" type="button">自动</button>
+      <button class="string-btn" data-slot="0" type="button"><span class="string-note">E</span><span class="string-num">6</span></button>
+      <button class="string-btn" data-slot="1" type="button"><span class="string-note">A</span><span class="string-num">5</span></button>
+      <button class="string-btn" data-slot="2" type="button"><span class="string-note">D</span><span class="string-num">4</span></button>
+      <button class="string-btn" data-slot="3" type="button"><span class="string-note">G</span><span class="string-num">3</span></button>
+      <button class="string-btn" data-slot="4" type="button"><span class="string-note">B</span><span class="string-num">2</span></button>
+      <button class="string-btn" data-slot="5" type="button"><span class="string-note">e</span><span class="string-num">1</span></button>
     </div>
 
-    <div class="tools-row">
-      <div class="a4-box">
-        <span class="a4-label">A4</span>
-        <button class="step-btn" id="a4Minus" type="button" aria-label="A4 降低 1Hz">${icon('minus', 15)}</button>
-        <span class="a4-val" id="a4Val">440 Hz</span>
-        <button class="step-btn" id="a4Plus" type="button" aria-label="A4 升高 1Hz">${icon('plus', 15)}</button>
+    <button class="btn-toggle start" id="btnToggle">${icon('mic', 18)} 开始调音</button>
+  </div>
+
+  <div class="settings-mask" id="settingsMask" hidden aria-hidden="true">
+    <div class="settings-sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="sheet-head">
+        <div>
+          <div class="sheet-eyebrow">TUNER SETTINGS</div>
+          <h2 class="sheet-title" id="settingsTitle">调音设置</h2>
+        </div>
+        <button class="icon-btn" id="closeSettings" type="button" aria-label="关闭调音设置">${icon('close', 18)}</button>
       </div>
-      <button class="ref-btn" id="refTone" type="button" disabled>${icon('volume', 15)} 标准音</button>
-    </div>
 
-    <div class="feedback-row">
-      <button class="feedback-btn active" id="fbSound" type="button" aria-pressed="true">${icon('bell', 15)} 提示音</button>
-      <button class="feedback-btn active" id="fbVibrate" type="button" aria-pressed="true">${icon('vibrate', 15)} 震动</button>
-    </div>
+      <div class="settings-page" id="settingsMain">
+        <section class="sheet-section">
+          <div class="section-title">${icon('music', 14)} 调弦</div>
+          <div class="preset-list" id="presetList"></div>
+          <button class="custom-entry" id="customEntry" type="button">
+            <span class="custom-entry-copy">
+              <span class="custom-entry-name">自定义调弦</span>
+              <span class="custom-entry-hint" id="customEntryHint">自己设置六弦音高</span>
+            </span>
+            <span class="custom-entry-icon">${icon('chevronRight', 14)}</span>
+          </button>
+        </section>
 
-    <button class="btn-toggle start" id="btnToggle">${icon('mic', 18)} 开启麦克风</button>
+        <section class="sheet-section">
+          <div class="section-title">${icon('gauge', 14)} A4 校准</div>
+          <div class="a4-line">
+            <div class="a4-value"><span id="a4SheetVal">440</span><small>Hz</small></div>
+            <div class="a4-actions">
+              <button class="step-btn" id="a4SheetMinus" type="button" aria-label="A4 降低 1Hz">${icon('minus', 14)}</button>
+              <button class="step-btn" id="a4SheetPlus" type="button" aria-label="A4 升高 1Hz">${icon('plus', 14)}</button>
+            </div>
+          </div>
+          <div class="a4-quick">
+            <button class="mini-chip" type="button" data-a4="440">440</button>
+            <button class="mini-chip" type="button" data-a4="442">442</button>
+          </div>
+          <button class="link-btn" id="a4Reset" type="button">恢复 440</button>
+        </section>
+
+        <section class="sheet-section">
+          <div class="section-title">${icon('bell', 14)} 调准反馈</div>
+          <button class="switch-row" id="fbSound" type="button" aria-pressed="true">
+            <span class="switch-copy">
+              <span class="switch-title">调准提示音</span>
+              <span class="switch-help">进入 ±5 音分时响一声</span>
+            </span>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </button>
+          <button class="switch-row" id="fbVibrate" type="button" aria-pressed="true">
+            <span class="switch-copy">
+              <span class="switch-title">调准震动</span>
+              <span class="switch-help">进入 ±5 音分时震一下</span>
+            </span>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+          </button>
+        </section>
+      </div>
+
+      <div class="settings-page" id="customEditor" hidden>
+        <div class="sheet-subhead">
+          <button class="icon-btn" id="customBack" type="button" aria-label="返回调音设置">${icon('chevronLeft', 16)}</button>
+          <h3>自定义调弦</h3>
+        </div>
+        <div class="custom-field">
+          <label for="customName">名称</label>
+          <input class="custom-name" id="customName" maxlength="16" placeholder="例如：我的开放 G" autocomplete="off">
+        </div>
+        <div class="notes-grid" id="customNotes"></div>
+        <div class="editor-actions">
+          <button class="btn-reset" id="customReset" type="button">填入标准调弦</button>
+          <button class="btn-save" id="customSave" type="button">保存并使用</button>
+        </div>
+      </div>
+    </div>
   </div>
 `;
 
@@ -187,7 +345,7 @@ class GuitarTuner extends HTMLElement {
     
     // 数据平滑
     this.frequencyHistory = [];
-    this.targetNote = 'auto'; // 默认自动识别
+    this.targetSlot = 'auto'; // 'auto' 或弦位 slot 0–5
     this.lastAnalysisAt = 0;
     this.lastValidAt = 0;
 
@@ -198,8 +356,8 @@ class GuitarTuner extends HTMLElement {
     this.lastFeedbackAt = -1e9;
     this.chimeGuardUntil = 0;
 
-    // C5b：A4 校准 / 标准音试听 / 音分曲线
-    this.lastString = null;
+    // 标准音试听 / 音分曲线
+    this.lastSlot = null;
     this.centsHistory = [];
     this.lastChartAt = 0;
     this.isPlayingRef = false;
@@ -207,7 +365,7 @@ class GuitarTuner extends HTMLElement {
     this.refTimer = null;
     this.refEpoch = 0;
 
-    // A4 校准：C5a 先把能力放进检测层，界面留给 C5b
+    // A4 校准
     let savedA4 = A4_DEFAULT;
     try {
       const raw = localStorage.getItem('guitar_tuner_a4');
@@ -215,49 +373,300 @@ class GuitarTuner extends HTMLElement {
     } catch (err) {}
     this.a4 = clampA4(savedA4);
 
-    // 吉他标准调弦频率（随 A4 校准联动，不再写死 440 的数值）
-    this.stringFreqs = {};
-    guitarStringTargets(this.a4).forEach(s => { this.stringFreqs[s.name] = s.frequency; });
+    // 调弦预设 / 自定义调弦：目标频率按弦位维护，允许重复音高
+    this.tuning = readTuningState();
+    this.customTuning = this.tuning.custom || null;
+    this.refreshTargets();
   }
 
-  // A4 校准入口：设置面板 / 未来自定义音效都走这里
+  refreshTargets() {
+    this.targets = createTuningTargets(this.tuning, this.a4);
+  }
+
+  getTarget(slot = this.targetSlot) {
+    if (slot === 'auto' || slot === null || slot === undefined) return null;
+    return this.targets[Number(slot)] || null;
+  }
+
+  // A4 校准入口：设置面板统一走这里
   setA4(value) {
     this.a4 = clampA4(value);
     try { localStorage.setItem('guitar_tuner_a4', String(this.a4)); } catch (err) {}
-    this.stringFreqs = {};
-    guitarStringTargets(this.a4).forEach(s => { this.stringFreqs[s.name] = s.frequency; });
-    this.frequencyHistory = [];
-    this.lastValidAt = 0;
-    this.centsHistory = [];
-    this.lastChartAt = 0;
+    this.refreshTargets();
+    this.resetDetectionState();
     if (this.isPlayingRef) {
       this.stopReferenceTone();
       this.restoreAfterRef();
     }
     this.updateA4UI();
+    this.updateTuningUI();
     this.resetCentsChart();
     return this.a4;
   }
 
-  updateA4UI() {
-    if (!this.shadowRoot) return;
-    const val = this.shadowRoot.getElementById('a4Val');
-    const minus = this.shadowRoot.getElementById('a4Minus');
-    const plus = this.shadowRoot.getElementById('a4Plus');
-    if (val) val.textContent = `${this.a4} Hz`;
-    if (minus) minus.disabled = this.a4 <= A4_MIN;
-    if (plus) plus.disabled = this.a4 >= A4_MAX;
+  setTuning(tuning, custom = this.customTuning, persist = true) {
+    this.tuning = tuning;
+    this.customTuning = tuning.custom || custom || null;
+    if (persist) writeTuningState(tuning, this.customTuning);
+    this.refreshTargets();
+    this.resetDetectionState();
+    if (this.isPlayingRef) {
+      this.stopReferenceTone();
+      this.restoreAfterRef();
+    }
+    this.updateTuningUI();
+    this.updateA4UI();
+    this.renderPresetList();
+    this.resetCentsChart();
   }
 
-  updateRefButton() {
+  resetDetectionState() {
+    this.frequencyHistory = [];
+    this.lastValidAt = 0;
+    this.lastSlot = null;
+    this.wasInTune = false;
+    this.centsHistory = [];
+    this.lastChartAt = 0;
+  }
+
+  updateTuningUI() {
     if (!this.shadowRoot) return;
-    const btn = this.shadowRoot.getElementById('refTone');
-    if (!btn) return;
-    const target = this.targetNote === 'auto' ? this.lastString : this.targetNote;
-    btn.disabled = !target;
-    btn.innerHTML = target
-      ? `${icon('volume', 15)} 标准音 ${target.replace(/\d/g, '')}`
-      : `${icon('volume', 15)} 标准音（先选弦）`;
+    const root = this.shadowRoot;
+    const name = root.getElementById('tuningName');
+    const a4Status = root.getElementById('a4Status');
+    if (name) name.textContent = this.tuning.name || '自定义调弦';
+    if (a4Status) {
+      const off = this.a4 !== A4_DEFAULT;
+      a4Status.hidden = !off;
+      a4Status.textContent = off ? `· A4 ${this.a4}` : '';
+    }
+
+    root.querySelectorAll('.string-btn').forEach(btn => {
+      const raw = btn.dataset.slot;
+      if (raw === 'auto') return;
+      const target = this.targets[Number(raw)];
+      if (!target) return;
+      const note = btn.querySelector('.string-note');
+      const num = btn.querySelector('.string-num');
+      if (note) note.textContent = target.label;
+      if (num) num.textContent = String(target.stringNumber);
+      btn.setAttribute('aria-label', `第${target.stringNumber}弦 ${target.name}，点击选中并试听`);
+      btn.classList.toggle('active', this.targetSlot !== 'auto' && Number(raw) === Number(this.targetSlot));
+    });
+    const autoBtn = root.querySelector('.string-btn.auto');
+    if (autoBtn) autoBtn.classList.toggle('active', this.targetSlot === 'auto');
+
+    const customEntry = root.getElementById('customEntry');
+    const customHint = root.getElementById('customEntryHint');
+    if (customEntry) customEntry.classList.toggle('active', this.tuning.id === CUSTOM_TUNING_ID);
+    if (customHint) customHint.textContent = this.customTuning
+      ? formatTuningNotes(this.customTuning.notes)
+      : '自己设置六弦音高';
+  }
+
+  updateA4UI() {
+    if (!this.shadowRoot) return;
+    const root = this.shadowRoot;
+    const val = root.getElementById('a4SheetVal');
+    const minus = root.getElementById('a4SheetMinus');
+    const plus = root.getElementById('a4SheetPlus');
+    if (val) val.textContent = String(this.a4);
+    if (minus) minus.disabled = this.a4 <= A4_MIN;
+    if (plus) plus.disabled = this.a4 >= A4_MAX;
+    root.querySelectorAll('.mini-chip[data-a4]').forEach(chip => {
+      chip.classList.toggle('active', Number(chip.dataset.a4) === this.a4);
+    });
+  }
+
+  renderPresetList() {
+    if (!this.shadowRoot) return;
+    const list = this.shadowRoot.getElementById('presetList');
+    if (!list) return;
+    list.innerHTML = '';
+    for (const preset of TUNING_PRESETS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'preset-item';
+      btn.dataset.preset = preset.id;
+      const active = this.tuning.id === preset.id;
+      btn.classList.toggle('active', active);
+
+      const copy = document.createElement('span');
+      copy.className = 'preset-copy';
+      const name = document.createElement('span');
+      name.className = 'preset-name';
+      name.textContent = preset.name;
+      const notes = document.createElement('span');
+      notes.className = 'preset-notes';
+      notes.textContent = formatTuningNotes(preset.notes);
+      copy.append(name, notes);
+      btn.append(copy);
+
+      if (active) {
+        const check = document.createElement('span');
+        check.className = 'preset-check';
+        check.innerHTML = icon('check', 14);
+        btn.append(check);
+      }
+
+      btn.onclick = () => this.applyPreset(preset.id);
+      list.append(btn);
+    }
+
+    const customEntry = this.shadowRoot.getElementById('customEntry');
+    if (customEntry) customEntry.classList.toggle('active', this.tuning.id === CUSTOM_TUNING_ID);
+  }
+
+  applyPreset(presetId) {
+    const preset = getPresetById(presetId);
+    if (!preset) return;
+    const tuning = { ...preset, custom: this.customTuning };
+    this.setTuning(tuning, this.customTuning, true);
+    this.showSettingsMain();
+  }
+
+  openSettings() {
+    if (!this.shadowRoot) return;
+    const root = this.shadowRoot;
+    const mask = root.getElementById('settingsMask');
+    if (!mask) return;
+    this.renderPresetList();
+    this.updateA4UI();
+    this.updateTuningUI();
+    this.paintFeedback();
+    this.showSettingsMain();
+    if (this._settingsLayerOff) this._settingsLayerOff();
+    this._settingsLayerOff = registerLayer({
+      id: 'tuner-settings',
+      close: () => this.handleSettingsBack()
+    });
+    mask.hidden = false;
+    mask.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      mask.classList.add('show');
+      const close = root.getElementById('closeSettings');
+      if (close) close.focus();
+    });
+  }
+
+  // 返回键：自定义调弦编辑先退回设置主页，再关整个调音设置
+  handleSettingsBack() {
+    if (!this.shadowRoot) return;
+    const editor = this.shadowRoot.getElementById('customEditor');
+    if (editor && !editor.hidden) {
+      this.showSettingsMain();
+      return;
+    }
+    this.closeSettings();
+  }
+
+  closeSettings() {
+    if (!this.shadowRoot) return;
+    const root = this.shadowRoot;
+    const mask = root.getElementById('settingsMask');
+    if (!mask) return;
+    if (this._settingsLayerOff) {
+      this._settingsLayerOff();
+      this._settingsLayerOff = null;
+    }
+    mask.classList.remove('show');
+    mask.setAttribute('aria-hidden', 'true');
+    setTimeout(() => {
+      if (!mask.classList.contains('show')) mask.hidden = true;
+    }, 220);
+  }
+
+  showSettingsMain() {
+    if (!this.shadowRoot) return;
+    const main = this.shadowRoot.getElementById('settingsMain');
+    const editor = this.shadowRoot.getElementById('customEditor');
+    if (main) main.hidden = false;
+    if (editor) editor.hidden = true;
+  }
+
+  showCustomEditor() {
+    if (!this.shadowRoot) return;
+    const root = this.shadowRoot;
+    const main = root.getElementById('settingsMain');
+    const editor = root.getElementById('customEditor');
+    const nameInput = root.getElementById('customName');
+    if (main) main.hidden = true;
+    if (editor) editor.hidden = false;
+    const notes = this.customTuning ? this.customTuning.notes : TUNING_PRESETS[0].notes;
+    if (nameInput) nameInput.value = this.customTuning ? this.customTuning.name : '';
+    this.buildCustomNoteFields(notes);
+  }
+
+  buildCustomNoteFields(notes) {
+    if (!this.shadowRoot) return;
+    const wrap = this.shadowRoot.getElementById('customNotes');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const options = guitarNoteOptions();
+    for (let slot = 0; slot < 6; slot++) {
+      const field = document.createElement('div');
+      field.className = 'note-field';
+      const label = document.createElement('label');
+      label.textContent = `第${6 - slot}弦`;
+      label.htmlFor = `customNote${slot}`;
+      const select = document.createElement('select');
+      select.className = 'note-select';
+      select.id = `customNote${slot}`;
+      select.dataset.slot = String(slot);
+      for (const opt of options) {
+        const option = document.createElement('option');
+        option.value = opt.note;
+        option.textContent = opt.note;
+        select.append(option);
+      }
+      select.value = notes[slot] || TUNING_PRESETS[0].notes[slot];
+      field.append(label, select);
+      wrap.append(field);
+    }
+  }
+
+  readCustomNotes() {
+    if (!this.shadowRoot) return null;
+    const values = [];
+    this.shadowRoot.querySelectorAll('#customNotes select').forEach(select => {
+      values.push(select.value);
+    });
+    return values.length === 6 ? values : null;
+  }
+
+  saveCustomTuning() {
+    if (!this.shadowRoot) return;
+    const nameInput = this.shadowRoot.getElementById('customName');
+    const notes = this.readCustomNotes();
+    const plan = normalizeCustomTuning({ name: nameInput ? nameInput.value : '', notes });
+    if (!plan) {
+      showToast('自定义调弦无效：六根弦都必须在 D2–E5 之间');
+      return;
+    }
+    const tuning = { id: CUSTOM_TUNING_ID, name: plan.name, notes: plan.notes, custom: plan };
+    this.setTuning(tuning, plan, true);
+    this.closeSettings();
+  }
+
+  fillCustomStandard() {
+    const notes = TUNING_PRESETS[0].notes;
+    this.buildCustomNoteFields(notes);
+  }
+
+  paintFeedback() {
+    if (!this.shadowRoot) return;
+    const root = this.shadowRoot;
+    const soundBtn = root.getElementById('fbSound');
+    const vibrateBtn = root.getElementById('fbVibrate');
+    if (soundBtn) {
+      soundBtn.setAttribute('aria-pressed', String(this.feedbackSound));
+    }
+    const vibrateSupported = typeof navigator.vibrate === 'function';
+    if (vibrateBtn) {
+      vibrateBtn.setAttribute('aria-pressed', String(this.feedbackVibrate && vibrateSupported));
+      vibrateBtn.disabled = !vibrateSupported;
+      vibrateBtn.title = vibrateSupported ? '调准时震动一下' : '当前设备 / 浏览器不支持震动';
+    }
   }
 
   stopReferenceTone() {
@@ -269,12 +678,22 @@ class GuitarTuner extends HTMLElement {
       this.refToneHandle = null;
     }
     this.isPlayingRef = false;
+    this.setStringPlaying(null, false);
+  }
+
+  setStringPlaying(slot, on) {
+    if (!this.shadowRoot) return;
+    this.shadowRoot.querySelectorAll('.string-btn').forEach(btn => {
+      const raw = btn.dataset.slot;
+      const active = on && raw !== 'auto' && Number(raw) === Number(slot);
+      btn.classList.toggle('playing', active);
+    });
   }
 
   restoreAfterRef() {
     const statusText = this.shadowRoot && this.shadowRoot.getElementById('statusText');
     if (statusText) {
-      statusText.textContent = this.isListening ? '拨动琴弦...' : '点击下方按钮开启麦克风';
+      statusText.textContent = this.isListening ? '拨动琴弦...' : '点击“开始调音”并允许麦克风';
       statusText.style.color = this.isListening ? 'var(--accent)' : 'var(--muted)';
     }
     this.lastAnalysisAt = 0;
@@ -285,9 +704,9 @@ class GuitarTuner extends HTMLElement {
   }
 
   // 试听标准音：播放期间暂停检测，避免麦克风把扬声器里的参考音当成琴声
-  async playReferenceTone() {
-    const target = this.targetNote === 'auto' ? this.lastString : this.targetNote;
-    if (!target || !this.stringFreqs[target]) return;
+  async playReferenceTone(slot = this.targetSlot) {
+    const target = this.getTarget(slot);
+    if (!target) return;
 
     this.stopReferenceTone();
     const epoch = this.refEpoch;
@@ -295,36 +714,42 @@ class GuitarTuner extends HTMLElement {
     this.frequencyHistory = [];
     this.lastValidAt = 0;
     this.wasInTune = false;
+    this.setStringPlaying(target.slot, true);
 
     const statusText = this.shadowRoot.getElementById('statusText');
     if (statusText) {
-      statusText.textContent = `标准音 ${target} 准备中...`;
+      statusText.textContent = `第${target.stringNumber}弦 ${target.name} 准备中...`;
       statusText.style.color = 'var(--accent)';
     }
 
-    // 切后台后 AudioContext 可能已 suspended：等 resume 完成再排音，避免“看起来在播、实际没声”
-    try {
-      await audioEngine.resume();
-    } catch (err) {
-      if (epoch === this.refEpoch) {
-        this.isPlayingRef = false;
-        this.restoreAfterRef();
-      }
+    // 切后台后 AudioContext 可能已 suspended：等 resume 完成再排音，避免“看起来在播、实际没声”。
+    // 加 250ms 上限：个别 WebView / 无声卡环境 resume 可能一直不 resolve，不能让试听锁死检测。
+    let resumeTimer = null;
+    const resumed = await Promise.race([
+      audioEngine.resume().then(() => true).catch(() => false),
+      new Promise(resolve => { resumeTimer = setTimeout(() => resolve('timeout'), 250); })
+    ]);
+    if (resumeTimer) clearTimeout(resumeTimer);
+    if (epoch !== this.refEpoch) return;
+    if (resumed === false) {
+      this.isPlayingRef = false;
+      this.setStringPlaying(null, false);
+      this.restoreAfterRef();
       return;
     }
-    if (epoch !== this.refEpoch) return;
 
-    if (statusText) statusText.textContent = `标准音 ${target} 播放中...`;
-    this.refToneHandle = audioEngine.tone(this.stringFreqs[target], {
-      dur: 1.2,
-      level: REFERENCE_LEVELS[target] || 0.22
+    if (statusText) statusText.textContent = `第${target.stringNumber}弦 ${target.name} 试听中...`;
+    this.refToneHandle = audioEngine.tone(target.frequency, {
+      dur: 1.0,
+      level: REFERENCE_LEVELS[target.note] || 0.22
     });
     this.refTimer = setTimeout(() => {
       this.refToneHandle = null;
       this.isPlayingRef = false;
       this.refTimer = null;
+      this.setStringPlaying(null, false);
       this.restoreAfterRef();
-    }, 1300);
+    }, 1080);
   }
 
   resetCentsChart() {
@@ -391,6 +816,14 @@ class GuitarTuner extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener('app-tab-changed', this.handleTabChange);
+    if (this._settingsBackdropOff) {
+      this._settingsBackdropOff();
+      this._settingsBackdropOff = null;
+    }
+    if (this._settingsLayerOff) {
+      this._settingsLayerOff();
+      this._settingsLayerOff = null;
+    }
     this.stopTuner();
   }
 
@@ -426,11 +859,11 @@ class GuitarTuner extends HTMLElement {
     const needle = root.getElementById('needle');
 
     if (btnToggle) {
-      btnToggle.innerHTML = `${icon('mic', 18)} 开启麦克风`;
+      btnToggle.innerHTML = `${icon('mic', 18)} 开始调音`;
       btnToggle.className = 'btn-toggle start';
     }
     if (statusText) {
-      statusText.textContent = '点击下方按钮开启麦克风';
+      statusText.textContent = '点击“开始调音”并允许麦克风';
       statusText.style.color = 'var(--muted)';
     }
     if (noteName) {
@@ -453,62 +886,78 @@ class GuitarTuner extends HTMLElement {
     const needle = $('needle');
     const stringsRow = $('stringsRow');
 
-    // 目标弦选择逻辑
+    // 弦位选择：点一根弦 = 选中该弦 + 播放该弦标准音；再点同一根弦可停止试听
     stringsRow.querySelectorAll('.string-btn').forEach(btn => {
       btn.onclick = () => {
-        stringsRow.querySelectorAll('.string-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.targetNote = btn.dataset.note;
-        this.frequencyHistory = [];
-        this.lastValidAt = 0;
-        this.lastString = null;
-        this.wasInTune = false;
-        this.centsHistory = [];
-        this.lastChartAt = 0;
+        const raw = btn.dataset.slot;
+        const slot = raw === 'auto' ? 'auto' : Number(raw);
+        if (slot !== 'auto' && this.targetSlot === slot && this.isPlayingRef) {
+          this.stopReferenceTone();
+          this.restoreAfterRef();
+          return;
+        }
+        this.targetSlot = slot;
+        this.resetDetectionState();
+        this.updateTuningUI();
         this.resetCentsChart();
         if (this.isPlayingRef) {
           this.stopReferenceTone();
           this.restoreAfterRef();
         }
-        this.updateRefButton();
+        if (slot !== 'auto') this.playReferenceTone(slot);
       };
     });
 
-    // A4 校准 + 标准音
-    const a4Minus = $('a4Minus');
-    const a4Plus = $('a4Plus');
-    const refTone = $('refTone');
-    a4Minus.onclick = () => this.setA4(this.a4 - 1);
-    a4Plus.onclick = () => this.setA4(this.a4 + 1);
-    refTone.onclick = () => this.playReferenceTone();
-    this.updateA4UI();
-    this.updateRefButton();
+    // 状态条 / 调音设置面板
+    const openSettings = $('openSettings');
+    const settingsMask = $('settingsMask');
+    const closeSettings = $('closeSettings');
+    const a4SheetMinus = $('a4SheetMinus');
+    const a4SheetPlus = $('a4SheetPlus');
+    const a4Reset = $('a4Reset');
+    const customEntry = $('customEntry');
+    const customBack = $('customBack');
+    const customReset = $('customReset');
+    const customSave = $('customSave');
 
-    // 反馈开关
+    if (openSettings) openSettings.onclick = () => this.openSettings();
+    if (closeSettings) closeSettings.onclick = () => this.closeSettings();
+    if (settingsMask) {
+      this._settingsBackdropOff = bindBackdrop(settingsMask, () => this.closeSettings());
+    }
+    if (a4SheetMinus) a4SheetMinus.onclick = () => this.setA4(this.a4 - 1);
+    if (a4SheetPlus) a4SheetPlus.onclick = () => this.setA4(this.a4 + 1);
+    if (a4Reset) a4Reset.onclick = () => this.setA4(A4_DEFAULT);
+    if (customEntry) customEntry.onclick = () => this.showCustomEditor();
+    if (customBack) customBack.onclick = () => this.showSettingsMain();
+    if (customReset) customReset.onclick = () => this.fillCustomStandard();
+    if (customSave) customSave.onclick = () => this.saveCustomTuning();
+    this.shadowRoot.querySelectorAll('.mini-chip[data-a4]').forEach(chip => {
+      chip.onclick = () => this.setA4(Number(chip.dataset.a4));
+    });
+
+    // 反馈开关：只控制“调准提示音 / 震动”，不控制点弦试听的标准音
     const fbSound = $('fbSound');
     const fbVibrate = $('fbVibrate');
-    const paintFeedback = () => {
-      fbSound.classList.toggle('active', this.feedbackSound);
-      fbSound.setAttribute('aria-pressed', String(this.feedbackSound));
-      const vibrateSupported = typeof navigator.vibrate === 'function';
-      fbVibrate.classList.toggle('active', this.feedbackVibrate && vibrateSupported);
-      fbVibrate.setAttribute('aria-pressed', String(this.feedbackVibrate && vibrateSupported));
-      fbVibrate.disabled = !vibrateSupported;
-      fbVibrate.title = vibrateSupported ? '调准时震动一下' : '当前设备 / 浏览器不支持震动';
-      if (!vibrateSupported) fbVibrate.innerHTML = `${icon('vibrate', 15)} 震动（不支持）`;
-    };
-    fbSound.onclick = () => {
-      this.feedbackSound = !this.feedbackSound;
-      writeBoolSetting('guitar_tuner_feedback_sound', this.feedbackSound);
-      paintFeedback();
-    };
-    fbVibrate.onclick = () => {
-      if (fbVibrate.disabled) return;
-      this.feedbackVibrate = !this.feedbackVibrate;
-      writeBoolSetting('guitar_tuner_feedback_vibrate', this.feedbackVibrate);
-      paintFeedback();
-    };
-    paintFeedback();
+    if (fbSound) {
+      fbSound.onclick = () => {
+        this.feedbackSound = !this.feedbackSound;
+        writeBoolSetting('guitar_tuner_feedback_sound', this.feedbackSound);
+        this.paintFeedback();
+      };
+    }
+    if (fbVibrate) {
+      fbVibrate.onclick = () => {
+        if (fbVibrate.disabled) return;
+        this.feedbackVibrate = !this.feedbackVibrate;
+        writeBoolSetting('guitar_tuner_feedback_vibrate', this.feedbackVibrate);
+        this.paintFeedback();
+      };
+    }
+    this.updateA4UI();
+    this.updateTuningUI();
+    this.renderPresetList();
+    this.paintFeedback();
 
     // YIN 基频检测已抽到 services/pitch.js：纯前端 DSP，浏览器与 WebView 共用
     const updatePitch = () => {
@@ -541,7 +990,7 @@ class GuitarTuner extends HTMLElement {
 
       if (result && result.frequency >= 70 && result.frequency <= 400 && result.confidence >= 0.6) {
         // 谐波折叠：低音弦尾音基频变弱时，164.8Hz 之类会折回 82.4Hz，避免误判成 D3
-        const folded = foldToGuitarFundamental(result.frequency, this.a4, this.targetNote);
+        const folded = foldToGuitarFundamental(result.frequency, this.a4, this.targetSlot, this.targets);
 
         // 超过 250ms 没有有效信号，视为新一次拨弦，允许重新选弦
         if (now - this.lastValidAt > 250) this.frequencyHistory = [];
@@ -575,43 +1024,37 @@ class GuitarTuner extends HTMLElement {
     };
 
     const processPitch = (freq) => {
-      let targetFreq = 0;
-      let displayNote = '';
-      let targetName = '';
+      let target = null;
 
-      // 自动识别最近的一根弦
-      if (this.targetNote === 'auto') {
+      // 自动识别最近的一根弦；手动模式固定到当前弦位
+      if (this.targetSlot === 'auto') {
         let minDiff = Infinity;
-        for (const [note, f] of Object.entries(this.stringFreqs)) {
+        for (const candidate of this.targets) {
           // 利用对数距离，因为音乐是呈指数分布的
-          const diff = Math.abs(Math.log2(freq / f));
+          const diff = Math.abs(Math.log2(freq / candidate.frequency));
           if (diff < minDiff) {
             minDiff = diff;
-            targetFreq = f;
-            displayNote = note.replace(/\d/, ''); // 去掉数字只留字母
-            targetName = note;
+            target = candidate;
           }
         }
       } else {
-        targetFreq = this.stringFreqs[this.targetNote];
-        displayNote = this.targetNote.replace(/\d/, '');
-        targetName = this.targetNote;
+        target = this.getTarget(this.targetSlot);
       }
+      if (!target) return;
 
       // 换弦（自动模式）或手动选弦：音分曲线重新起一段
-      if (this.lastString !== targetName) {
-        this.lastString = targetName;
+      if (this.lastSlot !== target.slot) {
+        this.lastSlot = target.slot;
         this.centsHistory = [];
         this.lastChartAt = 0;
         this.resetCentsChart();
-        this.updateRefButton();
       }
 
-      noteName.textContent = displayNote;
+      noteName.textContent = target.label;
       freqVal.textContent = freq.toFixed(1) + ' Hz';
 
       // 计算音分差异 (100 cents = 半音)
-      const cents = 1200 * Math.log2(freq / targetFreq);
+      const cents = 1200 * Math.log2(freq / target.frequency);
       
       // 限制指针范围 (-50 到 +50 音分)
       let clampedCents = Math.max(-50, Math.min(50, cents));
@@ -682,7 +1125,10 @@ class GuitarTuner extends HTMLElement {
           this.frequencyHistory = [];
           this.lastAnalysisAt = 0;
           this.lastValidAt = 0;
+          this.lastSlot = null;
           this.wasInTune = false;
+          this.centsHistory = [];
+          this.resetCentsChart();
           
           updatePitch();
         } catch (err) {
@@ -692,7 +1138,7 @@ class GuitarTuner extends HTMLElement {
             this.stream = null;
           }
           this.isListening = false;
-          btnToggle.innerHTML = `${icon('mic', 18)} 开启麦克风`;
+          btnToggle.innerHTML = `${icon('mic', 18)} 开始调音`;
           btnToggle.className = 'btn-toggle start';
           statusText.textContent = '麦克风未开启';
           statusText.style.color = 'var(--danger)';
@@ -725,11 +1171,10 @@ class GuitarTuner extends HTMLElement {
     this.wasInTune = false;
     this.lastFeedbackAt = -1e9;
     this.chimeGuardUntil = 0;
-    this.lastString = null;
+    this.lastSlot = null;
     this.centsHistory = [];
     this.lastChartAt = 0;
     this.resetCentsChart();
-    this.updateRefButton();
     this.resetTunerUI();
   }
 }
