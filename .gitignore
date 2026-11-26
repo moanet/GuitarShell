@@ -36,3 +36,7 @@ android/.idea/
 
 # 制谱引擎规范草案（仅本地参考，不入库）
 docs/Sheet Music Engine/
+
+# 本地功能整理指南（仅本地，不入库）
+docs/功能完善指南.md
+docs/功能完善指南-完整版备份-2026-11-23.md
