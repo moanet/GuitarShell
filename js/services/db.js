@@ -67,7 +67,7 @@ export const dbService = {
     });
   },
 
-  // 🌟 只取条目数，不把乐谱 Blob 读进内存；用于冷启动默认页判定
+  // 只取条目数，不把乐谱 Blob 读进内存；用于冷启动默认页判定
   async getScoreCount() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -79,7 +79,7 @@ export const dbService = {
     });
   },
 
-  // 🌟 按 id 读取单条乐谱（避免 getAllScores 把所有 Blob 都读进内存）
+  // 按 id 读取单条乐谱（避免 getAllScores 把所有 Blob 都读进内存）
   async getScore(id) {
     if (id === null || id === undefined) return null;
     const db = await openDB();
@@ -92,7 +92,7 @@ export const dbService = {
     });
   },
 
-  // 🌟 更新单个乐谱的信息（重命名、改标签等）
+  // 更新单个乐谱的信息（重命名、改标签等）
   // options.touch=false 用于内部回填（如 fileHash / coverAssetId），不把维护动作算成用户改动
   async updateScore(id, updateData, options = {}) {
     const db = await openDB();
@@ -293,7 +293,7 @@ export const dbService = {
     return logs.find(log => log.name === name) || null;
   },
 
-  // 🌟 A2 冲突检测用：只算「最后一次改动时间」与条数，用游标逐条读，不把整库 Blob 攒进内存
+  // A2 冲突检测用：只算「最后一次改动时间」与条数，用游标逐条读，不把整库 Blob 攒进内存
   async getLocalChangeStamp() {
     const db = await openDB();
     return new Promise((resolve, reject) => {

@@ -16,7 +16,7 @@
   <a href="https://moanet.github.io/GuitarShell/">
     <img src="https://img.shields.io/badge/Open-Web%20App-C7863F" alt="打开网页版">
   </a>
-  <img src="https://img.shields.io/badge/version-0.1.16-8A8075" alt="当前版本 0.1.16">
+  <img src="https://img.shields.io/badge/version-0.1.17-8A8075" alt="当前版本 0.1.17">
   <img src="https://img.shields.io/badge/data-local--first-6B8E23" alt="本地优先">
 </p>
 
@@ -146,7 +146,7 @@ Guitar Shell
 │  ├─ sheet/                   制谱引擎 M1–M3 草案（未接入界面）
 │  └─ lib/                     PDF.js、pdf-lib、拼音字典
 ├─ scripts/                    build-www.mjs、build-apk.mjs、check.mjs
-├─ tests/browser/              gs_015–gs_023 浏览器回归
+├─ tests/browser/              gs_015–gs_024 浏览器回归
 ├─ tests/sheet-m*.test.mjs     制谱引擎本地单元测试
 ├─ android/                    Capacitor Android 壳与原生插件
 ├─ www/                        构建产物（Git 忽略）

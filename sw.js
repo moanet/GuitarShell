@@ -1,5 +1,5 @@
 // 改版本时两处同步：这里 + js/services/version.js（SW 是 classic script，无法 import）
-const APP_VERSION = '0.1.16';
+const APP_VERSION = '0.1.17';
 const CACHE_NAME = 'guitar-shell-v' + APP_VERSION;
 
 const ASSETS_TO_CACHE = [
@@ -20,6 +20,7 @@ const ASSETS_TO_CACHE = [
   './js/services/backup.js',
   './js/services/file-hash.js',
   './js/services/score-format.js',
+  './js/services/icons.js',
   './js/services/text-score.js',
   './js/services/cover-cache.js',
   './js/services/storage-stats.js',
@@ -61,7 +62,7 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('正在将核心文件写入离线缓存...');
-      // 🌟 核心修复：使用 Promise.all 和 catch，防止因为某一张图标没上传导致全盘崩溃
+      // 核心修复：使用 Promise.all 和 catch，防止因为某一张图标没上传导致全盘崩溃
       return Promise.all(
         ASSETS_TO_CACHE.map(url => {
           return cache.add(url).catch(err => console.warn('缓存失败（忽略该项）:', url));

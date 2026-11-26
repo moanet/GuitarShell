@@ -21,6 +21,7 @@ python tests/browser/gs_020.py
 python tests/browser/gs_021.py
 python tests/browser/gs_022.py
 python tests/browser/gs_023.py
+python tests/browser/gs_024.py
 ```
 
 脚本会：
@@ -33,8 +34,8 @@ python tests/browser/gs_023.py
 
 - `GS_BROWSER`：浏览器可执行文件路径。
 - `GS_BASE_URL`：默认 `http://127.0.0.1:8123/`。
-- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`，`gs_023.py` 默认 `9395`。
-- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` / `gs_023.py` 视口宽度；`gs_022.py` / `gs_023.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
+- `GS_CDP_PORT`：`gs_015.py` 默认 `9351`，`gs_016.py` 默认 `9352`，`gs_018.py` 默认 `9353`，`gs_019.py` 默认 `9354`，`gs_020.py` 默认 `9355`，`gs_021.py` 默认 `9356`，`gs_022.py` 默认 `9357`，`gs_023.py` 默认 `9395`，`gs_024.py` 默认 `9367`。
+- `GS_WIDTH`：`gs_016.py` / `gs_018.py` / `gs_019.py` / `gs_020.py` / `gs_022.py` / `gs_023.py` / `gs_024.py` 视口宽度；`gs_022.py` / `gs_023.py` / `gs_024.py` 默认 `360`，其余默认 `320`；可复跑另一宽度。
 - `GS_THEME`：仅 `gs_020.py`，`deep`（默认）或 `light`，用于检查两套主题下的设置卡片。
 
 ## 当前覆盖
@@ -125,5 +126,13 @@ python tests/browser/gs_023.py
 - 原生 UI：mock `Capacitor.Plugins.ShareCard` 后重开预览，确认保存/分享按钮可见；保存中「正在保存…」、分享中「正在打开…」，两按钮与曲名开关互斥；保存成功 toast「已保存到相册」、失败 toast「保存失败：…」且预览保持打开可重试；分享成功 toast「已打开系统分享」，预览均不自动关闭。
 - 原生服务分支：确认 `saveShareCard` 走 `saveToGallery` 且收到 PNG dataUrl，`shareShareCard` 走 `share`。
 - 360 / 320 均 75/75 通过。
+
+`gs_024.py`：
+
+- 书架清库后导入一份 TXT；导入按钮为 36×36 纯图标、`aria-label=导入乐谱`，文件夹按钮在 640 以下隐藏。
+- 搜索占位为 `搜谱名 / 标签 / 拼音`；360 / 320 搜索行均无横向溢出，搜索框与排序下拉不压盖；搜索过滤和清空仍生效。
+- 书架卡片编辑、封面格式占位、顶部设置的图标均为 SVG；设置、节拍器、调音器、练习记录的分区 / 按钮图标齐全。
+- 遍历主文档与所有 shadow root 的可见文本，确认不含 `Extended_Pictographic`。
+- 运行期无异常；截图保存到 `%TEMP%\gs_024_<width>_*.png`。
 
 CI 只做 Python 语法编译；浏览器交互需要本机浏览器，仍在本地执行。

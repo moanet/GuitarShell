@@ -8,6 +8,7 @@ import { showConfirm } from './app-dialog.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import { themeColor, onThemeChange } from '../services/theme.js';
 import { dbService } from '../services/db.js';
+import { icon } from '../services/icons.js';
 
 const metronomeCSS = `
   :host {
@@ -89,7 +90,7 @@ const metronomeCSS = `
   .tap-btn, .bottom-settings { width:72px; height:44px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto; }
   .tap-btn { border:1px solid var(--line-warm); background:linear-gradient(180deg,var(--tap-a),var(--tap-b)); color: var(--accent-text); }
   .tap-btn:active, .tap-btn.pulse { transform:scale(.95); background:rgba(var(--primary-rgb),.28); }
-  .bottom-settings { border:1px solid var(--line-warm); background:var(--surface-raised); color:var(--accent-text); font-size:14px; font-weight:800; letter-spacing:1.5px; gap:1px; }
+  .bottom-settings { border:1px solid var(--line-warm); background:var(--surface-raised); color:var(--accent-text); font-size:13px; font-weight:800; letter-spacing:.6px; gap:4px; flex-direction:row; }
   .bottom-settings:active { transform:scale(.95); background:rgba(var(--primary-rgb),.10); }
 
   .settings-mask {
@@ -324,9 +325,9 @@ const metronomeHTML = `
     <canvas id="knobCanvas"></canvas>
     <div class="knob-center">
       <div class="knob-row">
-        <button class="knob-step" id="knobMinus">−</button>
+        <button class="knob-step" id="knobMinus" type="button" aria-label="降低 1 BPM">${icon('minus', 16)}</button>
         <input id="bpmInput" class="knob-num" type="text" inputmode="numeric" maxlength="3" value="120">
-        <button class="knob-step" id="knobPlus">+</button>
+        <button class="knob-step" id="knobPlus" type="button" aria-label="升高 1 BPM">${icon('plus', 16)}</button>
       </div>
       <div class="knob-unit">BPM</div>
       <button class="play-in-knob" id="playBtn">开 始</button>
@@ -337,7 +338,7 @@ const metronomeHTML = `
 
   <div class="bottom-area">
     <div class="bottom-row">
-      <button class="bottom-settings" id="btnSettings">⚙ 设置</button>
+      <button class="bottom-settings" id="btnSettings">${icon('settings', 14)} 设置</button>
       <button class="tap-btn" id="tapBtn">
         <span style="font-size:14px;font-weight:800;letter-spacing:1.5px;">TAP</span>
         <span id="tapHint" style="font-size:8.5px;opacity:.65;">测速</span>
@@ -357,7 +358,7 @@ const metronomeHTML = `
     </div>
     <div class="settings-content" id="settingsContent">
     <section class="settings-card">
-      <div class="card-head"><span class="card-ico">♩</span><h4>基础节奏</h4></div>
+      <div class="card-head"><span class="card-ico">${icon('metronome', 16)}</span><h4>基础节奏</h4></div>
       <div class="settings-group">
         <div class="settings-label">拍号</div>
         <div class="ts-grid" id="tsGrid"></div>
@@ -379,7 +380,7 @@ const metronomeHTML = `
     </section>
 
     <section class="settings-card">
-      <div class="card-head"><span class="card-ico">◉</span><h4>重音与反馈</h4></div>
+      <div class="card-head"><span class="card-ico">${icon('target', 16)}</span><h4>重音与反馈</h4></div>
       <div class="settings-group">
         <div class="settings-label">重音模式<span class="label-hint">点按拍位循环：重 → 次 → 常 → 静</span></div>
         <div class="accent-grid" id="accentGrid"></div>
@@ -397,7 +398,7 @@ const metronomeHTML = `
     </section>
 
     <section class="settings-card">
-      <div class="card-head"><span class="card-ico">↗</span><h4>高级练习</h4></div>
+      <div class="card-head"><span class="card-ico">${icon('trending', 16)}</span><h4>高级练习</h4></div>
       <div class="settings-group">
         <div class="settings-label">Swing 摇摆 <span id="swingVal">0%</span></div>
         <input type="range" id="swingRange" class="range" min="0" max="100" step="1" value="0">
@@ -423,7 +424,7 @@ const metronomeHTML = `
     </section>
 
     <section class="settings-card">
-      <div class="card-head"><span class="card-ico">▤</span><h4>节奏型</h4></div>
+      <div class="card-head"><span class="card-ico">${icon('list', 16)}</span><h4>节奏型</h4></div>
       <div class="settings-group">
         <div class="pattern-list" id="patternList"></div>
         <div class="pattern-save-row">
@@ -434,7 +435,7 @@ const metronomeHTML = `
     </section>
 
     <section class="settings-card">
-      <div class="card-head"><span class="card-ico">♫</span><h4>音频跟练与测速</h4></div>
+      <div class="card-head"><span class="card-ico">${icon('music', 16)}</span><h4>音频跟练与测速</h4></div>
       <div class="settings-group">
         <input id="followAudioFile" type="file" accept="audio/*" hidden>
         <div class="audio-mode-row">
@@ -534,14 +535,14 @@ class GuitarMetronome extends HTMLElement {
     this.currentBeatDur = 60 / this.bpm;
     this.currentSlotDurs = [this.currentBeatDur];
 
-    // 🌟 定义全局 BPM 监听的函数
+    // 定义全局 BPM 监听的函数
     this.handleGlobalBpmChange = (e) => {
       if (e.detail.bpm !== this.bpm) {
         this.setBpm(e.detail.bpm, true); // 传入 true 表示来自外部同步
       }
     };
 
-    // 🌟 切走「节拍器」页就立刻停，不留背景噪音（以前只有开 mini 才会停）
+    // 切走「节拍器」页就立刻停，不留背景噪音（以前只有开 mini 才会停）
     this.handleTabChange = (e) => {
       if (!e.detail || e.detail.target !== 'view-metronome') this.stop();
     };
@@ -551,7 +552,7 @@ class GuitarMetronome extends HTMLElement {
     this.shadowRoot.innerHTML = `<style>${metronomeCSS}</style>${metronomeHTML}`;
     this.initLogic();
     
-    // 🌟 监听来自其他组件的 BPM 广播
+    // 监听来自其他组件的 BPM 广播
     window.addEventListener('bpm-changed', this.handleGlobalBpmChange);
     window.addEventListener('app-tab-changed', this.handleTabChange);
     this.offTheme = onThemeChange(() => { if (this.drawKnob) this.drawKnob(); });
@@ -560,7 +561,7 @@ class GuitarMetronome extends HTMLElement {
   disconnectedCallback() {
     this.stop();
     if (this._settingsLayerOff) { this._settingsLayerOff(); this._settingsLayerOff = null; }
-    // 🌟 移除监听
+    // 移除监听
     window.removeEventListener('bpm-changed', this.handleGlobalBpmChange);
     window.removeEventListener('app-tab-changed', this.handleTabChange);
     if (this.offTheme) { this.offTheme(); this.offTheme = null; }
@@ -967,7 +968,7 @@ class GuitarMetronome extends HTMLElement {
           }
         }
         if (this.timer.enabled) {
-          meta += this.countdownEndAt ? ` · ⏳${fmtClock(this.countdownEndAt - Date.now())}` : ` · ⏳${this.timer.minutes}分`;
+          meta += this.countdownEndAt ? ` · 倒计时 ${fmtClock(this.countdownEndAt - Date.now())}` : ` · 倒计时 ${this.timer.minutes}分`;
         }
         metaLine.textContent = meta;
 
@@ -988,7 +989,7 @@ class GuitarMetronome extends HTMLElement {
         parts.push(txt);
       }
       if (this.timer.enabled) {
-        parts.push(this.countdownEndAt ? `⏳${fmtClock(this.countdownEndAt - Date.now())}` : `⏳${this.timer.minutes}分`);
+        parts.push(this.countdownEndAt ? `倒计时 ${fmtClock(this.countdownEndAt - Date.now())}` : `倒计时 ${this.timer.minutes}分`);
       }
       if (parts.length) {
         practiceHud.textContent = parts.join('  ·  ');
@@ -1517,7 +1518,7 @@ class GuitarMetronome extends HTMLElement {
       // 正在响就同步变速（引擎会把还没排进 Web Audio 的下一个拍点提前）
       if (this.metronomeHandle) this.metronomeHandle.setBpm(this.bpm);
 
-      // 🌟 如果不是同步过来的（是用户手动改的），就向全局发广播
+      // 如果不是同步过来的（是用户手动改的），就向全局发广播
       if (!isSync) {
         window.dispatchEvent(new CustomEvent('bpm-changed', { detail: { bpm: this.bpm } }));
       }

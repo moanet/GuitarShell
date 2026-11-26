@@ -59,7 +59,7 @@ const server = http.createServer(async (req, res) => {
     // 状态码
     res.writeHead(upstreamRes.status);
 
-    // ✅Web ReadableStream 使用 pipeTo，不要使用 .pipe()
+    // Web ReadableStream 使用 pipeTo，不要使用 .pipe()
     if (upstreamRes.body) {
       // Node http.ServerResponse 可以作为 WritableStream
       await upstreamRes.body.pipeTo(new WritableStream({
@@ -89,7 +89,7 @@ const server = http.createServer(async (req, res) => {
 
 // 原来：server.listen(8000, "0.0.0.0", () => {
 server.listen(8081, "0.0.0.0", () => {
-  console.log("✅本地WebDAV代理已启动");
+  console.log("本地WebDAV代理已启动");
   console.log("本机访问地址：http://127.0.0.1:8081");
   console.log("局域网其他设备：http://192.168.0.200:8081");
 });

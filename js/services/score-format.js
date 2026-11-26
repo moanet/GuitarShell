@@ -4,6 +4,8 @@
 // 旧记录没有 format 字段时，用扩展名与 MIME 惰性推断
 // ==========================================
 
+import { icon } from './icons.js';
+
 export const SCORE_FORMAT = {
   PDF: 'pdf',
   IMAGE: 'image',
@@ -69,7 +71,7 @@ export function formatDisplay(format, name = '', pageCount = 0) {
 }
 
 export function formatIcon(format, name = '') {
-  if (format === SCORE_FORMAT.PDF) return '📄';
-  if (format === SCORE_FORMAT.TEXT) return textFormatLabel(name) === 'TXT' ? '📝' : '🎼';
-  return '🖼️';
+  if (format === SCORE_FORMAT.PDF) return icon('file', 24);
+  if (format === SCORE_FORMAT.TEXT) return icon(textFormatLabel(name) === 'TXT' ? 'text' : 'music', 24);
+  return icon('image', 24);
 }

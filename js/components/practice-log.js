@@ -1,6 +1,7 @@
 import { dbService } from '../services/db.js';
 import { showConfirm } from './app-dialog.js';
 import { getTodayPracticeSummary } from '../services/share-card.js';
+import { icon } from '../services/icons.js';
 
 // 练习内容名称可能来自备份恢复（他人数据），进 innerHTML 前必须转义
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
@@ -20,7 +21,7 @@ const logCSS = `
   .input-row { display: flex; gap: 8px; }
   .inp { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 14px; outline: none; transition: 0.2s; }
   .inp:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(var(--primary-rgb),.12); }
-  .btn-submit { width: 100%; padding: 12px; background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border: 1px solid rgba(var(--secondary-rgb),.10); border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 6px 16px rgba(var(--primary-rgb),.18); }
+  .btn-submit { width: 100%; padding: 12px; background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border: 1px solid rgba(var(--secondary-rgb),.10); border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 6px 16px rgba(var(--primary-rgb),.18); display: flex; align-items: center; justify-content: center; gap: 6px; }
   .list-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px 0; font-size: 13px; font-weight: 700; color: var(--txt); flex-shrink: 0; }
   .list-count { font-size: 11px; font-weight: 400; color: var(--muted); }
   .log-list { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -28,8 +29,12 @@ const logCSS = `
   .log-info { flex: 1; min-width: 0; }
   .log-title { font-size: 15px; font-weight: bold; color: var(--heading); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .auto-badge { display:inline-block; margin-left:6px; padding:1px 5px; border-radius:6px; background:rgba(var(--accent-rgb),.16); color:var(--accent-text); font-size:9px; font-weight:700; vertical-align:2px; }
-  .log-detail { font-size: 12px; color: var(--muted); display: flex; gap: 12px; }
-  .log-detail span { color: var(--accent-text); font-weight: bold; }
+  .log-detail { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; line-height: 1.45; }
+  .log-detail span { color: var(--accent-text); font-weight: bold; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex: 0 0 auto; }
+  @media (max-width: 360px) {
+    .log-detail { font-size: 11px; gap: 3px 8px; }
+    .log-detail span { gap: 3px; }
+  }
   .btn-del { background: rgba(var(--danger-rgb), 0.12); color: var(--danger); border: none; border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; margin-left: 12px; }
   .empty-tip { text-align: center; color: var(--muted); font-size: 14px; margin-top: 28px; }
   .toast { position: absolute; left: 50%; bottom: 30px; transform: translate(-50%, 10px); background: rgba(var(--accent-rgb), 0.92); color: var(--on-accent); padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 100; }
@@ -41,11 +46,11 @@ const logCSS = `
     flex: 0 0 auto; margin-right: 12px; padding: 7px 10px; border-radius: 10px;
     border: 1px solid rgba(var(--primary-rgb), .5); background: rgba(var(--primary-rgb), .12);
     color: var(--accent-text); font-size: 11px; font-weight: 700; font-family: inherit;
-    white-space: nowrap; cursor: pointer;
+    white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
   }
   .share-btn:active { filter: brightness(.95); }
   .trend-toggle-row:hover { background: rgba(var(--primary-rgb),.06); }
-  .trend-title { font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .trend-title { font-size: 13px; font-weight: 700; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; }
   .trend-peek { flex: 1; min-width: 0; font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .trend-chevron { font-size: 14px; color: var(--muted); flex-shrink: 0; }
   .trend-box:not(.collapsed) .trend-peek { display: none; }
@@ -79,16 +84,16 @@ const logHTML = `
       <input type="number" id="inpTime" class="inp" placeholder="练习时长 (分钟)" min="1">
       <input type="number" id="inpBpm" class="inp" placeholder="最高 BPM (选填)" min="30" max="250">
     </div>
-    <button class="btn-submit" id="btnSubmit">✓ 保存本次练习</button>
+    <button class="btn-submit" id="btnSubmit">${icon('check', 15)} 保存本次练习</button>
   </div>
   <div class="trend-box collapsed" id="trendBox">
     <div class="trend-head">
       <button class="trend-toggle-row" id="trendToggle" type="button" aria-expanded="false">
-        <span class="trend-title">📊 练习趋势</span>
+        <span class="trend-title">${icon('chart', 15)} 练习趋势</span>
         <span class="trend-peek" id="trendPeek">近 7 天 · 0 分钟</span>
         <span class="trend-chevron" id="trendChevron">▸</span>
       </button>
-      <button class="share-btn" id="btnShare" type="button">📤 分享卡片</button>
+      <button class="share-btn" id="btnShare" type="button">${icon('share', 14)} 分享卡片</button>
     </div>
     <div class="trend-body">
       <div class="trend-controls">
@@ -117,7 +122,7 @@ class GuitarPracticeLog extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this.toastTimer = null;
-    // 🌟 定义好刷新函数，方便后面监听
+    // 定义好刷新函数，方便后面监听
     this.handleLogUpdate = () => {
       if (this.loadLogs) this.loadLogs();
     };
@@ -127,12 +132,12 @@ class GuitarPracticeLog extends HTMLElement {
     this.shadowRoot.innerHTML = `<style>${logCSS}</style>${logHTML}`;
     this.initLogic();
     
-    // 🌟 核心：监听来自其他组件（如看谱器）的更新广播
+    // 核心：监听来自其他组件（如看谱器）的更新广播
     window.addEventListener('log-updated', this.handleLogUpdate);
   }
 
   disconnectedCallback() {
-    // 🌟 组件卸载时，移除监听，防止内存泄漏
+    // 组件卸载时，移除监听，防止内存泄漏
     window.removeEventListener('log-updated', this.handleLogUpdate);
   }
 
@@ -302,7 +307,7 @@ class GuitarPracticeLog extends HTMLElement {
         card.innerHTML = `
           <div class="log-info">
             <div class="log-title">${escapeHtml(log.name)}${log.auto ? '<span class="auto-badge">自动</span>' : ''}</div>
-            <div class="log-detail"><span>⏱ ${fmtDuration(log)}</span>${bpmText ? `<span>🚀 ${bpmText}</span>` : ''}${log.page ? `<span>📖 第 ${log.page} 页</span>` : ''}<span style="color:var(--muted)">${timeStr}</span></div>
+            <div class="log-detail"><span>${icon('clock', 13)} ${fmtDuration(log)}</span>${bpmText ? `<span>${icon('gauge', 13)} ${bpmText}</span>` : ''}${log.page ? `<span>${icon('book', 13)} 第 ${log.page} 页</span>` : ''}<span style="color:var(--muted)">${timeStr}</span></div>
           </div>
           <button class="btn-del" data-id="${log.id}">删除</button>
         `;

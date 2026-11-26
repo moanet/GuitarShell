@@ -18,6 +18,7 @@ import { isNativeGalleryAvailable, pickGalleryImages, takeGalleryFiles } from '.
 import { ensureCoverForScore } from '../services/cover-cache.js';
 import { detectScoreFormat, formatDisplay, formatIcon, SCORE_FORMAT } from '../services/score-format.js';
 import { parseTextScore, readTextBlob } from '../services/text-score.js';
+import { icon } from '../services/icons.js';
 
 let pdfjsLib = null;
 
@@ -66,21 +67,26 @@ const readerCSS = `
   .filter-bar { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; background: var(--surface-deep); border-bottom: 1px solid var(--line); }
   .search-row { display: flex; gap: 8px; align-items: center; }
   .import-btn {
-    flex: 0 0 auto; height: 36px; padding: 0 12px; border-radius: 8px;
+    flex: 0 0 36px; width: 36px; height: 36px; padding: 0; border-radius: 8px;
     border: 1px solid rgba(var(--secondary-rgb),.10);
     background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary);
-    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
-    white-space: nowrap; box-shadow: 0 3px 10px rgba(var(--primary-rgb),.16);
+    font-family: inherit; cursor: pointer; display: grid; place-items: center;
+    box-shadow: 0 3px 10px rgba(var(--primary-rgb),.16);
   }
   .import-folder {
     flex: 0 0 36px; width: 36px; height: 36px; padding: 0; border-radius: 8px;
     border: 1px solid var(--line-warm); background: var(--surface-raised); color: var(--accent-text);
-    font-family: inherit; font-size: 15px; cursor: pointer;
+    font-family: inherit; cursor: pointer; display: grid; place-items: center;
   }
   @media (max-width: 640px) { .import-folder { display: none; } }
   .search-inp { flex: 1; min-width: 0; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 14px; }
   .search-inp:focus { border-color: var(--primary); }
-  .sort-sel { flex: 0 0 auto; min-width: 104px; max-width: 42vw; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 13px; }
+  .sort-sel { flex: 0 0 auto; min-width: 92px; max-width: 42vw; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 13px; }
+  @media (max-width: 380px) {
+    .search-row { gap: 6px; }
+    .search-inp { font-size: 12px; padding: 8px 10px; }
+    .sort-sel { min-width: 88px; font-size: 12px; padding: 8px 6px; }
+  }
   .tag-row { display: flex; gap: 8px; align-items: center; }
   .tag-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; flex: 1; min-width: 0; }
   .tag-bar::-webkit-scrollbar { display: none; }
@@ -212,7 +218,7 @@ const readerCSS = `
   .zoom-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(var(--bg1-rgb), 0.92); border: 1px solid var(--line-warm); color: var(--accent-text); font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .zoom-btn.lock-btn { font-size: 18px; }
 
-  /* 📝 文本谱：等宽、保留空格，当前行轻高亮 */
+  /* 文本谱：等宽、保留空格，当前行轻高亮 */
   .text-sheet {
     width: min(900px, 100%); margin: 0 auto; box-sizing: border-box;
     padding: 18px clamp(14px, 4vw, 34px) 46vh;
@@ -235,7 +241,7 @@ const readerCSS = `
   .text-block.section.current { background: rgba(var(--primary-rgb), .17); }
   .chord-token { color: var(--accent-text); font-weight: 700; }
 
-  /* 🧘 禅定模式：透明阅读锁，不压暗谱面，只收起阅读控件 */
+  /* 禅定模式：透明阅读锁，不压暗谱面，只收起阅读控件 */
   .zen-lock {
     position: absolute; inset: 0; z-index: 340; display: none;
     background: transparent; pointer-events: none;
@@ -291,7 +297,7 @@ const readerCSS = `
   .mm-knob-wrap { width: 120px; height: 120px; position: relative; display: flex; align-items: center; justify-content: center; }
   .mm-knob-wrap canvas { position: absolute; top: 0; left: 0; touch-action: none; cursor: grab; }
   .mm-adv-controls { display: flex; align-items: center; gap: 16px; }
-  .mm-step { background: var(--surface-raised); color: var(--txt); border: 1px solid var(--line-strong); width: 32px; height: 32px; border-radius: 10px; font-size: 20px; cursor: pointer; }
+  .mm-step { background: var(--surface-raised); color: var(--txt); border: 1px solid var(--line-strong); width: 32px; height: 32px; border-radius: 10px; font-size: 20px; cursor: pointer; display: grid; place-items: center; }
 
   .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(var(--shadow-rgb),0.7); color: var(--primary); font-size: 16px; z-index: 300; display: none; }
   .loading.show { display: flex; }
@@ -372,11 +378,11 @@ const readerCSS = `
     .quick-tags { max-height: 88px; }
   }
   
-  /* 🌟 沉浸式虚化：只降透明度，不禁用指针事件，否则鼠标永远移不上去、无法实体化 */
+  /* 沉浸式虚化：只降透明度，不禁用指针事件，否则鼠标永远移不上去、无法实体化 */
   .mini-metronome { transition: opacity 0.25s ease; }
   .mini-metronome.faded { opacity: 0.15; cursor: pointer; }
 
-  /* 🌟 左右点击翻页热区：内缩安全距离，避免压住滚动条 / 手机边缘返回手势 */
+  /* 左右点击翻页热区：内缩安全距离，避免压住滚动条 / 手机边缘返回手势 */
   .nav-zone {
     position: absolute; top: 56px; height: 170px; width: 7%; z-index: 15;
     cursor: pointer; opacity: 0; transition: opacity 0.2s; display: none;
@@ -391,7 +397,7 @@ const readerCSS = `
   .nav-zone.left { left: 20px; }
   .nav-zone.right { right: 26px; }
 
-  /* 🌟 阅读进度提示条：独立于滚动容器，避免显示/隐藏时把谱面顶偏 */
+  /* 阅读进度提示条：独立于滚动容器，避免显示/隐藏时把谱面顶偏 */
   #progressBanner {
     position: absolute; top: 70px; left: 50%; transform: translate(-50%, -6px);
     display: none; align-items: center; gap: 10px;
@@ -407,7 +413,7 @@ const readerCSS = `
     border-radius: 50%; font-size: 13px; font-weight: bold; cursor: pointer; line-height: 1;
   }
 
-  /* 🌟 打卡弹窗内的「阅读进度」区 */
+  /* 打卡弹窗内的「阅读进度」区 */
   .progress-readout { font-size: 13px; color: var(--accent-text); font-weight: bold; }
   .modal-check-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
   .modal-check-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
@@ -456,7 +462,7 @@ const readerCSS = `
     .split-page-row, .split-preview { gap: 8px; }
   }
 
-  /* 🔖 页级书签面板 */
+  /* 页级书签面板 */
   #bookmarkMask {
     position: absolute; inset: 0; background: rgba(var(--shadow-rgb),.55);
     display: none; z-index: 80;
@@ -525,9 +531,9 @@ const readerHTML = `
 
   <div class="filter-bar" id="filterBar">
     <div class="search-row">
-      <button class="import-btn" id="btnImportMain" type="button">📂 导入</button>
-      <button class="import-folder" id="btnFolderMain" type="button" title="导入整个文件夹" aria-label="导入整个文件夹">📁</button>
-      <input type="text" id="searchInp" class="search-inp" placeholder="搜索谱名、标签或拼音首字母（如 gbq）">
+      <button class="import-btn" id="btnImportMain" type="button" aria-label="导入乐谱" title="导入乐谱">${icon('import', 18)}</button>
+      <button class="import-folder" id="btnFolderMain" type="button" title="导入整个文件夹" aria-label="导入整个文件夹">${icon('folder', 18)}</button>
+      <input type="text" id="searchInp" class="search-inp" placeholder="搜谱名 / 标签 / 拼音">
       <select id="sortSel" class="sort-sel">
         <option value="newest">最新添加</option>
         <option value="oldest">最旧添加</option>
@@ -558,34 +564,34 @@ const readerHTML = `
     <div class="content-container" id="contentContainer"></div>
   </div>
 
-  <!-- 🌟 翻页热区：放在滚动容器外，滚动谱面时固定在可视区左右两侧 -->
-  <div class="nav-zone left" id="navPrev">❮</div>
-  <div class="nav-zone right" id="navNext">❯</div>
+  <!-- 翻页热区：放在滚动容器外，滚动谱面时固定在可视区左右两侧 -->
+  <div class="nav-zone left" id="navPrev">${icon('chevronLeft', 22)}</div>
+  <div class="nav-zone right" id="navNext">${icon('chevronRight', 22)}</div>
 
-  <!-- 🌟 阅读进度提示：放在滚动容器外面，跳转后隐藏也不会导致谱面抖动 -->
+  <!-- 阅读进度提示：放在滚动容器外面，跳转后隐藏也不会导致谱面抖动 -->
   <div id="progressBanner">
     <span class="pb-text" id="pbText"></span>
     <button class="pb-close" id="pbClose" title="从第一页开始">✕</button>
   </div>
 
   <div class="zoom-controls" id="zoomControls">
-    <button class="zoom-btn" id="zoomIn" aria-label="放大">＋</button>
-    <button class="zoom-btn" id="zoomOut" aria-label="缩小">−</button>
-    <button class="zoom-btn" id="btnFullscreen" aria-label="进入全屏" title="全屏">⤢</button>
-    <button class="zoom-btn lock-btn" id="btnZenLock" aria-label="锁定阅读页" title="禅定锁定">🔒</button>
+    <button class="zoom-btn" id="zoomIn" aria-label="放大">${icon('plus', 20)}</button>
+    <button class="zoom-btn" id="zoomOut" aria-label="缩小">${icon('minus', 20)}</button>
+    <button class="zoom-btn" id="btnFullscreen" aria-label="进入全屏" title="全屏">${icon('maximize', 18)}</button>
+    <button class="zoom-btn lock-btn" id="btnZenLock" aria-label="锁定阅读页" title="禅定锁定">${icon('lock', 18)}</button>
   </div>
 
   <div class="mini-metronome" id="miniMetronome">
     <div class="mm-panel">
       <div class="mm-main-row">
-        <button class="mm-btn" id="mmPlay">▶</button>
+        <button class="mm-btn" id="mmPlay">${icon('play', 16)}</button>
         <div class="mm-bpm-display" id="mmBpmDisplay">120</div>
       </div>
       <div class="mm-advanced-area" id="mmAdvancedArea">
         <div class="mm-knob-wrap" id="mmKnobWrap"><canvas id="mmKnobCanvas"></canvas></div>
         <div class="mm-adv-controls">
-          <button class="mm-step" id="mmMinus">−</button>
-          <button class="mm-step" id="mmPlus">+</button>
+          <button class="mm-step" id="mmMinus" type="button" aria-label="降低 1 BPM">${icon('minus', 16)}</button>
+          <button class="mm-step" id="mmPlus" type="button" aria-label="升高 1 BPM">${icon('plus', 16)}</button>
         </div>
       </div>
     </div>
@@ -610,19 +616,19 @@ const readerHTML = `
   <div id="bookmarkMask">
     <div class="bm-panel">
       <div class="bm-head">
-        <span class="bm-title">🔖 本书书签</span>
+        <span class="bm-title">${icon('bookmark', 16)} 本书书签</span>
         <button class="bm-close" id="bmClose">×</button>
       </div>
-      <button class="bm-add" id="bmAdd">＋ 收藏当前页</button>
+      <button class="bm-add" id="bmAdd">${icon('plus', 14)} 收藏当前页</button>
       <div class="bm-list" id="bmList"></div>
     </div>
   </div>
 
   <div class="action-sheet-mask" id="actionSheetMask">
     <div class="action-sheet">
-      <button class="action-btn" id="btnCamera" type="button">📷 拍照</button>
-      <button class="action-btn" id="btnGallery" type="button">🖼️ 从相册选择</button>
-      <button class="action-btn" id="btnMobileFile" type="button">📁 选择文件</button>
+      <button class="action-btn" id="btnCamera" type="button">${icon('camera', 18)} 拍照</button>
+      <button class="action-btn" id="btnGallery" type="button">${icon('image', 18)} 从相册选择</button>
+      <button class="action-btn" id="btnMobileFile" type="button">${icon('folder', 18)} 选择文件</button>
       <button class="action-btn cancel" id="btnCancel">取消</button>
     </div>
   </div>
@@ -634,7 +640,7 @@ const readerHTML = `
       <div class="modal-field"><label>练习时长 (分钟)</label><input type="number" class="modal-inp" id="logTime" min="1"></div>
       <div class="modal-field"><label>练习 BPM</label><input type="number" class="modal-inp" id="logBpm" min="30" max="250"></div>
       <div class="modal-field">
-        <label>📍 阅读位置</label>
+        <label>${icon('pin', 14)} 阅读位置</label>
         <div class="progress-readout" id="logProgressText">第 1 页</div>
         <label class="modal-check-row"><input type="checkbox" id="logSaveProgress" checked> 把这次的位置存到本曲</label>
       </div>
@@ -731,7 +737,7 @@ const readerHTML = `
 
   <div class="modal-mask" id="cloudModalMask">
     <div class="modal-box">
-      <h3>☁️ 云同步</h3>
+      <h3>${icon('cloud', 18)} 云同步</h3>
       <div class="modal-field"><label>账号</label><input type="text" class="modal-inp" id="cloudUser" placeholder="坚果云邮箱"></div>
       <div class="modal-field"><label>应用密码</label><input type="password" class="modal-inp" id="cloudPass" placeholder="在坚果云安全选项申请"></div>
       <div class="modal-field" id="cloudRememberRow" style="flex-direction:row;align-items:center;gap:8px;">
@@ -748,8 +754,8 @@ const readerHTML = `
       <div id="cloudSyncState" style="font-size:12px;color:var(--muted);line-height:1.6;margin:-2px 2px 10px;">正在读取同步状态…</div>
       <div class="modal-footer">
         <button class="modal-btn cancel" id="cloudCancel">返回</button>
-        <button class="modal-btn confirm" id="cloudDownload">📥 覆盖本地</button>
-        <button class="modal-btn confirm" id="cloudUpload" style="background:var(--primary);">📤 上传备份</button>
+        <button class="modal-btn confirm" id="cloudDownload">${icon('download', 15)} 覆盖本地</button>
+        <button class="modal-btn confirm" id="cloudUpload" style="background:var(--primary);">${icon('upload', 15)} 上传备份</button>
       </div>
     </div>
   </div>
@@ -795,11 +801,11 @@ class SheetReader extends HTMLElement {
     this.closingReader = false;
     this.mmKnob = { ctx: null, size: 0, cx: 0, cy: 0, r: 0, dragging: false };
 
-    // 🌟 阅读进度状态
+    // 阅读进度状态
     this.totalPages = 0;
     this.lastKnownPosition = null;   // 缓存的 { page, ratio, scrollY, total }
     this.bannerTimer = null;
-    this.bookmarks = [];             // 🔖 当前谱的页级书签 [{ page, at }]
+    this.bookmarks = [];             // 当前谱的页级书签 [{ page, at }]
     this.fullscreen = false;
     this.nativeFullscreenActive = false;
     this.currentFormat = '';
@@ -819,7 +825,7 @@ class SheetReader extends HTMLElement {
     this.initLogic();
     this.loadShelf();
 
-    // 🌟 切换到其他标签页（节拍器/记录/调音）时，立刻停掉 mini 节拍器，避免双声道串音
+    // 切换到其他标签页（节拍器/记录/调音）时，立刻停掉 mini 节拍器，避免双声道串音
     this.handleTabChange = (e) => {
       if (!e.detail || e.detail.target !== 'view-reader') {
         if (this.stopMiniMetronome) this.stopMiniMetronome();
@@ -837,7 +843,7 @@ class SheetReader extends HTMLElement {
     };
     window.addEventListener('app-tab-changed', this.handleTabChange);
 
-    // 🌟 跟主节拍器保持一致：音色、重音（含首拍）实时同步
+    // 跟主节拍器保持一致：音色、重音（含首拍）实时同步
     this.handleMetronomeSettings = (e) => {
       if (!e.detail || !this.mmHandle) return;
       if (e.detail.timbre) this.mmHandle.setTimbre(e.detail.timbre);
@@ -846,7 +852,7 @@ class SheetReader extends HTMLElement {
     };
     window.addEventListener('metronome-settings', this.handleMetronomeSettings);
 
-    // 🌟 全局设置里恢复 / 清空数据后，书架立即重读 IndexedDB
+    // 全局设置里恢复 / 清空数据后，书架立即重读 IndexedDB
     this.handleDataChanged = () => this.loadShelf();
     window.addEventListener('gs-data-changed', this.handleDataChanged);
     this.offTheme = onThemeChange(() => { if (this.drawMmKnob) this.drawMmKnob(); });
@@ -1348,7 +1354,7 @@ class SheetReader extends HTMLElement {
       if (this.allScores.length === 0) {
         shelfView.innerHTML = `
           <div class="empty-state">
-            <div class="empty-mark" aria-hidden="true">♪</div>
+            <div class="empty-mark" aria-hidden="true">${icon('metronome', 36)}</div>
             <h3 class="empty-title">还没有乐谱</h3>
             <p class="empty-desc">导入 PDF、图片、TXT / Markdown / ChordPro，或拍照，建立你的练琴书架。也可以先用节拍器热身。</p>
             <div class="empty-actions">
@@ -1376,7 +1382,7 @@ class SheetReader extends HTMLElement {
         card.className = 'score-card' + (selected ? ' selected' : '');
         card.dataset.scoreId = String(score.id);
         const format = detectScoreFormat(score.name, score.fileBlob && score.fileBlob.type, score.format);
-        const icon = formatIcon(format, score.name);
+        const formatSvg = formatIcon(format, score.name);
         const metaText = formatDisplay(format, score.name, score.pageCount);
         const tags = uniqueTags(score.tags || []);
         const badgeText = tags.length === 0
@@ -1384,9 +1390,9 @@ class SheetReader extends HTMLElement {
           : (tags.length === 1 ? `#${tags[0]}` : `#${tags[0]} +${tags.length - 1}`);
 
         card.innerHTML = `
-          <button class="card-edit-btn" type="button" title="编辑乐谱信息">✎</button>
-          <span class="select-mark" aria-hidden="true">✓</span>
-          <div class="score-cover"><span class="score-cover-fallback" aria-hidden="true">${icon}</span></div>
+          <button class="card-edit-btn" type="button" title="编辑乐谱信息">${icon('pencil', 12)}</button>
+          <span class="select-mark" aria-hidden="true">${icon('check', 11)}</span>
+          <div class="score-cover"><span class="score-cover-fallback" aria-hidden="true">${formatSvg}</span></div>
           <div class="score-info">
             <div class="score-name" title="${escapeHtml(score.name)}">${escapeHtml(score.name)}</div>
             <div class="score-meta">${escapeHtml(metaText)}</div>
@@ -1779,7 +1785,7 @@ class SheetReader extends HTMLElement {
       requestAnimationFrame(() => updatePdfWindow());
     };
 
-    // ==================== 🌟 阅读进度：计算 / 恢复 / 提示 ====================
+    // ==================== 阅读进度：计算 / 恢复 / 提示 ====================
     const pageBoxes = () => Array.from(container.querySelectorAll('.page-box'));
 
     // 当前阅读位置：页码 + 页内比例（不依赖像素，缩放后也不会偏）
@@ -1844,7 +1850,7 @@ class SheetReader extends HTMLElement {
       this.lastKnownPosition = { page, ratio, scrollY: target, total: boxes.length || this.totalPages || 1 };
     };
 
-    // ==================== 🔖 页级书签（存进乐谱记录的 bookmarks 字段，随备份 / 云同步一起走） ====================
+    // ==================== 页级书签（存进乐谱记录的 bookmarks 字段，随备份 / 云同步一起走） ====================
     const btnBookmarks = $('btnBookmarks');
     const bookmarkMask = $('bookmarkMask');
     const bmList = $('bmList');
@@ -1930,7 +1936,7 @@ class SheetReader extends HTMLElement {
     $('bmAdd').onclick = addBookmark;
     bindBackdrop(bookmarkMask, closeBookmarks);
 
-    // ==================== ✂ 拆分建卡（独立 PDF） ====================
+    // ==================== 拆分建卡（独立 PDF） ====================
     const splitModalMask = $('splitModalMask');
     const splitStart = $('splitStart');
     const splitEnd = $('splitEnd');
@@ -2270,7 +2276,7 @@ class SheetReader extends HTMLElement {
 
     btnSplit.onclick = openSplitModal;
 
-    // 🌟 统一的进度写库入口（手动按钮 / 打卡 / 定时兜底 / 返回书架 共用）
+    // 统一的进度写库入口（手动按钮 / 打卡 / 定时兜底 / 返回书架 共用）
     const saveReadingProgress = async (withToast) => {
       if (!this.currentScoreId) return false;
       const pos = getReadingPosition();
@@ -2288,7 +2294,7 @@ class SheetReader extends HTMLElement {
       return true;
     };
 
-    // 🌟 弱自动兜底：每 5 分钟存一次（仅在阅读页可见时才写，避免隐藏时写 0）
+    // 弱自动兜底：每 5 分钟存一次（仅在阅读页可见时才写，避免隐藏时写 0）
     const stopAutoSave = () => {
       if (this.autoSaveTimer) { clearInterval(this.autoSaveTimer); this.autoSaveTimer = null; }
     };
@@ -2300,7 +2306,7 @@ class SheetReader extends HTMLElement {
       }, 5 * 60 * 1000);
     };
 
-    // 🌟 翻页热区定位：随 viewer 顶部对齐，只在谱面中线附近保留一小段可点区域
+    // 翻页热区定位：随 viewer 顶部对齐，只在谱面中线附近保留一小段可点区域
     const positionNavZones = () => {
       const hostTop = this.getBoundingClientRect().top;
       const viewerRect = viewer.getBoundingClientRect();
@@ -2358,7 +2364,7 @@ class SheetReader extends HTMLElement {
       scheduleTextHighlight();
     }, { passive: true });
 
-    // ==================== 📝 文本谱渲染 ====================
+    // ==================== 文本谱渲染 ====================
     const appendInlineChords = (el, text) => {
       // [C] 和弦原样保留括号，只上色，不重排歌词，保证空格与和弦位置不变
       const parts = String(text).split(/(\[[^\]\n]{1,24}\])/g);
@@ -2489,7 +2495,7 @@ class SheetReader extends HTMLElement {
       untrackLayer('bookmarks');
       $('splitModalMask').classList.remove('show');
 
-      // 🔖 载入这份谱已有的书签（存于乐谱记录里，随备份 / 云同步一起走）
+      // 载入这份谱已有的书签（存于乐谱记录里，随备份 / 云同步一起走）
       this.bookmarks = (!isText && scoreData && Array.isArray(scoreData.bookmarks))
         ? scoreData.bookmarks
             .filter(b => b && Number(b.page) > 0)
@@ -2523,7 +2529,7 @@ class SheetReader extends HTMLElement {
       this.lastKnownPosition = null;
       hideProgressBanner();
 
-      // 🌟 关键修复：向数据库要「最新」记录，不要用书架里的旧快照
+      // 关键修复：向数据库要「最新」记录，不要用书架里的旧快照
       let fresh = null;
       try { fresh = await dbService.getScore(fileId); } catch (e) { console.warn('读取乐谱记录失败', e); }
       if (!fresh && scoreData) fresh = scoreData;
@@ -2533,7 +2539,7 @@ class SheetReader extends HTMLElement {
         if (lastLog && lastLog.bpm) { updateMmBpm(lastLog.bpm, true); showToast(`已恢复上次练习速度：${this.mmBpm} BPM`); }
       } catch(e) { console.error(e); }
 
-      // 🌟 统一渲染：PDF 与图片共用同一个滚动容器，父级才能拿到真实 scrollTop
+      // 统一渲染：PDF 与图片共用同一个滚动容器，父级才能拿到真实 scrollTop
       zoomControls.style.display = 'flex';
       container.style.padding = '20px 0'; container.style.height = ''; container.style.position = 'static';
 
@@ -2554,7 +2560,7 @@ class SheetReader extends HTMLElement {
         });
       }
 
-      // 🌟 恢复阅读进度：按「页码 + 页内比例」，换缩放/换屏宽都不会偏
+      // 恢复阅读进度：按「页码 + 页内比例」，换缩放/换屏宽都不会偏
       const savedPage = fresh ? (fresh.lastReadPage || 0) : 0;
       const savedRatio = fresh ? (fresh.lastReadPageRatio || 0) : 0;
       const savedScrollY = fresh ? (fresh.lastReadScrollY || 0) : 0;
@@ -2578,7 +2584,7 @@ class SheetReader extends HTMLElement {
         }
       }
 
-      // 🌟 阅读模式收尾：热区对齐 + 启动 5 分钟兜底自动保存
+      // 阅读模式收尾：热区对齐 + 启动 5 分钟兜底自动保存
       if (isText) requestAnimationFrame(scheduleTextHighlight);
       positionNavZones();
       startAutoSave();
@@ -2589,7 +2595,7 @@ class SheetReader extends HTMLElement {
     const closeReader = async () => {
       if (!this.classList.contains('reading') || this.closingReader) return;
       this.closingReader = true;
-      // 🌟 弱自动兜底之一：返回书架时强制保存一次，防止意外退出丢位置
+      // 弱自动兜底之一：返回书架时强制保存一次，防止意外退出丢位置
       if (this.currentScoreId) {
         try { await saveReadingProgress(false); } catch (e) { console.warn('返回时保存进度失败', e); }
       }
@@ -2653,7 +2659,7 @@ class SheetReader extends HTMLElement {
     $('logCancel').onclick = closeLogModal;
     bindBackdrop(logModalMask, closeLogModal);
 
-    // 🌟 手动档：一键存进度（与「打卡」互补——只想存位置时不用编练习时长）
+    // 手动档：一键存进度（与「打卡」互补——只想存位置时不用编练习时长）
     $('btnSavePos').onclick = async () => {
       if (!this.currentScoreId) return showToast('还没有打开的谱子');
       const btn = $('btnSavePos');
@@ -2665,7 +2671,7 @@ class SheetReader extends HTMLElement {
 
     btnLog.onclick = () => {
       $('logName').value = this.currentFileName; $('logBpm').value = this.mmBpm; $('logTime').value = '';
-      // 🌟 打开弹窗时快照当前阅读位置并展示出来
+      // 打开弹窗时快照当前阅读位置并展示出来
       const pos = getReadingPosition();
       $('logProgressText').textContent = this.currentFormat === SCORE_FORMAT.TEXT
         ? (pos.ratio > 0 ? `文本谱 · 约 ${Math.round(pos.ratio * 100)}%` : '文本谱 · 开头')
@@ -2764,7 +2770,7 @@ class SheetReader extends HTMLElement {
     $('cloudCancel').onclick = closeCloudModal;
     bindBackdrop(cloudModalMask, closeCloudModal);
 
-    // 🌟 核心修复：极其宽容的文件过滤逻辑
+    // 核心修复：极其宽容的文件过滤逻辑
     const handleFiles = async (filesArray, { extraNotice = '' } = {}) => {
       if (!filesArray || filesArray.length === 0) return;
       loading.textContent = `正在导入 ${filesArray.length} 个文件...`; loading.classList.add('show');
@@ -2825,7 +2831,7 @@ class SheetReader extends HTMLElement {
       }
     };
 
-    // 🌟 核心修复：先将 FileList 转为真正的 Array 拷贝，然后再清空 input 的值，防止异步操作中文件被浏览器销毁！
+    // 核心修复：先将 FileList 转为真正的 Array 拷贝，然后再清空 input 的值，防止异步操作中文件被浏览器销毁！
     const handleInputChange = (e) => {
       const input = e.target;
       const files = Array.from(input.files);
@@ -2903,7 +2909,7 @@ class SheetReader extends HTMLElement {
     };
     bindBackdrop(actionSheetMask, closeActionSheet);
 
-    // 🌟 打包：本地导出与云端上传共用同一份数据（含阅读进度与打卡记录）
+    // 打包：本地导出与云端上传共用同一份数据（含阅读进度与打卡记录）
     const buildBackupPayload = async ({ showLoading = true } = {}) => {
       const scores = await dbService.getAllScores();
       const logs = await dbService.getAllLogs();
@@ -2933,14 +2939,14 @@ class SheetReader extends HTMLElement {
       } finally { if (showLoading) loading.classList.remove('show'); }
     };
 
-    // 🌟 恢复：先完整校验并转好 Blob，再清空写入，保证「要么全成功，要么不动本地」
+    // 恢复：先完整校验并转好 Blob，再清空写入，保证「要么全成功，要么不动本地」
     const restoreFromPayload = async (payload, confirmOverwrite = true, confirmEmpty = true) => {
       if (!payload || !Array.isArray(payload.scores)) throw new Error('备份文件格式不正确');
       if (payload.logs && !Array.isArray(payload.logs)) throw new Error('备份文件的打卡记录格式不正确');
       const badScore = payload.scores.find((item) => !item || typeof item.name !== 'string' || typeof item.data !== 'string' || !item.data.startsWith('data:'));
       if (badScore) throw new Error('备份中存在无效的乐谱数据');
 
-      // 🌟 空备份保护：云端失联时可能拿到空载荷，绝不能用一句普通 confirm 就把本地清空
+      // 空备份保护：云端失联时可能拿到空载荷，绝不能用一句普通 confirm 就把本地清空
       const scoreCount = payload.scores.length;
       const logCount = (payload.logs || []).length;
       if (scoreCount === 0 && logCount === 0 && confirmEmpty) {
@@ -3001,7 +3007,7 @@ class SheetReader extends HTMLElement {
     };
 
     // 本地备份 / 恢复 / 清空已统一收进全局设置抽屉；这里只保留云同步所需的数据打包与恢复。
-    // ==================== ☁️ 云同步（坚果云 WebDAV） ====================
+    // ==================== 云同步（坚果云 WebDAV） ====================
     const REMEMBER_KEY = 'gs_cloud_remember';
     const PASS_SECRET = 'webdav-pass';
 
@@ -3073,7 +3079,7 @@ class SheetReader extends HTMLElement {
       showToast('已清除本机保存的应用密码');
     };
 
-    // ==================== 🌟 A2 冲突检测 ====================
+    // ==================== A2 冲突检测 ====================
     // 同步点读写统一走 sync-state.js，读谱页弹窗与全局设置共用同一份状态
 
     // 打开弹窗 / 切换路径 / 同步成功后刷新本机状态摘要
@@ -3281,7 +3287,7 @@ class SheetReader extends HTMLElement {
       }
     };
 
-    // 🌟 连通性探测：国内访问 Worker 偶发失联，上传前先试一手，别把备份扔进断网
+    // 连通性探测：国内访问 Worker 偶发失联，上传前先试一手，别把备份扔进断网
     $('cloudTest').onclick = async () => {
       if (this.cloudBusy) return;
       const form = readCloudForm(); if (!form) return;
@@ -3309,7 +3315,7 @@ class SheetReader extends HTMLElement {
       }
     };
 
-    // 🌟 沉浸式虚化状态机：谱面交互 → 虚化；鼠标移入控件 → 实体化（无自动恢复定时器）
+    // 沉浸式虚化状态机：谱面交互 → 虚化；鼠标移入控件 → 实体化（无自动恢复定时器）
     const setMmFaded = (faded) => {
       if (faded) miniMetronome.classList.add('faded');
       else miniMetronome.classList.remove('faded');
@@ -3323,7 +3329,7 @@ class SheetReader extends HTMLElement {
       if (!zoomControls.classList.contains('faded')) setZoomFaded(true);
     };
 
-    // 🧘 禅定模式：透明阅读锁；轻点浮出解锁条，连续长按 1.5 秒解锁
+    // 禅定模式：透明阅读锁；轻点浮出解锁条，连续长按 1.5 秒解锁
     const ZEN_HOLD_MS = 1500;
     const revealZenControls = () => {
       if (!this.zenLocked) return;
@@ -3416,7 +3422,7 @@ class SheetReader extends HTMLElement {
     };
     window.addEventListener('blur', this.cancelZenKeyHold);
 
-    // 🌟 全屏：CSS 先覆盖整个视口（兼容 WebView），再尽量申请浏览器原生全屏隐藏地址栏 / 状态栏
+    // 全屏：CSS 先覆盖整个视口（兼容 WebView），再尽量申请浏览器原生全屏隐藏地址栏 / 状态栏
     this.setReaderFullscreen = (on) => {
       const next = !!on;
       if (this.fullscreen === next) return;
@@ -3458,7 +3464,7 @@ class SheetReader extends HTMLElement {
       this.setReaderFullscreen(!this.fullscreen);
     };
 
-    // ⌨️ 桌面键盘：只在阅读页、无弹窗、未聚焦输入框时接管
+    // 桌面键盘：只在阅读页、无弹窗、未聚焦输入框时接管
     const isReaderModalOpen = () => !!this.shadowRoot.querySelector(
       '.modal-mask.show, #bookmarkMask.show, #actionSheetMask.show'
     );
@@ -3670,7 +3676,7 @@ class SheetReader extends HTMLElement {
     mmBpmDisplay.onclick = () => { miniMetronome.classList.toggle('advanced'); if (miniMetronome.classList.contains('advanced')) { initMmKnob(); } };
     this.setMiniPlayUI = (playing) => {
       const btn = this.shadowRoot.getElementById('mmPlay');
-      if (btn) { btn.textContent = playing ? '■' : '▶'; btn.classList.toggle('playing', playing); }
+      if (btn) { btn.innerHTML = icon(playing ? 'pause' : 'play', 16); btn.classList.toggle('playing', playing); }
     };
 
     this.stopMiniMetronome = () => {
@@ -3717,7 +3723,7 @@ class SheetReader extends HTMLElement {
       this.setMiniPlayUI(true);
     };
 
-    // 🌟 修复：mini 节拍器开始/停止按钮（此前完全没有绑定事件，点「▶」无任何反应）
+    // 修复：mini 节拍器开始/停止按钮（此前完全没有绑定事件，点「」无任何反应）
     mmPlay.onclick = (e) => {
       e.stopPropagation();
       if (this.mmPlaying) this.stopMiniMetronome();
@@ -3732,7 +3738,7 @@ class SheetReader extends HTMLElement {
     mmMinus.onclick = nudgeMmBpm(-1);
     mmPlus.onclick = nudgeMmBpm(1);
 
-    // 🌟 左右翻页逻辑：切换前先保存当前进度，切换后直接回到目标谱的上次位置
+    // 左右翻页逻辑：切换前先保存当前进度，切换后直接回到目标谱的上次位置
     const openAdjacentScore = async (direction) => {
       if (this.navSwitching) return; // 防连点重入
       if (!this.currentScoreId || !this.filteredScores.length) return;

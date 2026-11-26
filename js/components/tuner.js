@@ -11,6 +11,7 @@ import {
   medianFrequency,
   foldToGuitarFundamental
 } from '../services/pitch.js';
+import { icon } from '../services/icons.js';
 
 // 提示音本身会被麦克风收进去：叮响的 0.32s 加上扬声器/采集尾音，
 // 这期间暂停 YIN，避免把提示音的低阶谐波当成琴声，把指针拽向右侧。
@@ -90,16 +91,16 @@ const tunerCSS = `
   .tools-row { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; }
   .a4-box { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 18px; background: var(--surface-raised); border: 1px solid var(--line-strong); }
   .a4-label { font-size: 12px; color: var(--muted); }
-  .step-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--scroll); background: var(--surface-hover); color: var(--heading); font-size: 15px; line-height: 1; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; }
+  .step-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--scroll); background: var(--surface-hover); color: var(--heading); font-size: 15px; line-height: 1; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; display: grid; place-items: center; }
   .step-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .a4-val { min-width: 58px; text-align: center; font-size: 13px; color: var(--heading); font-variant-numeric: tabular-nums; }
-  .ref-btn { padding: 7px 14px; border-radius: 18px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); font-size: 13px; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; }
+  .ref-btn { padding: 7px 14px; border-radius: 18px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); font-size: 13px; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: center; gap: 6px; }
   .ref-btn:not(:disabled) { color: var(--accent-text); border-color: var(--line-warm); background: rgba(var(--primary-rgb), 0.12); }
   .ref-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* 反馈开关 */
   .feedback-row { display: flex; gap: 10px; justify-content: center; width: 100%; }
-  .feedback-btn { padding: 8px 14px; border-radius: 18px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); font-size: 13px; cursor: pointer; transition: 0.2s; outline: none; -webkit-tap-highlight-color: transparent; }
+  .feedback-btn { padding: 8px 14px; border-radius: 18px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); font-size: 13px; cursor: pointer; transition: 0.2s; outline: none; -webkit-tap-highlight-color: transparent; display: inline-flex; align-items: center; gap: 6px; }
   .feedback-btn.active { background: rgba(var(--success-rgb), 0.16); border-color: var(--success); color: var(--success); }
   .feedback-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -157,19 +158,19 @@ const tunerHTML = `
     <div class="tools-row">
       <div class="a4-box">
         <span class="a4-label">A4</span>
-        <button class="step-btn" id="a4Minus" type="button" aria-label="A4 降低 1Hz">−</button>
+        <button class="step-btn" id="a4Minus" type="button" aria-label="A4 降低 1Hz">${icon('minus', 15)}</button>
         <span class="a4-val" id="a4Val">440 Hz</span>
-        <button class="step-btn" id="a4Plus" type="button" aria-label="A4 升高 1Hz">+</button>
+        <button class="step-btn" id="a4Plus" type="button" aria-label="A4 升高 1Hz">${icon('plus', 15)}</button>
       </div>
-      <button class="ref-btn" id="refTone" type="button" disabled>🔊 标准音</button>
+      <button class="ref-btn" id="refTone" type="button" disabled>${icon('volume', 15)} 标准音</button>
     </div>
 
     <div class="feedback-row">
-      <button class="feedback-btn active" id="fbSound" type="button" aria-pressed="true">🔔 提示音</button>
-      <button class="feedback-btn active" id="fbVibrate" type="button" aria-pressed="true">📳 震动</button>
+      <button class="feedback-btn active" id="fbSound" type="button" aria-pressed="true">${icon('bell', 15)} 提示音</button>
+      <button class="feedback-btn active" id="fbVibrate" type="button" aria-pressed="true">${icon('vibrate', 15)} 震动</button>
     </div>
 
-    <button class="btn-toggle start" id="btnToggle">🎤 开启麦克风</button>
+    <button class="btn-toggle start" id="btnToggle">${icon('mic', 18)} 开启麦克风</button>
   </div>
 `;
 
@@ -254,9 +255,9 @@ class GuitarTuner extends HTMLElement {
     if (!btn) return;
     const target = this.targetNote === 'auto' ? this.lastString : this.targetNote;
     btn.disabled = !target;
-    btn.textContent = target
-      ? `🔊 标准音 ${target.replace(/\d/g, '')}`
-      : '🔊 标准音（先选弦）';
+    btn.innerHTML = target
+      ? `${icon('volume', 15)} 标准音 ${target.replace(/\d/g, '')}`
+      : `${icon('volume', 15)} 标准音（先选弦）`;
   }
 
   stopReferenceTone() {
@@ -297,7 +298,7 @@ class GuitarTuner extends HTMLElement {
 
     const statusText = this.shadowRoot.getElementById('statusText');
     if (statusText) {
-      statusText.textContent = `🔊 标准音 ${target} 准备中...`;
+      statusText.textContent = `标准音 ${target} 准备中...`;
       statusText.style.color = 'var(--accent)';
     }
 
@@ -313,7 +314,7 @@ class GuitarTuner extends HTMLElement {
     }
     if (epoch !== this.refEpoch) return;
 
-    if (statusText) statusText.textContent = `🔊 标准音 ${target} 播放中...`;
+    if (statusText) statusText.textContent = `标准音 ${target} 播放中...`;
     this.refToneHandle = audioEngine.tone(this.stringFreqs[target], {
       dur: 1.2,
       level: REFERENCE_LEVELS[target] || 0.22
@@ -425,7 +426,7 @@ class GuitarTuner extends HTMLElement {
     const needle = root.getElementById('needle');
 
     if (btnToggle) {
-      btnToggle.textContent = '🎤 开启麦克风';
+      btnToggle.innerHTML = `${icon('mic', 18)} 开启麦克风`;
       btnToggle.className = 'btn-toggle start';
     }
     if (statusText) {
@@ -494,7 +495,7 @@ class GuitarTuner extends HTMLElement {
       fbVibrate.setAttribute('aria-pressed', String(this.feedbackVibrate && vibrateSupported));
       fbVibrate.disabled = !vibrateSupported;
       fbVibrate.title = vibrateSupported ? '调准时震动一下' : '当前设备 / 浏览器不支持震动';
-      if (!vibrateSupported) fbVibrate.textContent = '📳 震动（不支持）';
+      if (!vibrateSupported) fbVibrate.innerHTML = `${icon('vibrate', 15)} 震动（不支持）`;
     };
     fbSound.onclick = () => {
       this.feedbackSound = !this.feedbackSound;
@@ -635,7 +636,7 @@ class GuitarTuner extends HTMLElement {
         // 绿色，音准了
         needle.classList.add('in-tune');
         noteName.classList.add('in-tune');
-        statusText.textContent = '🎯 音准完美！';
+        statusText.innerHTML = `${icon('target', 15)} 音准完美！`;
         statusText.style.color = 'var(--success)';
       } else {
         needle.classList.remove('in-tune');
@@ -674,7 +675,7 @@ class GuitarTuner extends HTMLElement {
           
           this.isListening = true;
           wakeLock.acquire('tuner');
-          btnToggle.textContent = '⏹ 停止调音';
+          btnToggle.innerHTML = `${icon('stop', 18)} 停止调音`;
           btnToggle.className = 'btn-toggle stop';
           statusText.textContent = '拨动琴弦...';
           statusText.style.color = 'var(--accent)';
@@ -691,7 +692,7 @@ class GuitarTuner extends HTMLElement {
             this.stream = null;
           }
           this.isListening = false;
-          btnToggle.textContent = '🎤 开启麦克风';
+          btnToggle.innerHTML = `${icon('mic', 18)} 开启麦克风`;
           btnToggle.className = 'btn-toggle start';
           statusText.textContent = '麦克风未开启';
           statusText.style.color = 'var(--danger)';

@@ -65,9 +65,9 @@ async function loadComponents() {
   try { await import(`${base}js/components/metronome.js`); } catch (e) { console.error('节拍器加载失败', e); }
   try { await import(`${base}js/components/sheet-reader.js`); } catch (e) { console.error('读谱器加载失败', e); }
   try { await import(`${base}js/components/practice-log.js`); } catch (e) { console.error('记录组件加载失败', e); }
-  // 🌟 新增调音器
+  // 新增调音器
   try { await import(`${base}js/components/tuner.js`); } catch (e) { console.error('调音器加载失败', e); }
-  // 🌟 全局设置抽屉
+  // 全局设置抽屉
   try { await import(`${base}js/components/settings.js`); } catch (e) { console.error('全局设置加载失败', e); }
 }
 
@@ -103,7 +103,7 @@ async function boot() {
 boot();
 
 
-// ==================== ⚙ 全局设置入口 ====================
+// ==================== 全局设置入口 ====================
 const settingsBtn = document.getElementById('btnGlobalSettings');
 if (settingsBtn) {
   settingsBtn.addEventListener('click', () => {
@@ -117,7 +117,7 @@ if (settingsBtn) {
   });
 }
 
-// ==================== ☁️ 云同步中退出保护 ====================
+// ==================== 云同步中退出保护 ====================
 // 不提醒“离开前记得同步”；只保护已经在进行的上传，避免用户误关应用把备份写坏。
 let cloudTask = { busy: false, text: '' };
 let cloudExitPromptOpen = false;
@@ -203,7 +203,7 @@ const promptCloudExit = async () => {
 
 window.addEventListener('gs-cloud-exit-request', promptCloudExit);
 
-// ==================== 🏷️ 版本徽标 ====================
+// ==================== 版本徽标 ====================
 // 目的：一眼看出「现在跑的是哪版」，并区分「线上已有新版」与「本机缓存没换」
 const CACHE_PREFIX = 'guitar-shell-v';
 const badge = document.getElementById('appVersion');
@@ -285,7 +285,7 @@ if (badge) {
   });
 }
 
-// 🌟 注册 PWA 离线缓存 (Service Worker)
+// 注册 PWA 离线缓存 (Service Worker)
 // APK / Capacitor 内资源已本地打包，SW 只会多一层缓存风险；壳内跳过，网页端保留
 const isNativeShell = () => Boolean(
   window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()
