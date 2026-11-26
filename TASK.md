@@ -15,7 +15,7 @@
 | Android 包 | `com.guitarshell`，`minSdk 22` / `targetSdk 34` |
 | 签名证书 SHA-256 | `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E` |
 | 验证基线 | Web 360 主基线 / 320 仅保留既有边界；真机 `ca14b16`（Android 13+） |
-| 当前阶段 | `0.1.16` 已立项：小修与收口 |
+| 当前阶段 | `0.1.16` 已完成 Android 13 真机验收（`122`），待提交 / 发布 |
 | 历史入口 | `0.1.0` / `0.1.1` 见 [docs/archive](docs/archive)；其余版本见 [CHANGELOG.md](CHANGELOG.md) |
 | 并入关系 | `0.1.12a` → `v0.1.12b`；`0.1.13` → `v0.1.14c`；`0.1.15` 独立发布 |
 
@@ -65,7 +65,7 @@
 
 | 版本 | 方向 | 状态 |
 | --- | --- | --- |
-| `0.1.16` | 节拍器倒计时自动启用、书架 360 封面收窄、设置“待同步”、书架卡片删除 X 收口 | 已立项，见 [CURRENT_TASK.md](CURRENT_TASK.md) |
+| `0.1.16` | 节拍器倒计时自动启用、书架 360 封面收窄、设置“待同步”、书架卡片删除 X 收口 | 代码完成，待真机验收；见 [CURRENT_TASK.md](CURRENT_TASK.md) |
 | `0.1.17` | 去 Emoji，统一 inline SVG 线性图标；书架搜索行同步收口 | 方向占位，待 `0.1.16` 验收后细化 |
 | `0.1.18` | 节拍器 BPM 圆盘改为非线性分布，常用速度向中间集中 | 方向占位，先做静态原型 |
 | `0.1.19` | 调音器预设与自定义调弦 | 方向占位，含频率增益兜底 |
@@ -88,7 +88,7 @@
 
 ## 4. 活跃待办
 
-当前 **`0.1.16` 已立项**，规格见 [CURRENT_TASK.md](CURRENT_TASK.md)。
+当前 **`0.1.16` 代码已完成**，浏览器回归通过，待真机验收；规格见 [CURRENT_TASK.md](CURRENT_TASK.md)。
 
 已确认：
 
@@ -154,7 +154,7 @@ npm run apk:release
 ```
 
 - 产物：`android/app/build/outputs/apk/release/app-release.apk`
-- 环境：Node.js、JDK 21、Android SDK；完整说明见 [README.md](README.md)「本地运行与构建」。
+- 环境：Node.js、JDK 21、Android SDK；`scripts/build-apk.mjs` 会自动定位 JDK 17–21，遇到 JDK 25 等不兼容版本直接报错。完整说明见 [README.md](README.md)「本地运行与构建」。
 - 发布前必须同步版本号与 SW 缓存；详见上一节门禁与发布清单。
 
 ## 8. 避坑指南

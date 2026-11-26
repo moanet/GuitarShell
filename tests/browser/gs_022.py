@@ -196,11 +196,17 @@ def main():
   const shelf = $('shelfView');
   const sampleCard = shelf.querySelector('.score-card');
   const cardHeight = Math.round(sampleCard.getBoundingClientRect().height);
+  const coverWidth = Math.round(sampleCard.querySelector('.score-cover')?.getBoundingClientRect().width || 0);
+  const titleSize = parseFloat(getComputedStyle(sampleCard.querySelector('.score-name')).fontSize) || 0;
+  const hasCardDelete = !!sampleCard.querySelector('.card-actions, .btn-delete');
   const clones = Array.from({ length: 18 }, () => sampleCard.cloneNode(true));
   clones.forEach((node) => shelf.appendChild(node));
   await sleep(250);
   out.shelfDensity = {
     cardHeight,
+    coverWidth,
+    titleSize,
+    hasCardDelete,
     clientH: shelf.clientHeight,
     scrollH: shelf.scrollHeight,
     canScroll: shelf.scrollHeight > shelf.clientHeight + 20
@@ -437,6 +443,10 @@ def main():
         assert out["shelfDensity"]["cardHeight"] >= 140, out
         assert out["shelfDensity"]["canScroll"] is True, out
         assert out["shelfDensity"]["scrollTopAfter"] >= 100, out
+        assert out["shelfDensity"]["hasCardDelete"] is False, out
+        if 341 <= WIDTH <= 380:
+            assert out["shelfDensity"]["coverWidth"] == 72, out
+            assert abs(out["shelfDensity"]["titleSize"] - 12.5) < 0.2, out
         assert out["textRender"]["title"] == "小星星", out
         assert "主歌" in out["textRender"]["sections"], out
         assert out["textRender"]["chordTokens"] >= 4, out

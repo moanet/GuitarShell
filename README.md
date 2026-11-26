@@ -16,7 +16,7 @@
   <a href="https://moanet.github.io/GuitarShell/">
     <img src="https://img.shields.io/badge/Open-Web%20App-C7863F" alt="打开网页版">
   </a>
-  <img src="https://img.shields.io/badge/version-0.1.15-8A8075" alt="当前版本 0.1.15">
+  <img src="https://img.shields.io/badge/version-0.1.16-8A8075" alt="当前版本 0.1.16">
   <img src="https://img.shields.io/badge/data-local--first-6B8E23" alt="本地优先">
 </p>
 
@@ -145,7 +145,7 @@ Guitar Shell
 │  ├─ services/                IndexedDB、备份、WebDAV、分享卡、缓存、存储统计、主题、音频、版本
 │  ├─ sheet/                   制谱引擎 M1–M3 草案（未接入界面）
 │  └─ lib/                     PDF.js、pdf-lib、拼音字典
-├─ scripts/                    build-www.mjs、check.mjs
+├─ scripts/                    build-www.mjs、build-apk.mjs、check.mjs
 ├─ tests/browser/              gs_015–gs_023 浏览器回归
 ├─ tests/sheet-m*.test.mjs     制谱引擎本地单元测试
 ├─ android/                    Capacitor Android 壳与原生插件
@@ -192,6 +192,8 @@ Android 正式包需要 Node.js、JDK 21 与 Android SDK：
 npm install
 npm run apk:release
 ```
+
+构建脚本会自动查找 JDK 17–21：优先使用 `JAVA_HOME`，找不到时回退到用户目录下的 `.jdks`。遇到 JDK 25 等不兼容版本会直接给出提示，不会继续打包。
 
 构建产物位于 `android/app/build/outputs/apk/release/app-release.apk`。发布前请同步修改 `package.json` / `package-lock.json`、`js/services/version.js`、`sw.js` 与 `android/app/build.gradle` 中的版本号，避免线上继续使用旧缓存。
 

@@ -204,22 +204,35 @@ def main():
     count: timerChips.length,
     labels: timerChips.map(b => b.textContent.trim()),
     rows: new Set(timerChips.map(b => Math.round(b.getBoundingClientRect().top))).size,
-    selected: timerChips.filter(b => b.classList.contains('on')).map(b => b.textContent.trim())
+    selected: timerChips.filter(b => b.classList.contains('on')).map(b => b.textContent.trim()),
+    enabled: $('timerOn').checked
   };
 
   timerChips.find(b => b.textContent.trim() === '10').click();
   await sleep(80);
   out.timer.afterClick10 = {
     input: $('timerMin').value,
-    selected: timerChips.filter(b => b.classList.contains('on')).map(b => b.textContent.trim())
+    selected: timerChips.filter(b => b.classList.contains('on')).map(b => b.textContent.trim()),
+    enabled: $('timerOn').checked,
+    armed: timerChips.filter(b => b.classList.contains('armed')).map(b => b.textContent.trim())
+  };
+
+  $('timerOn').click();
+  await sleep(80);
+  out.timer.afterUncheck = {
+    enabled: $('timerOn').checked,
+    selected: timerChips.filter(b => b.classList.contains('on')).map(b => b.textContent.trim()),
+    armed: timerChips.filter(b => b.classList.contains('armed')).map(b => b.textContent.trim())
   };
 
   $('timerMin').value = '7';
-  $('timerMin').dispatchEvent(new Event('input', { bubbles: true }));
+  $('timerMin').dispatchEvent(new Event('change', { bubbles: true }));
   await sleep(80);
   out.timer.afterCustom7 = {
     input: $('timerMin').value,
-    selected: timerChips.filter(b => b.classList.contains('on')).map(b => b.textContent.trim())
+    selected: timerChips.filter(b => b.classList.contains('on')).map(b => b.textContent.trim()),
+    enabled: $('timerOn').checked,
+    armed: timerChips.filter(b => b.classList.contains('armed')).map(b => b.textContent.trim())
   };
 
   // 自定义 8/8：快捷格没有它，但输入仍能应用
@@ -281,10 +294,18 @@ def main():
         assert out["timer"]["labels"] == ["3", "5", "10", "15", "20", "30"], out
         assert out["timer"]["rows"] == 1, out
         assert out["timer"]["selected"] == ["15"], out
+        assert out["timer"]["enabled"] is False, out
         assert out["timer"]["afterClick10"]["input"] == "10", out
         assert out["timer"]["afterClick10"]["selected"] == ["10"], out
+        assert out["timer"]["afterClick10"]["enabled"] is True, out
+        assert out["timer"]["afterClick10"]["armed"] == ["10"], out
+        assert out["timer"]["afterUncheck"]["enabled"] is False, out
+        assert out["timer"]["afterUncheck"]["selected"] == ["10"], out
+        assert out["timer"]["afterUncheck"]["armed"] == [], out
         assert out["timer"]["afterCustom7"]["input"] == "7", out
         assert out["timer"]["afterCustom7"]["selected"] == [], out
+        assert out["timer"]["afterCustom7"]["enabled"] is True, out
+        assert out["timer"]["afterCustom7"]["armed"] == [], out
         assert out["custom88"]["info"] == "8/8", out
         assert out["custom88"]["selectedQuick"] == [], out
         assert out["cardAnchors"]["flash"] == "重音与反馈", out

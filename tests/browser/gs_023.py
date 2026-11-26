@@ -183,6 +183,18 @@ TEST_JS = r"""
   await waitFor(() => settings.shadowRoot.getElementById('totalUsage').textContent !== '—');
   await sleep(320);
   const sRoot = settings.shadowRoot;
+  await waitFor(() => {
+    const t = sRoot.getElementById('cloudStatus')?.textContent.trim() || '';
+    return t && !t.includes('正在读取');
+  }, 8000);
+  const cloudText = sRoot.getElementById('cloudStatus').textContent.trim();
+  check('云同步状态文案保持单行短句', ['尚未同步', '待同步', '已同步'].includes(cloudText), cloudText);
+  localStorage.setItem('gs_cloud_sync:GuitarShell/backup.json', JSON.stringify({ at: 1 }));
+  await settings.refreshCloudStatus();
+  const pendingText = sRoot.getElementById('cloudStatus').textContent.trim();
+  check('本机有改动时显示待同步', pendingText === '待同步', pendingText);
+  localStorage.removeItem('gs_cloud_sync:GuitarShell/backup.json');
+  await settings.refreshCloudStatus();
   const drawer = sRoot.getElementById('drawer');
   const drawerWidth = drawer.getBoundingClientRect().width;
   const expectDrawerWidth = Math.min(innerWidth * 0.8, 360);

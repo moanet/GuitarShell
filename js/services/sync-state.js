@@ -52,7 +52,7 @@ export async function getCloudSyncSummary(path) {
   }
 }
 
-export function describeCloudSync(summary) {
+export function describeCloudSync(summary, { compact = false } = {}) {
   if (!summary) return '正在读取同步状态…';
   if (summary.status === 'unknown') return '同步状态读取失败 · 仍可手动上传 / 下载';
 
@@ -60,12 +60,15 @@ export function describeCloudSync(summary) {
   const logs = Number(summary.local && summary.local.logCount) || 0;
 
   if (summary.status === 'never') {
+    if (compact) return '尚未同步';
     return (scores || logs)
       ? `尚未同步 · 本机有 ${scores} 份乐谱 / ${logs} 条记录`
       : '尚未同步 · 本机暂无数据';
   }
 
   const time = formatSyncTime(summary.at);
-  if (summary.status === 'pending') return `上次同步 ${time} · 本机有未同步改动`;
-  return `上次同步 ${time} · 本机已是最新`;
+  if (summary.status === 'pending') {
+    return compact ? '待同步' : `上次同步 ${time} · 本机有未同步改动`;
+  }
+  return compact ? '已同步' : `上次同步 ${time} · 本机已是最新`;
 }

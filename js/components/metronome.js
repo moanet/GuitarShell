@@ -228,6 +228,7 @@ const metronomeCSS = `
     font-size: 12px; line-height: 1.2; font-variant-numeric: tabular-nums;
   }
   .timer-chip.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
+  .timer-chip.on:not(.armed) { opacity: .55; }
   .timer-custom { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
   .timer-custom input {
     width: 64px; padding: 6px; border-radius: 8px; border: 1px solid var(--line-strong);
@@ -1725,17 +1726,36 @@ class GuitarMetronome extends HTMLElement {
 
     const updateTimerPresetUI = () => {
       timerPresets.querySelectorAll('.timer-chip').forEach(b => {
-        b.classList.toggle('on', Number(b.dataset.min) === this.timer.minutes);
+        const selected = Number(b.dataset.min) === this.timer.minutes;
+        b.classList.toggle('on', selected);
+        b.classList.toggle('armed', selected && this.timer.enabled);
       });
     };
 
-    const setTimerMinutes = (minutes, { syncInput = true } = {}) => {
-      this.timer.minutes = Math.min(180, Math.max(1, parseInt(minutes, 10) || 15));
+    const setTimerMinutes = (minutes, { syncInput = true, enable = true, restart = false } = {}) => {
+      const next = Math.min(180, Math.max(1, parseInt(minutes, 10) || 15));
+      const changed = next !== this.timer.minutes;
+      const wasEnabled = this.timer.enabled;
+      this.timer.minutes = next;
+      if (enable) {
+        this.timer.enabled = true;
+        timerOn.checked = true;
+      }
       if (syncInput) timerMin.value = this.timer.minutes;
       updateTimerPresetUI();
       saveSettings();
-      if (this.isRunning && this.timer.enabled) startCountdown();
+      if (this.isRunning && this.timer.enabled && (restart || changed || !wasEnabled)) startCountdown();
       else updateHud();
+    };
+
+    const commitTimerMinutes = () => {
+      const value = parseInt(timerMin.value, 10);
+      if (!Number.isFinite(value)) {
+        timerMin.value = this.timer.minutes;
+        updateTimerPresetUI();
+        return;
+      }
+      setTimerMinutes(value, { restart: false });
     };
 
     const renderTimerPresets = () => {
@@ -1747,7 +1767,7 @@ class GuitarMetronome extends HTMLElement {
         b.textContent = String(min);
         b.title = `${min} 分钟`;
         b.setAttribute('aria-label', `倒计时 ${min} 分钟`);
-        b.onclick = () => setTimerMinutes(min);
+        b.onclick = () => setTimerMinutes(min, { restart: true });
         timerPresets.appendChild(b);
       });
       updateTimerPresetUI();
@@ -1896,10 +1916,18 @@ class GuitarMetronome extends HTMLElement {
     };
 
     // 倒计时
-    timerMin.oninput = () => setTimerMinutes(timerMin.value, { syncInput: false });
+    timerMin.onchange = commitTimerMinutes;
+    timerMin.onblur = commitTimerMinutes;
+    timerMin.onkeydown = (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      commitTimerMinutes();
+      timerMin.blur();
+    };
     timerOn.onchange = () => {
       this.timer.enabled = timerOn.checked;
       saveSettings();
+      updateTimerPresetUI();
       if (this.isRunning) {
         if (this.timer.enabled) startCountdown();
         else { stopCountdown(); updateHud(); }

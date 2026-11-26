@@ -117,6 +117,10 @@ const readerCSS = `
   .score-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding-top: 1px; }
   .score-name { font-size: 13px; text-align: left; display: -webkit-box; width: 100%; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; margin-top: 0; word-break: break-word; }
   .score-meta { font-size: 10px; color: var(--muted); text-align: left; margin-top: 4px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (min-width: 341px) and (max-width: 380px) {
+    .score-cover { width: 72px; flex-basis: 72px; box-sizing: border-box; }
+    .score-name { font-size: 12.5px; }
+  }
 
   .tag-badge {
     display: block; margin-top: 7px; z-index: 2; max-width: 100%; box-sizing: border-box;
@@ -132,7 +136,7 @@ const readerCSS = `
     color: var(--on-primary); font-size: 12px; font-weight: 800; display: none;
     align-items: center; justify-content: center;
   }
-  .shelf-view.managing .tag-badge, .shelf-view.managing .card-edit-btn, .shelf-view.managing .card-actions { display: none; }
+  .shelf-view.managing .tag-badge, .shelf-view.managing .card-edit-btn { display: none; }
   .shelf-view.managing .select-mark { display: flex; }
   .score-card.selected .select-mark { background: var(--primary); border-color: var(--primary); }
 
@@ -147,11 +151,6 @@ const readerCSS = `
     align-items: center; justify-content: center;
   }
   .card-edit-btn:hover { background: rgba(var(--primary-rgb), .26); }
-
-  .card-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: 0.2s; z-index: 3; }
-  .score-card:hover .card-actions { opacity: 1; }
-  .card-actions .action-btn { width: 22px; height: 22px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; }
-  .btn-delete { background: rgba(var(--danger-rgb), 0.2); color: var(--danger); }
 
   .batch-bar {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 160; display: none;
@@ -1393,9 +1392,6 @@ class SheetReader extends HTMLElement {
             <div class="score-meta">${escapeHtml(metaText)}</div>
             ${tags.length ? `<span class="tag-badge" title="${escapeHtml(tags.join('，'))}">${escapeHtml(badgeText)}</span>` : ''}
           </div>
-          <div class="card-actions">
-            <button class="action-btn btn-delete" title="删除">×</button>
-          </div>
         `;
 
         card.onclick = () => {
@@ -1410,15 +1406,6 @@ class SheetReader extends HTMLElement {
           e.stopPropagation();
           if (this.manageMode) return;
           openEditModal(score);
-        };
-
-        card.querySelector('.btn-delete').onclick = async (e) => {
-          e.stopPropagation();
-          const deleted = await confirmDeleteScore(score);
-          if (deleted) {
-            showToast('已删除');
-            this.loadShelf();
-          }
         };
 
         shelfView.appendChild(card);

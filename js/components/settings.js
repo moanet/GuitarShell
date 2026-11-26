@@ -681,7 +681,7 @@ class GuitarSettings extends HTMLElement {
     const path = localStorage.getItem('gs_cloud_path') || 'GuitarShell/backup.json';
     try {
       const summary = await getCloudSyncSummary(path);
-      el.textContent = describeCloudSync(summary);
+      el.textContent = describeCloudSync(summary, { compact: true });
     } catch (err) {
       console.warn('[云同步] 读取设置页状态失败:', err.message);
       el.textContent = '同步状态读取失败 · 仍可手动上传 / 下载';

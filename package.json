@@ -1,6 +1,6 @@
 {
   "name": "guitarshell",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": true,
   "description": "Guitar Shell Android shell",
   "scripts": {
@@ -8,8 +8,8 @@
     "www": "node scripts/build-www.mjs",
     "cap:add": "npm run www && cap add android",
     "cap:sync": "npm run www && cap sync android",
-    "apk:debug": "npm run cap:sync && cd android && gradlew.bat assembleDebug",
-    "apk:release": "npm run cap:sync && cd android && gradlew.bat assembleRelease"
+    "apk:debug": "node scripts/build-apk.mjs debug",
+    "apk:release": "node scripts/build-apk.mjs"
   },
   "dependencies": {
     "@capacitor/android": "6.2.3",
