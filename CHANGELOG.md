@@ -3,7 +3,7 @@
 > Guitar Shell 的**完整迭代记录**：逐版本交付、测试结果、关键决策与风险。
 > README 只保留精简时间线和当前进度；需要追溯细节时看这里。
 
-## 0.1.16 — 四项小修与构建兜底（已构建并真机验收，2026-11-26）
+## 0.1.16 — 四项小修与构建兜底（已发布，2026-11-26）
 
 > 版本号 `0.1.16` / `versionCode 122`。只做四项界面小修，并给 APK 构建增加 JDK 自动定位；不改数据模型、分享卡视觉、云同步判定与读谱核心。
 
@@ -25,6 +25,13 @@
 - 静态检查：`npm run check` 通过，`v0.1.16，38 个 JS 文件`。
 - Android 13 真机：时间档自动启用并倒计时至 `14:57`；设置显示“待同步”；书架无删除 X；临时 360 分辨率复核封面 72px、标题 12.5px、卡片高度约 148px，测试后已还原分辨率。
 - APK `4,493,972` 字节，SHA-256 `12D35A7635DB8BB9882341A597C21E0D40EE0F40B07260D53F84ADACA58587AA`；证书 SHA-256 与 0.1.15 一致。
+
+**发布**
+
+- 提交 `e2b529a feat: 0.1.16 四项界面小修与构建 JDK 兜底`，推送 `main`；随后 `8ff095c docs: 记录 0.1.16 已推送 main`。
+- tag `v0.1.16` 指向 `8ff095c`；GitHub Release 标题 `v0.1.16`，Release ID `459445063`，https://github.com/moanet/GuitarShell/releases/tag/v0.1.16 。
+- APK asset ID `796001994`，https://github.com/moanet/GuitarShell/releases/download/v0.1.16/GuitarShell-0.1.16-release.apk 。
+- 远端 APK 复核 `4,493,972` 字节、SHA-256 `12D35A7635DB8BB9882341A597C21E0D40EE0F40B07260D53F84ADACA58587AA`，与本地一致。
 
 ## 0.1.15 — 分享卡定稿与双自定义背景（已发布，2026-11-26）
 

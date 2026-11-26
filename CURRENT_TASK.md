@@ -1,6 +1,6 @@
 # CURRENT_TASK — 0.1.16 小修与收口
 
-> 状态：代码已实现，浏览器回归与 Android 13 真机验收通过；`0.1.16 / 122` APK 已构建，已推送 `main`（`e2b529a`），待发布。
+> 状态：已发布 `v0.1.16`；Android 13 真机验收通过，Release 与 APK 已上线。
 > 版本：计划 `0.1.16`；版本号与发布日期以最终验收为准，不提前冻结。
 > 范围：只做四项小修，不改 `0.1.15` 分享卡视觉，不引入功能增量。
 
@@ -91,3 +91,10 @@
 - 设置：云同步状态显示单行“待同步”，关于区显示 `v0.1.16`。
 - 360 宽：临时执行 `wm size 990x2200`（990 / 2.75 = 360）复核，封面 72px、标题 12.5px、卡片高度约 148px、无删除 X；测试后已 `wm size reset` 还原。
 - 分辨率还原后重新启动应用，界面恢复正常。
+
+## 9. 发布记录
+
+- tag：`v0.1.16`，指向 `8ff095c`。
+- GitHub Release：`v0.1.16`，Release ID `459445063`，https://github.com/moanet/GuitarShell/releases/tag/v0.1.16 。
+- APK asset：ID `796001994`，`GuitarShell-0.1.16-release.apk`，https://github.com/moanet/GuitarShell/releases/download/v0.1.16/GuitarShell-0.1.16-release.apk 。
+- 远端复核：`4,493,972` 字节，SHA-256 `12D35A7635DB8BB9882341A597C21E0D40EE0F40B07260D53F84ADACA58587AA`，与本地一致。
