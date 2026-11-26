@@ -1,6 +1,6 @@
 # CURRENT_TASK — 0.1.19 调音器主界面收口与预设调弦
 
-> 状态：已实现，浏览器回归与真机验收通过，待提交与发布。
+> 状态：已发布。
 > 版本：`0.1.19` / `versionCode 125`；构建日期 2026-11-27。
 > 范围：只调音器主界面、调音设置、预设 / 自定义调弦；不改 YIN 检测、音频引擎、节拍器、乐谱、全局设置和练习记录。
 
@@ -121,3 +121,10 @@
 - 自定义重复音高会暴露旧的音名 key 冲突；目标身份必须先改为弦位。
 - 预设切换后若低音折叠仍用标准六弦，会自动识别错弦；检测链路必须同步换 targets。
 - 320 宽下状态条与弦位行最容易挤；先定字号与省略规则，再用 `gs_026` 锁住。
+
+## 12. 发布
+
+- 代码提交 `e711542 feat: 0.1.19 调音器主界面与调弦预设`，推送 `main`；tag `v0.1.19` 指向该提交。
+- GitHub Release ID `459677559`，https://github.com/moanet/GuitarShell/releases/tag/v0.1.19 。
+- APK asset ID `796843888`，https://github.com/moanet/GuitarShell/releases/download/v0.1.19/GuitarShell-0.1.19-release.apk 。
+- 远端 APK 复核 `4,510,209` 字节、SHA-256 `4AD4214104B49EECAD119FBB4E2F0294BE1625F2ED8E6C5A669EAB9D8EE65942`，`versionCode 125` / `versionName 0.1.19`，与本地一致。
