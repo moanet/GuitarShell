@@ -545,7 +545,10 @@ class GuitarTuner extends HTMLElement {
     requestAnimationFrame(() => {
       mask.classList.add('show');
       const close = root.getElementById('closeSettings');
-      if (close) close.focus();
+      if (close) {
+        // 弹层还在入场动画中，聚焦若触发滚动会把 WebView 视口上推，主界面会闪动
+        try { close.focus({ preventScroll: true }); } catch (err) { close.focus(); }
+      }
     });
   }
 

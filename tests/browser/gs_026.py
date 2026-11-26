@@ -320,7 +320,7 @@ def main():
 
         print(json.dumps(out, ensure_ascii=False, indent=2))
 
-        check("版本为 v0.1.19", out["version"] == "v0.1.19", out["version"])
+        check("版本为 v0.1.20", out["version"] == "v0.1.20", out["version"])
         check("默认调弦名常驻", out["default"]["name"] == "标准调弦", out["default"]["name"])
         check("A4 440 默认不显示", out["default"]["a4Hidden"] and out["default"]["a4Text"] == "", out["default"])
         check("默认六弦音名", out["default"]["notes"] == ["E", "A", "D", "G", "B", "e"], str(out["default"]["notes"]))
