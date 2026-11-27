@@ -89,6 +89,7 @@ const devFileName = `GuitarShell-dev-${stamp}-${gitHash}${dirty ? '-dirty' : ''}
 const isWin = process.platform === 'win32';
 const runNode = (script, scriptArgs, cwd) => spawnSync(process.execPath, [script, ...scriptArgs], { cwd, env, stdio: 'inherit' });
 
+env.GS_BUILD_STAMP = dev ? devVersionName : '';
 const www = runNode(join(root, 'scripts', 'build-www.mjs'), [], root);
 if (www.status !== 0) process.exit(www.status ?? 1);
 

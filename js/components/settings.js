@@ -4,7 +4,7 @@
 // Shadow DOM 隔离，抽屉固定在视口右侧，不参与页面布局
 // ==========================================
 
-import { APP_VERSION } from '../services/version.js';
+import { APP_VERSION, BUILD_STAMP } from '../services/version.js';
 import { showToast } from '../services/toast.js';
 import { dbService } from '../services/db.js';
 import { getTheme, setTheme, onThemeChange, syncThemeImages } from '../services/theme.js';
@@ -210,6 +210,7 @@ const settingsCSS = `
   .about-copy { flex: 1; min-width: 0; }
   .about-copy b { display: block; font-size: 14px; color: var(--heading); }
   .ver { padding: 3px 6px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--accent-text); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .about-dev { margin: 6px 2px 0 44px; font-size: 10px; line-height: 1.35; color: var(--accent-text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
   .about-privacy { display: flex; align-items: center; gap: 8px; margin: 8px 2px 0; font-size: 11px; line-height: 1.4; color: var(--muted); white-space: nowrap; }
   .about-privacy i { width: 1px; height: 10px; flex: 0 0 auto; background: var(--line-strong); }
   .dev-link {
@@ -341,6 +342,7 @@ const settingsHTML = `
             <div class="about-copy"><b>Guitar Shell</b></div>
             <span class="ver" id="appVer">v…</span>
           </div>
+          <div class="about-dev" id="appDev" hidden></div>
           <p class="about-privacy" aria-label="无账号，本地优先，默认不上传">
             <span>无账号</span><i aria-hidden="true"></i><span>本地优先</span><i aria-hidden="true"></i><span>默认不上传</span>
           </p>
@@ -365,6 +367,9 @@ class GuitarSettings extends HTMLElement {
     this.shadowRoot.innerHTML = `<style>${settingsCSS}</style>${settingsHTML}`;
     this.$ = (id) => this.shadowRoot.getElementById(id);
     this.$('appVer').textContent = `v${APP_VERSION}`;
+    const appDev = this.$('appDev');
+    appDev.hidden = !BUILD_STAMP;
+    appDev.textContent = BUILD_STAMP ? `v${BUILD_STAMP}` : '';
     this.bind();
     this.syncThemeUI();
     this.offTheme = onThemeChange(() => this.syncThemeUI());

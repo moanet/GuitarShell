@@ -80,6 +80,7 @@
 
 - 开发包的 `versionName` 只是 Android 系统标识，不是新版本号；不得写成 `0.1.27a`。
 - 开发包不递增 `versionCode`，多个开发包共用上一稳定快照的 `versionCode`，靠 `versionName` 时间戳区分。
+- 开发包内部通过构建时注入的 `BUILD_STAMP` 显示 dev 标识：顶部徽标只显示 `dev HHmm`，关于页显示完整 `v<上一稳定版本号>-dev.<YYYYMMDD-HHmm>`；稳定构建的 `BUILD_STAMP` 必须为空。
 - 稳定快照的 `versionCode` 必须大于上一稳定快照；发版时写入并提交，构建阶段不再自动递增。
 - 不额外维护构建计数器。
 

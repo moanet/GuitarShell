@@ -1,4 +1,4 @@
-import { APP_VERSION } from './services/version.js';
+import { APP_VERSION, BUILD_STAMP } from './services/version.js';
 import { showToast } from './services/toast.js';
 import { initTheme } from './services/theme.js';
 import { dbService } from './services/db.js';
@@ -167,8 +167,11 @@ const params = new URLSearchParams(location.search);
 const isLocalDevHost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
 const devStamp = isLocalDevHost ? (params.get('dev') || '') : '';
 const devMode = Boolean(devStamp);
-const devShort = devMode ? (devStamp === '1' ? ' · dev' : ` · dev ${devStamp.slice(-4)}`) : '';
-const devSuffix = devMode ? devShort : '';
+const devBuildLabel = BUILD_STAMP.startsWith(`${APP_VERSION}-dev.`) ? `dev ${BUILD_STAMP.slice(-4)}` : '';
+const devLabel = devMode
+  ? (devStamp === '1' ? 'dev' : `dev ${devStamp.slice(-4)}`)
+  : devBuildLabel;
+const isDev = Boolean(devLabel);
 
 // 线上 sw.js 里写的版本号（带时间戳绕开 CDN 缓存，只看内容不看响应头）
 const readLiveVersion = async () => {
@@ -188,16 +191,18 @@ const readCacheVersion = async () => {
 };
 
 const paintBadge = (liveVersion) => {
-  const currentLabel = `v${APP_VERSION}${devSuffix}`;
-  if (liveVersion && liveVersion !== APP_VERSION) {
+  const currentLabel = isDev ? devLabel : `v${APP_VERSION}`;
+  if (liveVersion && liveVersion !== APP_VERSION && !isDev) {
     badge.textContent = `${currentLabel} → v${liveVersion}`;
     badge.classList.add('has-update');
     badge.title = `线上已是 v${liveVersion}，点我重新加载`;
   } else {
     badge.textContent = currentLabel;
     badge.classList.remove('has-update');
-    badge.title = devMode
-      ? (devStamp === '1' ? '开发模式 · ?dev=1 · 不注册离线缓存' : `开发模式 · ${devStamp} · 不注册离线缓存`)
+    badge.title = isDev
+      ? (devBuildLabel
+        ? `开发构建 · ${BUILD_STAMP} · 线上更新检查已禁用`
+        : (devStamp === '1' ? '开发模式 · ?dev=1 · 不注册离线缓存' : `开发模式 · ${devStamp} · 不注册离线缓存`))
       : '点按检查线上版本';
   }
 };
@@ -206,6 +211,12 @@ if (badge) {
   paintBadge();
   badge.addEventListener('click', async () => {
     if (badge.disabled) return;
+    if (isDev) {
+      showToast(devBuildLabel
+        ? `开发构建 ${BUILD_STAMP}，已禁用线上更新检查`
+        : `开发模式 ${devStamp === '1' ? '?dev=1' : devStamp}，已禁用线上更新检查`);
+      return;
+    }
     badge.disabled = true;
     const restore = badge.textContent;
     badge.textContent = '检查中…';
@@ -244,10 +255,12 @@ if (badge) {
     }
   });
 
-  // 进页面后静默查一次：线上有新版就把徽标染色，但不打断操作
-  window.addEventListener('load', () => {
-    setTimeout(() => { readLiveVersion().then(paintBadge).catch(() => {}); }, 1500);
-  });
+  // 进页面后静默查一次：线上有新版就把徽标染色，但不打断操作；dev 构建不查
+  if (!isDev) {
+    window.addEventListener('load', () => {
+      setTimeout(() => { readLiveVersion().then(paintBadge).catch(() => {}); }, 1500);
+    });
+  }
 }
 
 // 注册 PWA 离线缓存 (Service Worker)
@@ -256,7 +269,7 @@ const isNativeShell = () => Boolean(
   window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()
 );
 if ('serviceWorker' in navigator && !isNativeShell()) {
-  if (devMode) {
+  if (isDev) {
     console.log('Guitar Shell 开发模式：跳过 SW 注册并清理本机缓存');
     navigator.serviceWorker.getRegistrations()
       .then(regs => Promise.all(regs.map(reg => reg.unregister())))
