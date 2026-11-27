@@ -29,6 +29,20 @@ function cloudDetailText(summary) {
   return `上次同步 ${time} · 本机已是最新`;
 }
 
+// 当前两套主题；未来新增主题只在数组末尾追加一项，设置页网格自动排下一行。
+// 真正启用新主题仍需同步扩展 theme.js 的白名单、系统栏颜色与图标资源。
+const THEME_OPTIONS = [
+  { id: 'deep', name: '深夜琴房', swatch: 'swatch-dark' },
+  { id: 'light', name: '暖纸日光', swatch: 'swatch-light' }
+];
+
+const themeChoicesHTML = THEME_OPTIONS.map((option) => `
+  <button class="theme-choice" data-theme-choice="${option.id}" type="button" aria-pressed="false">
+    <span class="swatch ${option.swatch}" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span class="theme-copy"><b>${option.name}</b></span>
+  </button>
+`).join('');
+
 const settingsCSS = `
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host, * { box-sizing: border-box; -webkit-tap-highlight-color: transparent !important; }
@@ -55,12 +69,11 @@ const settingsCSS = `
   }
   .mask.show .drawer { transform: translateX(0); }
   .head {
-    padding: calc(16px + env(safe-area-inset-top)) 14px 12px;
-    border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: 10px;
+    padding: calc(14px + env(safe-area-inset-top)) 14px 14px;
+    border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px;
   }
   .head-copy { flex: 1; min-width: 0; }
   h2 { margin: 0; font-size: 20px; line-height: 1.2; color: var(--heading); letter-spacing: .4px; }
-  .head p { margin: 5px 0 0; font-size: 10.5px; color: var(--muted); }
   .close {
     flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-strong);
     background: var(--surface-raised); color: var(--txt); font-size: 19px; line-height: 1; cursor: pointer;
@@ -70,17 +83,38 @@ const settingsCSS = `
   .body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 12px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
   .card { background: var(--card-bg); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
   .card-head { display: flex; align-items: center; gap: 8px; min-height: 36px; margin-bottom: 10px; }
-  .card-head .ico, .storage-head .ico { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 13px; flex-shrink: 0; }
-  h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
-  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 11px; }
-  .stats.triple { grid-template-columns: repeat(3, 1fr); }
-  .stat { background: var(--surface-deep); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; display: flex; align-items: baseline; gap: 5px; }
-  .stat b { font-size: 20px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
-  .stat span { font-size: 11px; color: var(--muted); }
-  .stats.triple .stat { flex-direction: column; align-items: flex-start; gap: 3px; padding: 9px 10px; }
-  .stats.triple .stat b { font-size: 14px; line-height: 1.2; }
-  .stats.triple .stat span { font-size: 10px; }
-  .cap-hint { margin: 0 2px 10px; font-size: 10px; line-height: 1.55; color: var(--muted); }
+  .fold-head {
+    width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; margin: 0; padding: 0;
+    border: 0; background: transparent; color: inherit; font-family: inherit; text-align: left; cursor: pointer;
+  }
+  .card-head .ico, .fold-head .ico { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 13px; flex-shrink: 0; }
+  h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .4px; white-space: nowrap; flex-shrink: 0; }
+  .fold-value {
+    margin-left: auto; min-width: 0; max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 11.5px; font-weight: 600; line-height: 1.4; color: var(--txt-soft); font-variant-numeric: tabular-nums;
+  }
+  .fold-value b { color: var(--accent-text); font-weight: 700; }
+  .fold-value .sep { margin: 0 5px; color: var(--muted-soft); font-weight: 400; }
+  .fold-value.metrics { white-space: normal; line-height: 1.25; display: flex; flex-wrap: wrap; justify-content: flex-end; }
+  .fold-value.metrics .metric { white-space: nowrap; }
+  /* 320 宽：数据标题与统计上下排，保持 40px 行高、完整计数与单行说明 */
+  @media (max-width: 340px) {
+    #btnToggleData {
+      display: grid; grid-template-columns: 24px 1fr 16px; grid-template-rows: 17px 16px;
+      column-gap: 8px; align-content: center; height: 40px;
+    }
+    #btnToggleData .ico { grid-row: 1 / 3; }
+    #btnToggleData h3 { grid-column: 2; grid-row: 1; align-self: end; }
+    #btnToggleData .fold-value.metrics {
+      grid-column: 2; grid-row: 2; display: block; width: auto; max-width: none;
+      justify-self: end; white-space: nowrap; overflow: visible; text-overflow: clip; line-height: 1.4;
+    }
+    #btnToggleData .chev { grid-column: 3; grid-row: 1 / 3; }
+  }
+  .fold-note { margin: 4px 2px 0; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
+  .fold-body { margin-top: 10px; }
+  .chev { width: 16px; text-align: center; color: var(--muted); font-size: 10px; flex: 0 0 auto; transition: transform .2s; }
+  .fold-card.open .chev { transform: rotate(180deg); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .act {
     width: 100%; min-height: 40px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-raised);
@@ -108,10 +142,7 @@ const settingsCSS = `
   .cloud-dot.unknown { background: var(--danger-text); }
   .cloud-detail { margin: 4px 2px 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
 
-  /* 数据与备份：一行裸统计 + 紧凑动作 */
-  .data-line { display: flex; align-items: baseline; gap: 5px; margin: 0 2px 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
-  .data-line b { font-size: 16px; line-height: 1.1; color: var(--accent-text); font-variant-numeric: tabular-nums; }
-  .data-line .dot { color: var(--muted-soft); margin: 0 2px; }
+  /* 数据与备份：摘要行 + 展开动作 */
   .danger-link {
     width: 100%; min-height: 30px; margin-top: 8px; padding: 6px 2px 0;
     border: 0; border-top: 1px solid var(--line); background: transparent;
@@ -120,57 +151,19 @@ const settingsCSS = `
   }
   .danger-link:active { color: var(--danger); }
 
-  /* 外观：一行分段控件 */
-  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-deep); }
-  .seg-btn {
-    min-width: 0; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px;
-    border: 1px solid transparent; border-radius: 9px; background: transparent;
-    color: var(--muted); font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
-    transition: background .18s, border-color .18s, color .18s;
-  }
-  .seg-btn.active { background: rgba(var(--primary-rgb), .14); border-color: rgba(var(--primary-rgb), .6); color: var(--heading); box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), .12); }
-  .seg-btn:active { transform: scale(.985); }
-  .dots { display: inline-flex; gap: 2px; flex-shrink: 0; }
-  .dots i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid rgba(var(--secondary-rgb), .18); }
-  .dots.deep i:nth-child(1) { background: #121110; }
-  .dots.deep i:nth-child(2) { background: #B87B4C; }
-  .dots.deep i:nth-child(3) { background: #F3E8D6; }
-  .dots.light i:nth-child(1) { background: #F3EDE3; }
-  .dots.light i:nth-child(2) { background: #8F552C; }
-  .dots.light i:nth-child(3) { background: #C7863F; }
-
-  /* 存储：默认折叠，头常驻 */
-  .storage-head {
-    width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; margin: 0; padding: 0;
-    border: 0; background: transparent; color: inherit; font-family: inherit; text-align: left; cursor: pointer;
-  }
-  .storage-total { margin-left: auto; font-size: 11.5px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
-  .chev { width: 16px; text-align: center; color: var(--muted); font-size: 10px; transition: transform .2s; }
-  .storage-card.open .chev { transform: rotate(180deg); }
-  .storage-body { margin-top: 10px; }
-  .storage-line { display: flex; flex-wrap: wrap; gap: 3px 9px; margin: 0 2px 8px; font-size: 10.5px; color: var(--muted); }
-  .storage-line b { color: var(--txt-soft); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .cap-hint { margin: 0 2px 9px; font-size: 10px; line-height: 1.5; color: var(--muted); }
-
-  /* 云同步：状态与入口同一行 */
-  .cloud-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
-  .cloud-row .cloud-status { flex: 1; min-width: 0; }
-  .act.small { width: auto; flex: 0 0 auto; min-width: 64px; min-height: 40px; padding: 0 12px; font-size: 11px; }
-
-  /* 主题选择：两张可点按的色板卡，不依赖弹窗 */
+  /* 外观：两列主题网格，后续主题直接追加一行 */
+  .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .theme-choice {
-    width: 100%; display: flex; align-items: center; gap: 11px;
-    margin-top: 8px; padding: 9px 10px; border-radius: 14px;
-    border: 1px solid var(--line); background: rgba(var(--bg1-rgb), .46);
-    color: var(--txt); font-family: inherit; text-align: left; cursor: pointer;
+    width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 7px;
+    padding: 9px; border-radius: 12px; border: 1px solid var(--line);
+    background: rgba(var(--bg1-rgb), .46); color: var(--txt); font-family: inherit; cursor: pointer;
     transition: border-color .2s, background .2s, transform .2s;
   }
-  .theme-choice:first-of-type { margin-top: 0; }
   .theme-choice:hover { border-color: rgba(var(--primary-rgb), .55); background: rgba(var(--primary-rgb), .07); }
   .theme-choice:active { transform: scale(.985); }
   .theme-choice.active { border-color: var(--primary); background: rgba(var(--primary-rgb), .11); box-shadow: inset 0 0 0 1px rgba(var(--primary-rgb), .18); }
   .swatch {
-    width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+    width: 100%; height: 42px; border-radius: 9px; flex-shrink: 0;
     display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;
     border: 1px solid var(--line-strong);
   }
@@ -183,27 +176,26 @@ const settingsCSS = `
   .swatch-light i:nth-child(2) { background: #8F552C; }
   .swatch-light i:nth-child(3) { background: #FCF8F1; }
   .swatch-light i:nth-child(4) { background: #C7863F; }
-  .theme-copy { flex: 1; min-width: 0; }
-  .theme-copy b { display: block; font-size: 13px; color: var(--heading); }
-  .theme-copy small { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); }
-  .tag {
-    flex-shrink: 0; padding: 3px 8px; border-radius: 999px;
-    border: 1px solid rgba(var(--success-rgb), .4); background: rgba(var(--success-rgb), .1);
-    color: var(--success-text); font-size: 10px;
-    opacity: 0; transform: translateX(3px); transition: opacity .18s, transform .18s;
-  }
-  .theme-choice.active .tag { opacity: 1; transform: translateX(0); }
-  .about-brand { display: flex; align-items: center; gap: 7px; }
+  .theme-copy { min-width: 0; }
+  .theme-copy b { display: block; font-size: 12px; line-height: 1.4; color: var(--heading); text-align: center; }
+
+  /* 存储：展开体 */
+  .storage-line { display: flex; flex-wrap: wrap; gap: 3px 9px; margin: 0 2px 8px; font-size: 10.5px; color: var(--muted); }
+  .storage-line b { color: var(--txt-soft); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cap-hint { margin: 0 2px 9px; font-size: 10px; line-height: 1.5; color: var(--muted); }
+
+  /* 云同步：状态与入口同一行 */
+  .cloud-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .cloud-row .cloud-status { flex: 1; min-width: 0; }
+  .act.small { width: auto; flex: 0 0 auto; min-width: 64px; min-height: 40px; padding: 0 12px; font-size: 11px; }
+
+  .about-brand { display: flex; align-items: center; gap: 8px; }
   .about-brand img { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; box-shadow: 0 4px 14px rgba(var(--shadow-rgb), .28); }
   .about-copy { flex: 1; min-width: 0; }
   .about-copy b { display: block; font-size: 14px; color: var(--heading); }
-  .about-copy small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
   .ver { padding: 3px 6px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--accent-text); font-size: 10px; font-variant-numeric: tabular-nums; }
-  .local-first { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
-  .local-first svg { flex: 0 0 auto; margin-top: 1px; color: var(--success-text); }
-  .local-copy { min-width: 0; }
-  .local-copy b { display: block; font-size: 13px; font-weight: 700; line-height: 1.4; color: var(--heading); }
-  .local-copy small { display: block; margin-top: 4px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+  .about-privacy { display: flex; align-items: center; gap: 8px; margin: 8px 2px 0; font-size: 11px; line-height: 1.4; color: var(--muted); white-space: nowrap; }
+  .about-privacy i { width: 1px; height: 10px; flex: 0 0 auto; background: var(--line-strong); }
   .dev-link {
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; box-sizing: border-box; border-radius: 9px;
@@ -224,36 +216,38 @@ const settingsHTML = `
       <div class="head">
         <div class="head-copy">
           <h2>全局设置</h2>
-          <p>本地优先 · 数据只留在这台设备</p>
         </div>
         <button class="close" id="btnClose" type="button" aria-label="关闭设置">×</button>
       </div>
       <div class="body">
-        <section class="card">
-          <div class="card-head"><span class="ico">${icon('sun', 16)}</span><h3>外观</h3></div>
-          <div class="seg" role="group" aria-label="外观主题">
-            <button class="seg-btn active" id="themeDeep" data-theme-choice="deep" type="button" aria-pressed="true">
-              <span class="dots deep" aria-hidden="true"><i></i><i></i><i></i></span>深夜琴房
-            </button>
-            <button class="seg-btn" id="themeLight" data-theme-choice="light" type="button" aria-pressed="false">
-              <span class="dots light" aria-hidden="true"><i></i><i></i><i></i></span>暖纸日光
-            </button>
+        <section class="card fold-card" id="appearanceCard">
+          <button class="fold-head" id="btnToggleAppearance" type="button" aria-expanded="false" aria-controls="appearanceBody">
+            <span class="ico">${icon('sun', 16)}</span><h3>外观</h3>
+            <span class="fold-value" id="themeSummary">深夜琴房</span>
+            <span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <p class="fold-note" id="themeNote">暖纸日光可选，点按即切换</p>
+          <div class="fold-body" id="appearanceBody" hidden>
+            <div class="theme-grid" role="group" aria-label="外观主题">${themeChoicesHTML}</div>
           </div>
-          <p class="hint">点按即切换，全站同步换色。</p>
         </section>
 
-        <section class="card">
-          <div class="card-head"><span class="ico">${icon('database', 16)}</span><h3>数据与备份</h3></div>
-          <div class="data-line">
-            <b id="scoreCount">—</b><span>份乐谱</span><span class="dot">·</span><b id="logCount">—</b><span>条练习</span>
+        <section class="card fold-card" id="dataCard">
+          <button class="fold-head" id="btnToggleData" type="button" aria-expanded="false" aria-controls="dataBody">
+            <span class="ico">${icon('database', 16)}</span><h3>数据与备份</h3>
+            <span class="fold-value metrics"><span class="metric"><b id="scoreCount">—</b> 份乐谱<span class="sep">·</span></span><span class="metric"><b id="logCount">—</b> 条练习</span></span>
+            <span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <p class="fold-note">备份含进度、书签与练习记录</p>
+          <div class="fold-body" id="dataBody" hidden>
+            <div class="grid2">
+              <button class="act primary" id="btnBackup" type="button">备份到文件</button>
+              <button class="act" id="btnRestore" type="button">从文件恢复</button>
+            </div>
+            <button class="danger-link" id="btnClear" type="button">清空本机数据</button>
+            <div class="status" id="statusLine"></div>
+            <p class="hint">Android 存到 <b>Download/GuitarShell</b>。</p>
           </div>
-          <div class="grid2">
-            <button class="act primary" id="btnBackup" type="button">备份到文件</button>
-            <button class="act" id="btnRestore" type="button">从文件恢复</button>
-          </div>
-          <button class="danger-link" id="btnClear" type="button">清空本机数据</button>
-          <div class="status" id="statusLine"></div>
-          <p class="hint">备份含乐谱、进度、书签与练习记录；Android 存到 <b>Download/GuitarShell</b>。</p>
         </section>
 
         <section class="card">
@@ -266,13 +260,13 @@ const settingsHTML = `
           <p class="cloud-detail" id="cloudDetail">正在读取本机同步记录</p>
         </section>
 
-        <section class="card storage-card" id="storageCard">
-          <button class="storage-head" id="btnToggleStorage" type="button" aria-expanded="false" aria-controls="storageBody">
+        <section class="card fold-card storage-card" id="storageCard">
+          <button class="fold-head" id="btnToggleStorage" type="button" aria-expanded="false" aria-controls="storageBody">
             <span class="ico">${icon('archive', 16)}</span><h3>存储与缓存</h3>
-            <span class="storage-total" id="totalUsage">—</span>
+            <span class="fold-value"><b id="totalUsage">—</b></span>
             <span class="chev" aria-hidden="true">▾</span>
           </button>
-          <div class="storage-body" id="storageBody" hidden>
+          <div class="fold-body" id="storageBody" hidden>
             <div class="storage-line"><span>曲谱 <b id="scoreUsage">—</b></span><span>图片缓存 <b id="coverUsage">—</b></span></div>
             <p class="cap-hint" id="quotaHint">正在统计本机占用…</p>
             <div class="grid2">
@@ -293,16 +287,12 @@ const settingsHTML = `
           </div>
           <div class="about-brand">
             <img src="./icon-gShell-192.png" data-theme-icon data-dark-src="./icon-gShell-192.png" data-light-src="./icon-gShell-light-192.png" alt="">
-            <div class="about-copy"><b>Guitar Shell</b><small>本地优先的练琴工作站</small></div>
+            <div class="about-copy"><b>Guitar Shell</b></div>
             <span class="ver" id="appVer">v…</span>
           </div>
-          <div class="local-first">
-            ${icon('shield', 18)}
-            <div class="local-copy">
-              <b>你的谱子，只待在你的机器里</b>
-              <small>无账号 · 默认不上传 · 备份由你手动保存</small>
-            </div>
-          </div>
+          <p class="about-privacy" aria-label="无账号，本地优先，默认不上传">
+            <span>无账号</span><i aria-hidden="true"></i><span>本地优先</span><i aria-hidden="true"></i><span>默认不上传</span>
+          </p>
         </section>
       </div>
     </aside>
@@ -341,11 +331,17 @@ class GuitarSettings extends HTMLElement {
 
   syncThemeUI() {
     const current = getTheme();
+    const active = THEME_OPTIONS.find((option) => option.id === current) || THEME_OPTIONS[0];
     this.shadowRoot.querySelectorAll('[data-theme-choice]').forEach((btn) => {
-      const active = btn.dataset.themeChoice === current;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      const isActive = btn.dataset.themeChoice === current;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
+    const summary = this.$('themeSummary');
+    if (summary) summary.textContent = active.name;
+    const note = this.$('themeNote');
+    const alternative = THEME_OPTIONS.find((option) => option.id !== current);
+    if (note) note.textContent = alternative ? `${alternative.name}可选，点按即切换` : '点按即切换';
     syncThemeImages(this.shadowRoot);
   }
 
@@ -383,16 +379,37 @@ class GuitarSettings extends HTMLElement {
     this.$('btnClear').onclick = () => this.clear();
     this.$('btnCleanCover').onclick = () => this.cleanCoverCache();
     this.$('btnCleanOrphan').onclick = () => this.cleanOrphanCache();
-    this.$('btnToggleStorage').onclick = () => this.setStorageOpen(this.$('storageBody').hidden);
+
+    this.folds = {
+      appearance: { card: 'appearanceCard', btn: 'btnToggleAppearance', body: 'appearanceBody' },
+      data: { card: 'dataCard', btn: 'btnToggleData', body: 'dataBody' },
+      storage: { card: 'storageCard', btn: 'btnToggleStorage', body: 'storageBody' }
+    };
+    Object.keys(this.folds).forEach((name) => {
+      const fold = this.folds[name];
+      this.$(fold.btn).onclick = () => this.setFoldOpen(name, this.$(fold.body).hidden);
+    });
     this._swipeOff = this.bindSwipe();
   }
 
-  setStorageOpen(open) {
-    const body = this.$('storageBody');
+  setFoldOpen(name, open) {
+    const fold = this.folds && this.folds[name];
+    if (!fold) return;
+    const body = this.$(fold.body);
     if (!body) return;
+    if (open) {
+      Object.keys(this.folds).forEach((key) => {
+        if (key !== name) this.setFoldOpen(key, false);
+      });
+    }
     body.hidden = !open;
-    this.$('storageCard').classList.toggle('open', open);
-    this.$('btnToggleStorage').setAttribute('aria-expanded', open ? 'true' : 'false');
+    this.$(fold.card).classList.toggle('open', open);
+    this.$(fold.btn).setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  closeAllFolds() {
+    if (!this.folds) return;
+    Object.keys(this.folds).forEach((name) => this.setFoldOpen(name, false));
   }
 
   /**
@@ -554,7 +571,7 @@ class GuitarSettings extends HTMLElement {
   open() {
     this.$('mask').classList.add('show');
     this._suppressClickUntil = 0;
-    this.setStorageOpen(false);
+    this.closeAllFolds();
     const body = this.shadowRoot.querySelector('.body');
     if (body) body.scrollTop = 0;
     if (!this._layerOff) {

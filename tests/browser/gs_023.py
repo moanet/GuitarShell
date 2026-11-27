@@ -225,24 +225,33 @@ TEST_JS = r"""
   const sectionTitles = Array.from(sRoot.querySelectorAll('.body .card h3')).map((el) => el.textContent.trim());
   check('设置分区顺序正确', sectionTitles.join(' / ') === '外观 / 数据与备份 / 云同步 / 存储与缓存 / 关于', sectionTitles.join(' / '));
   const aboutText = sRoot.querySelector('.about').textContent.replace(/\s+/g, ' ').trim();
-  check('关于品牌副标题改为本地优先', sRoot.querySelector('.about-copy small').textContent.trim() === '本地优先的练琴工作站', sRoot.querySelector('.about-copy small').textContent.trim());
-  check('关于卡显示本地优先承诺', aboutText.includes('你的谱子，只待在你的机器里') && aboutText.includes('无账号 · 默认不上传 · 备份由你手动保存'), aboutText);
+  const privacy = sRoot.querySelector('.about-privacy');
+  check('关于品牌副标题已移除', !sRoot.querySelector('.about-copy small'), '');
+  const privacyText = privacy ? Array.from(privacy.querySelectorAll('span')).map((el) => el.textContent.trim()).join(' ') : '';
+  check('关于改为三项本地属性', privacy && privacyText === '无账号 本地优先 默认不上传', privacyText);
+  check('关于不再出现旧承诺与盾牌', !aboutText.includes('你的谱子') && !aboutText.includes('备份由你手动保存')
+    && !sRoot.querySelector('.about .local-first') && sRoot.querySelectorAll('.about svg').length === 2, aboutText);
   check('关于卡不再展示开发者构建信息', !aboutText.includes('零构建') && !aboutText.includes('Web Components'), aboutText);
   check('版本徽标与 GitHub 入口保留', /^v\d+\.\d+\.\d+/.test(sRoot.getElementById('appVer').textContent.trim())
     && sRoot.getElementById('btnGithub').getAttribute('href') === 'https://github.com/moanet/GuitarShell', `${sRoot.getElementById('appVer').textContent.trim()} / ${sRoot.getElementById('btnGithub').getAttribute('href')}`);
-  const segBtns = Array.from(sRoot.querySelectorAll('[data-theme-choice]'));
-  check('外观为两段控件', segBtns.length === 2 && segBtns.every((b) => b.classList.contains('seg-btn')), `${segBtns.length}`);
-  check('外观默认只有一段选中', segBtns.filter((b) => b.classList.contains('active')).length === 1, '');
-  sRoot.getElementById('themeLight').click();
+  const themeChoices = Array.from(sRoot.querySelectorAll('[data-theme-choice]'));
+  check('外观为主题网格两项', themeChoices.length === 2 && themeChoices.every((b) => b.classList.contains('theme-choice')), `${themeChoices.length}`);
+  check('外观默认只有一项选中', themeChoices.filter((b) => b.classList.contains('active')).length === 1, '');
+  check('外观摘要显示当前主题', sRoot.getElementById('themeSummary').textContent.trim() === '深夜琴房', sRoot.getElementById('themeSummary').textContent.trim());
+  sRoot.querySelector('[data-theme-choice="light"]').click();
   await sleep(80);
-  check('分段控件可切到浅色', sRoot.getElementById('themeLight').classList.contains('active') && sRoot.getElementById('themeDeep').classList.contains('active') === false, '');
-  sRoot.getElementById('themeDeep').click();
+  check('主题网格可切到浅色', sRoot.querySelector('[data-theme-choice="light"]').classList.contains('active')
+    && !sRoot.querySelector('[data-theme-choice="deep"]').classList.contains('active')
+    && sRoot.getElementById('themeSummary').textContent.trim() === '暖纸日光', sRoot.getElementById('themeSummary').textContent.trim());
+  sRoot.querySelector('[data-theme-choice="deep"]').click();
   await sleep(80);
-  check('分段控件可切回深色', sRoot.getElementById('themeDeep').classList.contains('active') && sRoot.getElementById('themeLight').classList.contains('active') === false, '');
+  check('主题网格可切回深色', sRoot.querySelector('[data-theme-choice="deep"]').classList.contains('active')
+    && !sRoot.querySelector('[data-theme-choice="light"]').classList.contains('active')
+    && sRoot.getElementById('themeSummary').textContent.trim() === '深夜琴房', sRoot.getElementById('themeSummary').textContent.trim());
+  const dataSummary = sRoot.querySelector('#dataCard .fold-value').textContent.replace(/\s+/g, ' ').trim();
   check('数据统计与备份入口合并', sRoot.getElementById('scoreCount').textContent !== '—'
-    && sRoot.querySelector('.data-line').textContent.includes('份乐谱')
-    && sRoot.querySelector('.data-line').textContent.includes('条练习')
-    && !!sRoot.getElementById('btnBackup') && !!sRoot.getElementById('btnRestore'), sRoot.querySelector('.data-line').textContent.trim());
+    && dataSummary.includes('份乐谱') && dataSummary.includes('条练习')
+    && !!sRoot.getElementById('btnBackup') && !!sRoot.getElementById('btnRestore'), dataSummary);
   check('清空为文本按钮', sRoot.getElementById('btnClear').classList.contains('danger-link'), '');
   const storageBody = sRoot.getElementById('storageBody');
   check('存储卡默认折叠', storageBody.hidden === true && sRoot.getElementById('btnToggleStorage').getAttribute('aria-expanded') === 'false', '');

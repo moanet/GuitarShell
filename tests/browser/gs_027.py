@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==========================================
 # tests/browser/gs_027.py
-# 0.1.22 全局设置布局回归：标题行、动作行、云同步层级、关于页本地优先
+# 0.1.23 全局设置折叠布局回归：摘要行、单开互斥、主题网格、关于细线承诺
 #
 # 依赖：
 #   pip install websocket-client
@@ -108,6 +108,149 @@ class CDP:
             pass
 
 
+TEST = r"""
+(async () => {
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const waitFor = async (fn, timeout = 12000, step = 150) => {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const value = await fn();
+      if (value) return value;
+      await sleep(step);
+    }
+    return null;
+  };
+  const checks = [];
+  const check = (name, pass, detail) => checks.push({ name, pass: !!pass, detail });
+  try {
+    const settings = document.querySelector('guitar-settings');
+    await sleep(700);
+    const sRoot = settings.shadowRoot;
+    await waitFor(() => sRoot.querySelector('.mask.show'), 8000);
+    await waitFor(() => {
+      const text = sRoot.getElementById('cloudStatus')?.textContent.trim() || '';
+      return text && !text.includes('正在读取');
+    }, 8000);
+    await sleep(200);
+
+    const body = sRoot.querySelector('.body');
+    const cards = Array.from(body.querySelectorAll('.card'));
+    const names = Array.from(body.querySelectorAll('.card h3')).map((el) => el.textContent.trim());
+    check('设置五张卡顺序不变', names.join(' / ') === '外观 / 数据与备份 / 云同步 / 存储与缓存 / 关于', names.join(' / '));
+
+    const headers = [
+      sRoot.getElementById('btnToggleAppearance'),
+      sRoot.getElementById('btnToggleData'),
+      sRoot.querySelector('.card:nth-child(3) .card-head'),
+      sRoot.getElementById('btnToggleStorage'),
+      sRoot.querySelector('.about .card-head')
+    ];
+    const icons = headers.map((head) => head.querySelector('.ico'));
+    const titles = headers.map((head) => head.querySelector('h3'));
+    const iconRects = icons.map((el) => el.getBoundingClientRect());
+    const titleRects = titles.map((el) => el.getBoundingClientRect());
+    const headerRects = headers.map((el) => el.getBoundingClientRect());
+    check('五个标题图标盒均为 24×24', iconRects.every((r) => Math.abs(r.width - 24) < 1 && Math.abs(r.height - 24) < 1), iconRects.map((r) => `${Math.round(r.width)}×${Math.round(r.height)}`).join(' / '));
+    check('五个标题字号均为 13px', titles.every((el) => getComputedStyle(el).fontSize === '13px'), titles.map((el) => getComputedStyle(el).fontSize).join(' / '));
+    check('标题图标左边缘对齐', iconRects.every((r) => Math.abs(r.left - iconRects[0].left) < 1), iconRects.map((r) => Math.round(r.left)).join(' / '));
+    check('图标与标题间距均为 8', titleRects.every((r, i) => Math.abs((r.left - iconRects[i].right) - 8) < 1), titleRects.map((r, i) => Math.round(r.left - iconRects[i].right)).join(' / '));
+    check('五张标题单行不换行', titleRects.every((r) => r.height <= 20), titleRects.map((r) => Math.round(r.height)).join(' / '));
+    check('外观与数据标题行高 40', [0, 1].every((i) => Math.abs(headerRects[i].height - 40) < 1), [0, 1].map((i) => Math.round(headerRects[i].height)).join(' / '));
+    check('存储标题行高 40', Math.abs(headerRects[3].height - 40) < 1, `${Math.round(headerRects[3].height)}`);
+    check('云同步与关于保持 36 标题行', [2, 4].every((i) => Math.abs(headerRects[i].height - 36) < 1), [2, 4].map((i) => Math.round(headerRects[i].height)).join(' / '));
+    check('折叠行均为整行按钮', [0, 1, 3].every((i) => headers[i].tagName === 'BUTTON' && headers[i].getAttribute('aria-controls')), '');
+
+    check('抽屉标题副标题已删除', !sRoot.querySelector('.head p'), '');
+    check('外观与数据默认收起', sRoot.getElementById('appearanceBody').hidden && sRoot.getElementById('dataBody').hidden, '');
+    check('存储默认收起', sRoot.getElementById('storageBody').hidden && sRoot.getElementById('btnToggleStorage').getAttribute('aria-expanded') === 'false', '');
+
+    const storageChev = sRoot.getElementById('btnToggleStorage').querySelector('.chev').getBoundingClientRect();
+    const github = sRoot.querySelector('.about .dev-link').getBoundingClientRect();
+    check('存储箭头与关于 GitHub 右边缘对齐', Math.abs(storageChev.right - github.right) < 1, `${Math.round(storageChev.right)} / ${Math.round(github.right)}`);
+
+    const appearanceSummary = sRoot.getElementById('themeSummary');
+    const appearanceNote = sRoot.getElementById('themeNote');
+    check('外观摘要显示当前主题', appearanceSummary.textContent.trim() === '深夜琴房', appearanceSummary.textContent.trim());
+    check('外观说明提示另一套主题', appearanceNote.textContent.includes('暖纸日光') && appearanceNote.textContent.includes('点按即切换'), appearanceNote.textContent.trim());
+
+    sRoot.getElementById('btnToggleAppearance').click();
+    await sleep(120);
+    check('外观展开', sRoot.getElementById('appearanceBody').hidden === false && sRoot.getElementById('btnToggleAppearance').getAttribute('aria-expanded') === 'true', '');
+    const themeGrid = sRoot.querySelector('.theme-grid');
+    const themeChoices = Array.from(sRoot.querySelectorAll('[data-theme-choice]'));
+    const themeRects = themeChoices.map((el) => el.getBoundingClientRect());
+    const gridCols = getComputedStyle(themeGrid).gridTemplateColumns.split(' ').filter(Boolean);
+    check('主题网格固定两列', gridCols.length === 2, gridCols.join(' / '));
+    check('主题网格两项等宽', themeRects.length === 2 && Math.abs(themeRects[0].width - themeRects[1].width) < 1, themeRects.map((r) => Math.round(r.width)).join(' / '));
+    check('主题色板高 42', themeChoices.every((el) => Math.abs(el.querySelector('.swatch').getBoundingClientRect().height - 42) < 1), themeChoices.map((el) => Math.round(el.querySelector('.swatch').getBoundingClientRect().height)).join(' / '));
+    check('主题网格默认选中当前主题', themeChoices.filter((el) => el.classList.contains('active')).length === 1 && sRoot.querySelector('[data-theme-choice="deep"]').classList.contains('active'), '');
+    check('主题命名保持原样', themeChoices.map((el) => el.textContent.trim()).join(' / ') === '深夜琴房 / 暖纸日光', themeChoices.map((el) => el.textContent.trim()).join(' / '));
+
+    sRoot.querySelector('[data-theme-choice="light"]').click();
+    await sleep(120);
+    check('切到浅色后摘要同步', appearanceSummary.textContent.trim() === '暖纸日光' && sRoot.querySelector('[data-theme-choice="light"]').classList.contains('active') && !sRoot.querySelector('[data-theme-choice="deep"]').classList.contains('active'), appearanceSummary.textContent.trim());
+    check('切到浅色后说明同步', appearanceNote.textContent.includes('深夜琴房'), appearanceNote.textContent.trim());
+    check('浅色动作按钮边框可见', getComputedStyle(sRoot.getElementById('btnBackup')).borderTopColor !== 'rgba(0, 0, 0, 0)', getComputedStyle(sRoot.getElementById('btnBackup')).borderTopColor);
+    sRoot.querySelector('[data-theme-choice="deep"]').click();
+    await sleep(120);
+    check('切回深色后摘要同步', appearanceSummary.textContent.trim() === '深夜琴房', appearanceSummary.textContent.trim());
+
+    sRoot.getElementById('btnToggleData').click();
+    await sleep(120);
+    check('数据展开时外观自动收起', sRoot.getElementById('dataBody').hidden === false && sRoot.getElementById('appearanceBody').hidden === true, '');
+    const dataSummary = sRoot.querySelector('#dataCard .fold-value').textContent.replace(/\s+/g, ' ').trim();
+    const dataValue = sRoot.querySelector('#dataCard .fold-value');
+    check('数据摘要为乐谱与练习统计', /^\d+ 份乐谱\s*·\s*\d+ 条练习$/.test(dataSummary), dataSummary);
+    check('数据摘要不省略', dataValue.scrollWidth <= dataValue.clientWidth + 1, `${dataValue.scrollWidth}/${dataValue.clientWidth}`);
+    check('数据说明单行', sRoot.querySelector('#dataCard .fold-note').getBoundingClientRect().height <= 17, `${Math.round(sRoot.querySelector('#dataCard .fold-note').getBoundingClientRect().height)}`);
+    const dataActs = [sRoot.getElementById('btnBackup'), sRoot.getElementById('btnRestore')];
+    check('数据动作高 40 且等分', dataActs.every((el) => Math.abs(el.getBoundingClientRect().height - 40) < 1)
+      && Math.abs(dataActs[0].getBoundingClientRect().width - dataActs[1].getBoundingClientRect().width) < 1,
+      dataActs.map((el) => `${Math.round(el.getBoundingClientRect().width)}×${Math.round(el.getBoundingClientRect().height)}`).join(' / '));
+    const clearStyle = getComputedStyle(sRoot.getElementById('btnClear'));
+    check('清空仍为 30 文本按钮', parseFloat(clearStyle.minHeight) === 30 && clearStyle.backgroundColor === 'rgba(0, 0, 0, 0)', `${clearStyle.minHeight} / ${clearStyle.backgroundColor}`);
+    check('Android 备份路径移入展开体', sRoot.querySelector('#dataBody .hint').textContent.includes('Download/GuitarShell'), sRoot.querySelector('#dataBody .hint').textContent.trim());
+
+    sRoot.getElementById('btnToggleStorage').click();
+    await sleep(120);
+    check('存储展开时数据自动收起', sRoot.getElementById('storageBody').hidden === false && sRoot.getElementById('dataBody').hidden === true, '');
+    const storageActs = [sRoot.getElementById('btnCleanCover'), sRoot.getElementById('btnCleanOrphan')];
+    check('存储动作高 40 且等分', storageActs.every((el) => Math.abs(el.getBoundingClientRect().height - 40) < 1)
+      && Math.abs(storageActs[0].getBoundingClientRect().width - storageActs[1].getBoundingClientRect().width) < 1,
+      storageActs.map((el) => `${Math.round(el.getBoundingClientRect().width)}×${Math.round(el.getBoundingClientRect().height)}`).join(' / '));
+    check('存储总占用保留', sRoot.getElementById('totalUsage').textContent.trim() !== '—', sRoot.getElementById('totalUsage').textContent.trim());
+    sRoot.getElementById('btnToggleStorage').click();
+    await sleep(80);
+
+    const about = sRoot.querySelector('.about');
+    const aboutText = about.textContent.replace(/\s+/g, ' ').trim();
+    const privacy = sRoot.querySelector('.about-privacy');
+    const privacyText = Array.from(privacy.querySelectorAll('span')).map((el) => el.textContent.trim()).join(' ');
+    const privacyRects = Array.from(privacy.querySelectorAll('span')).map((el) => el.getBoundingClientRect());
+    const privacyLines = privacy.querySelectorAll('i');
+    check('关于不折叠', !about.querySelector('.chev') && privacy.offsetParent !== null, '');
+    check('品牌副标题已移除', !sRoot.querySelector('.about-copy small'), '');
+    check('关于承诺为三项', privacyText === '无账号 本地优先 默认不上传', privacyText);
+    check('关于承诺三项单行', privacyRects.every((r) => r.height <= 17) && Math.abs(privacyRects[0].top - privacyRects[1].top) < 1, privacyRects.map((r) => Math.round(r.top)).join(' / '));
+    check('关于承诺细线分隔', privacyLines.length === 2 && Array.from(privacyLines).every((el) => el.getBoundingClientRect().width === 1), `${privacyLines.length}`);
+    check('盾牌与旧承诺块已删除', sRoot.querySelectorAll('.about svg').length === 2 && !aboutText.includes('你的谱子') && !aboutText.includes('备份由你手动保存'), aboutText);
+    check('GitHub 入口保留', sRoot.getElementById('btnGithub').getAttribute('href') === 'https://github.com/moanet/GuitarShell', '');
+    check('关于不再展示开发者构建信息', !aboutText.includes('零构建') && !aboutText.includes('Web Components'), aboutText);
+
+    check('设置页无横向溢出', body.scrollWidth <= body.clientWidth + 1, `${body.scrollWidth}/${body.clientWidth}`);
+    const bodyRect = body.getBoundingClientRect();
+    const aboutRect = about.getBoundingClientRect();
+    check('折叠后内容不超过一屏', body.scrollHeight <= body.clientHeight + 1, `${body.scrollHeight}/${body.clientHeight}`);
+    check('关于卡完整可见', aboutRect.bottom <= bodyRect.bottom + 1, `${Math.round(aboutRect.bottom)} / ${Math.round(bodyRect.bottom)}`);
+    check('运行期无异常', !window.__gsErrs027.length, JSON.stringify(window.__gsErrs027));
+    return { checks, errors: window.__gsErrs027, meta: { width: innerWidth } };
+  } catch (err) {
+    return { checks, errors: [String(err && err.stack || err)], meta: { width: innerWidth } };
+  }
+})()
+"""
+
+
 def main():
     server = start_server()
     browser = pick_browser()
@@ -152,129 +295,7 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs027.push(Strin
 document.querySelector('#btnGlobalSettings').click();
 """)
 
-
-        out = cdp.ev(r"""
-(async () => {
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-  const waitFor = async (fn, timeout = 12000, step = 150) => {
-    const start = Date.now();
-    while (Date.now() - start < timeout) {
-      const value = await fn();
-      if (value) return value;
-      await sleep(step);
-    }
-    return null;
-  };
-  const checks = [];
-  const check = (name, pass, detail) => checks.push({ name, pass: !!pass, detail });
-  try {
-    const settings = document.querySelector('guitar-settings');
-    await sleep(800);
-    const sRoot = settings.shadowRoot;
-    await waitFor(() => sRoot.querySelector('.mask.show'), 8000);
-    await waitFor(() => {
-      const t = sRoot.getElementById('cloudStatus')?.textContent.trim() || '';
-      return t && !t.includes('正在读取');
-    }, 8000);
-    await sleep(200);
-
-    const body = sRoot.querySelector('.body');
-    const cards = Array.from(body.querySelectorAll('.card'));
-    const headerNames = Array.from(body.querySelectorAll('.card h3')).map((el) => el.textContent.trim());
-    check('设置五张卡顺序不变', headerNames.join(' / ') === '外观 / 数据与备份 / 云同步 / 存储与缓存 / 关于', headerNames.join(' / '));
-
-    const headers = cards.map((card) => card.querySelector('.card-head') || card.querySelector('.storage-head'));
-    const icons = headers.map((head) => head.querySelector('.ico'));
-    const titles = headers.map((head) => head.querySelector('h3'));
-    const iconRects = icons.map((el) => el.getBoundingClientRect());
-    const titleRects = titles.map((el) => el.getBoundingClientRect());
-    const headerRects = headers.map((el) => el.getBoundingClientRect());
-    const iconSizes = icons.map((el) => {
-      const r = el.getBoundingClientRect();
-      return `${Math.round(r.width)}×${Math.round(r.height)}`;
-    });
-    const iconFont = icons.map((el) => getComputedStyle(el).fontSize);
-    const titleFont = titles.map((el) => getComputedStyle(el).fontSize);
-    check('五个标题图标盒均为 24×24', iconSizes.every((s) => s === '24×24'), iconSizes.join(' / '));
-    check('五个标题字号均为 13px', titleFont.every((s) => s === '13px'), titleFont.join(' / '));
-    check('标题图标左边缘对齐', iconRects.every((r) => Math.abs(r.left - iconRects[0].left) < 1), iconRects.map((r) => Math.round(r.left)).join(' / '));
-    check('图标与标题间距均为 8', titleRects.every((r, i) => Math.abs((r.left - iconRects[i].right) - 8) < 1), titleRects.map((r, i) => Math.round(r.left - iconRects[i].right)).join(' / '));
-    check('五张卡标题单行不换行', titleRects.every((r) => r.height <= 20), titleRects.map((r) => Math.round(r.height)).join(' / '));
-    check('普通标题行高 36', [0, 1, 2, 4].every((i) => Math.abs(headerRects[i].height - 36) < 1), [0, 1, 2, 4].map((i) => Math.round(headerRects[i].height)).join(' / '));
-    check('存储标题行高 40 且整行可点', Math.abs(headerRects[3].height - 40) < 1 && sRoot.getElementById('btnToggleStorage').tagName === 'BUTTON', `${Math.round(headerRects[3].height)}`);
-    check('标题行底距 10', Array.from(sRoot.querySelectorAll('.card-head')).every((el) => parseFloat(getComputedStyle(el).marginBottom) === 10), getComputedStyle(sRoot.querySelector('.card-head')).marginBottom);
-
-    const storageChev = sRoot.querySelector('.storage-head .chev').getBoundingClientRect();
-    const github = sRoot.querySelector('.about .dev-link').getBoundingClientRect();
-    check('存储箭头与关于 GitHub 右边缘对齐', Math.abs(storageChev.right - github.right) < 1, `${Math.round(storageChev.right)} / ${Math.round(github.right)}`);
-
-    const storageBody = sRoot.getElementById('storageBody');
-    check('存储卡默认折叠', storageBody.hidden === true && sRoot.getElementById('btnToggleStorage').getAttribute('aria-expanded') === 'false', '');
-    sRoot.getElementById('btnToggleStorage').click();
-    await sleep(80);
-    check('存储卡可展开且箭头状态同步', storageBody.hidden === false && sRoot.getElementById('btnToggleStorage').getAttribute('aria-expanded') === 'true' && sRoot.getElementById('storageCard').classList.contains('open'), '');
-
-    const acts = Array.from(body.querySelectorAll('.act'));
-    const actRects = acts.map((el) => el.getBoundingClientRect());
-    const actRadius = acts.map((el) => getComputedStyle(el).borderRadius);
-    check('所有动作按钮高 40', actRects.every((r) => Math.abs(r.height - 40) < 1), actRects.map((r) => Math.round(r.height)).join(' / '));
-    check('所有动作按钮圆角 12', actRadius.every((v) => v === '12px'), actRadius.join(' / '));
-    const dataActs = [sRoot.getElementById('btnBackup').getBoundingClientRect(), sRoot.getElementById('btnRestore').getBoundingClientRect()];
-    const storageActs = [sRoot.getElementById('btnCleanCover').getBoundingClientRect(), sRoot.getElementById('btnCleanOrphan').getBoundingClientRect()];
-    check('数据备份两按钮等分', Math.abs(dataActs[0].width - dataActs[1].width) < 1, dataActs.map((r) => Math.round(r.width)).join(' / '));
-    check('存储清理两按钮等分', Math.abs(storageActs[0].width - storageActs[1].width) < 1, storageActs.map((r) => Math.round(r.width)).join(' / '));
-    check('管理按钮最小宽 64', parseFloat(getComputedStyle(sRoot.getElementById('btnCloudEntry')).minWidth) === 64, getComputedStyle(sRoot.getElementById('btnCloudEntry')).minWidth);
-    const clearRect = sRoot.getElementById('btnClear').getBoundingClientRect();
-    check('清空本机数据仍为 30 文本按钮', Math.abs(clearRect.height - 30) < 1 && getComputedStyle(sRoot.getElementById('btnClear')).backgroundColor === 'rgba(0, 0, 0, 0)', `${Math.round(clearRect.height)} / ${getComputedStyle(sRoot.getElementById('btnClear')).borderTopWidth}`);
-
-    const cloudNote = sRoot.querySelector('.cloud-note').getBoundingClientRect();
-    const cloudStatus = sRoot.querySelector('.cloud-status').getBoundingClientRect();
-    const cloudDetail = sRoot.getElementById('cloudDetail').getBoundingClientRect();
-    check('云同步三层信息上下排列', cloudNote.top < cloudStatus.top && cloudStatus.top < cloudDetail.top,
-      `${Math.round(cloudNote.top)} / ${Math.round(cloudStatus.top)} / ${Math.round(cloudDetail.top)}`);
-    check('云同步状态点 6px 且可见', sRoot.getElementById('cloudDot').getBoundingClientRect().width === 6
-      && getComputedStyle(sRoot.getElementById('cloudDot')).backgroundColor !== 'rgba(0, 0, 0, 0)', `${sRoot.getElementById('cloudDot').getBoundingClientRect().width}px`);
-
-    const about = sRoot.querySelector('.about');
-    const aboutText = about.textContent.replace(/\s+/g, ' ').trim();
-    const local = sRoot.querySelector('.local-first');
-    const shield = local.querySelector('svg');
-    check('关于品牌副标题为本地优先', sRoot.querySelector('.about-copy small').textContent.trim() === '本地优先的练琴工作站', sRoot.querySelector('.about-copy small').textContent.trim());
-    check('关于品牌副标题单行', sRoot.querySelector('.about-copy small').getBoundingClientRect().height <= 16, `${Math.round(sRoot.querySelector('.about-copy small').getBoundingClientRect().height)}`);
-    check('关于承诺标题 13px/700', getComputedStyle(local.querySelector('b')).fontSize === '13px' && getComputedStyle(local.querySelector('b')).fontWeight === '700', `${getComputedStyle(local.querySelector('b')).fontSize}/${getComputedStyle(local.querySelector('b')).fontWeight}`);
-    check('关于本地承诺文字完整', aboutText.includes('你的谱子，只待在你的机器里') && aboutText.includes('无账号 · 默认不上传 · 备份由你手动保存'), aboutText);
-    check('关于盾牌图标 18px', shield && Math.abs(shield.getBoundingClientRect().width - 18) < 1 && Math.abs(shield.getBoundingClientRect().height - 18) < 1, shield ? `${shield.getBoundingClientRect().width}×${shield.getBoundingClientRect().height}` : 'missing');
-    check('关于不再出现开发者构建信息', !aboutText.includes('零构建') && !aboutText.includes('Web Components'), aboutText);
-
-    const bodyWidths = `${body.scrollWidth}/${body.clientWidth}`;
-    check('设置页无横向溢出', body.scrollWidth <= body.clientWidth + 1, bodyWidths);
-    check('320/360 标题不因长度换行', titleRects.every((r) => r.height <= 20), titleRects.map((r) => Math.round(r.height)).join(' / '));
-    check('内容过高时抽屉可纵向滚动', body.scrollHeight > body.clientHeight, `${body.scrollHeight}/${body.clientHeight}`);
-    body.scrollTop = body.scrollHeight;
-    await sleep(100);
-    const bodyRect = body.getBoundingClientRect();
-    const aboutRect = about.getBoundingClientRect();
-    check('滚到底后关于卡完整可见', aboutRect.bottom <= bodyRect.bottom + 1, `${Math.round(aboutRect.bottom)} / ${Math.round(bodyRect.bottom)}`);
-    body.scrollTop = 0;
-    if (!storageBody.hidden) {
-      sRoot.getElementById('btnToggleStorage').click();
-      await sleep(80);
-    }
-
-    sRoot.getElementById('themeLight').click();
-    await sleep(120);
-    const lightBorder = getComputedStyle(sRoot.querySelector('.act')).borderTopColor;
-    check('浅色动作按钮边框可见', lightBorder !== 'rgba(0, 0, 0, 0)' && lightBorder !== 'transparent', lightBorder);
-    sRoot.getElementById('themeDeep').click();
-    await sleep(120);
-
-    check('运行期无异常', !window.__gsErrs027.length, JSON.stringify(window.__gsErrs027));
-    return { checks, errors: window.__gsErrs027, meta: { width: innerWidth } };
-  } catch (err) {
-    return { checks, errors: [String(err && err.stack || err)], meta: { width: innerWidth } };
-  }
-})()
-""")
+        out = cdp.ev(TEST)
 
         failed = 0
         for c in out["checks"]:
@@ -284,13 +305,22 @@ document.querySelector('#btnGlobalSettings').click();
 
         print("截图：")
         print(" ", cdp.shot("settings_top"))
+        cdp.ev("document.querySelector('guitar-settings').shadowRoot.getElementById('btnToggleAppearance').click(); true")
+        time.sleep(0.25)
+        print(" ", cdp.shot("settings_appearance"))
         cdp.ev("document.querySelector('guitar-settings').shadowRoot.querySelector('.body').scrollTop = document.querySelector('guitar-settings').shadowRoot.querySelector('.body').scrollHeight; true")
         time.sleep(0.2)
         print(" ", cdp.shot("settings_about"))
-        cdp.ev("document.querySelector('guitar-settings').shadowRoot.getElementById('themeLight').click(); document.querySelector('guitar-settings').shadowRoot.querySelector('.body').scrollTop = 0; true")
-        time.sleep(0.2)
+        cdp.ev("""
+const s = document.querySelector('guitar-settings');
+s.shadowRoot.querySelector('[data-theme-choice="light"]').click();
+s.closeAllFolds();
+s.shadowRoot.querySelector('.body').scrollTop = 0;
+true
+""")
+        time.sleep(0.3)
         print(" ", cdp.shot("settings_light"))
-        cdp.ev("document.querySelector('guitar-settings').shadowRoot.getElementById('themeDeep').click(); true")
+        cdp.ev('document.querySelector(\'guitar-settings\').shadowRoot.querySelector(\'[data-theme-choice="deep"]\').click(); true')
         time.sleep(0.2)
 
         cloud_open = cdp.ev("""
