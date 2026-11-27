@@ -8,7 +8,7 @@ import { APP_VERSION } from '../services/version.js';
 import { showToast } from '../services/toast.js';
 import { dbService } from '../services/db.js';
 import { getTheme, setTheme, onThemeChange, syncThemeImages } from '../services/theme.js';
-import { getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
+import { getCloudSyncSummary, describeCloudSync, formatSyncTime } from '../services/sync-state.js';
 import { showConfirm } from './app-dialog.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import {
@@ -19,6 +19,15 @@ import {
   findOrphanAssets, formatBytes
 } from '../services/storage-stats.js';
 import { icon } from '../services/icons.js';
+
+function cloudDetailText(summary) {
+  if (!summary) return '正在读取本机同步记录';
+  if (summary.status === 'unknown') return '状态读取失败，仍可手动上传 / 下载';
+  if (summary.status === 'never') return '还没建立第一次同步';
+  const time = formatSyncTime(summary.at);
+  if (summary.status === 'pending') return `上次同步 ${time} · 本机有未同步改动`;
+  return `上次同步 ${time} · 本机已是最新`;
+}
 
 const settingsCSS = `
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
@@ -60,9 +69,9 @@ const settingsCSS = `
   .close:active { background: var(--surface-hover); }
   .body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 12px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
   .card { background: var(--card-bg); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
-  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
-  .card-head .ico, .storage-head .ico { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 12px; flex-shrink: 0; }
-  h3 { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
+  .card-head { display: flex; align-items: center; gap: 8px; min-height: 36px; margin-bottom: 10px; }
+  .card-head .ico, .storage-head .ico { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 13px; flex-shrink: 0; }
+  h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 11px; }
   .stats.triple { grid-template-columns: repeat(3, 1fr); }
   .stat { background: var(--surface-deep); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; display: flex; align-items: baseline; gap: 5px; }
@@ -74,7 +83,7 @@ const settingsCSS = `
   .cap-hint { margin: 0 2px 10px; font-size: 10px; line-height: 1.55; color: var(--muted); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .act {
-    width: 100%; min-height: 38px; border-radius: 11px; border: 1px solid var(--line-strong); background: var(--surface-raised);
+    width: 100%; min-height: 40px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-raised);
     color: var(--txt); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
   }
   .act.primary { background: linear-gradient(180deg, var(--accent), var(--primary)); border-color: rgba(var(--secondary-rgb), .1); color: var(--on-primary); box-shadow: 0 6px 16px rgba(var(--primary-rgb), .18); }
@@ -90,9 +99,14 @@ const settingsCSS = `
   .hint b { color: var(--txt-soft); font-weight: 600; }
   .status { min-height: 15px; margin-top: 6px; font-size: 10.5px; color: var(--accent-text); line-height: 1.5; word-break: break-all; }
   .status:empty { display: none; }
-  .cloud-note { margin: 0 2px 8px; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
+  .cloud-note { margin: 0 2px 6px; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
   .cloud-note b { color: var(--txt-soft); font-weight: 600; }
-  .cloud-status { margin: 0; font-size: 10.5px; line-height: 1.5; color: var(--accent-text); }
+  .cloud-status { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; color: var(--txt-soft); }
+  .cloud-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--muted); }
+  .cloud-dot.pending { background: var(--accent); }
+  .cloud-dot.clean { background: var(--success-text); }
+  .cloud-dot.unknown { background: var(--danger-text); }
+  .cloud-detail { margin: 4px 2px 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
 
   /* 数据与备份：一行裸统计 + 紧凑动作 */
   .data-line { display: flex; align-items: baseline; gap: 5px; margin: 0 2px 10px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
@@ -127,7 +141,7 @@ const settingsCSS = `
 
   /* 存储：默认折叠，头常驻 */
   .storage-head {
-    width: 100%; display: flex; align-items: center; gap: 8px; margin: 0; padding: 0;
+    width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; margin: 0; padding: 0;
     border: 0; background: transparent; color: inherit; font-family: inherit; text-align: left; cursor: pointer;
   }
   .storage-total { margin-left: auto; font-size: 11.5px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
@@ -141,7 +155,7 @@ const settingsCSS = `
   /* 云同步：状态与入口同一行 */
   .cloud-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
   .cloud-row .cloud-status { flex: 1; min-width: 0; }
-  .act.small { width: auto; flex: 0 0 auto; min-height: 32px; padding: 0 11px; font-size: 11px; }
+  .act.small { width: auto; flex: 0 0 auto; min-width: 64px; min-height: 40px; padding: 0 12px; font-size: 11px; }
 
   /* 主题选择：两张可点按的色板卡，不依赖弹窗 */
   .theme-choice {
@@ -179,19 +193,17 @@ const settingsCSS = `
     opacity: 0; transform: translateX(3px); transition: opacity .18s, transform .18s;
   }
   .theme-choice.active .tag { opacity: 1; transform: translateX(0); }
-  .about-brand { display: flex; align-items: center; gap: 9px; }
+  .about-brand { display: flex; align-items: center; gap: 7px; }
   .about-brand img { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; box-shadow: 0 4px 14px rgba(var(--shadow-rgb), .28); }
   .about-copy { flex: 1; min-width: 0; }
   .about-copy b { display: block; font-size: 14px; color: var(--heading); }
   .about-copy small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
-  .ver { padding: 3px 7px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--accent-text); font-size: 10px; font-variant-numeric: tabular-nums; }
-  .about p { margin: 8px 2px 0; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
-  .about p b { color: var(--txt-soft); font-weight: 600; }
-  .dev-row {
-    display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px;
-    border-top: 1px solid var(--line); font-size: 11px; color: var(--muted);
-  }
-  .dev-row > span { color: var(--txt-soft); font-weight: 600; }
+  .ver { padding: 3px 6px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--accent-text); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .local-first { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .local-first svg { flex: 0 0 auto; margin-top: 1px; color: var(--success-text); }
+  .local-copy { min-width: 0; }
+  .local-copy b { display: block; font-size: 13px; font-weight: 700; line-height: 1.4; color: var(--heading); }
+  .local-copy small { display: block; margin-top: 4px; font-size: 11px; line-height: 1.5; color: var(--muted); }
   .dev-link {
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; box-sizing: border-box; border-radius: 9px;
@@ -218,7 +230,7 @@ const settingsHTML = `
       </div>
       <div class="body">
         <section class="card">
-          <div class="card-head"><span class="ico">${icon('sun', 15)}</span><h3>外观</h3></div>
+          <div class="card-head"><span class="ico">${icon('sun', 16)}</span><h3>外观</h3></div>
           <div class="seg" role="group" aria-label="外观主题">
             <button class="seg-btn active" id="themeDeep" data-theme-choice="deep" type="button" aria-pressed="true">
               <span class="dots deep" aria-hidden="true"><i></i><i></i><i></i></span>深夜琴房
@@ -231,7 +243,7 @@ const settingsHTML = `
         </section>
 
         <section class="card">
-          <div class="card-head"><span class="ico">${icon('database', 15)}</span><h3>数据与备份</h3></div>
+          <div class="card-head"><span class="ico">${icon('database', 16)}</span><h3>数据与备份</h3></div>
           <div class="data-line">
             <b id="scoreCount">—</b><span>份乐谱</span><span class="dot">·</span><b id="logCount">—</b><span>条练习</span>
           </div>
@@ -245,17 +257,18 @@ const settingsHTML = `
         </section>
 
         <section class="card">
-          <div class="card-head"><span class="ico">${icon('cloud', 15)}</span><h3>云同步</h3></div>
+          <div class="card-head"><span class="ico">${icon('cloud', 16)}</span><h3>云同步</h3></div>
           <p class="cloud-note">坚果云 WebDAV · 手动上传 / 下载，密码本机加密。</p>
           <div class="cloud-row">
-            <p class="cloud-status" id="cloudStatus">正在读取同步状态…</p>
-            <button class="act small" id="btnCloudEntry" type="button">打开</button>
+            <p class="cloud-status"><i class="cloud-dot" id="cloudDot" aria-hidden="true"></i><span id="cloudStatus">正在读取同步状态…</span></p>
+            <button class="act small" id="btnCloudEntry" type="button">管理</button>
           </div>
+          <p class="cloud-detail" id="cloudDetail">正在读取本机同步记录</p>
         </section>
 
         <section class="card storage-card" id="storageCard">
           <button class="storage-head" id="btnToggleStorage" type="button" aria-expanded="false" aria-controls="storageBody">
-            <span class="ico">${icon('archive', 15)}</span><h3>存储与缓存</h3>
+            <span class="ico">${icon('archive', 16)}</span><h3>存储与缓存</h3>
             <span class="storage-total" id="totalUsage">—</span>
             <span class="chev" aria-hidden="true">▾</span>
           </button>
@@ -273,17 +286,23 @@ const settingsHTML = `
 
         <section class="card about">
           <div class="card-head">
-            <span class="ico">${icon('info', 15)}</span><h3>关于</h3>
+            <span class="ico">${icon('info', 16)}</span><h3>关于</h3>
             <a class="dev-link" id="btnGithub" href="https://github.com/moanet/GuitarShell" target="_blank" rel="noopener noreferrer" aria-label="在 GitHub 打开 Guitar Shell 项目" title="GitHub">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c6.63 0 12 5.276 12 11.79-.001 5.067-3.29 9.567-8.175 11.187-.6.118-.825-.25-.825-.56 0-.398.015-1.665.015-3.242 0-1.105-.375-1.813-.81-2.181 2.67-.295 5.475-1.297 5.475-5.822 0-1.297-.465-2.344-1.23-3.169.12-.295.54-1.503-.12-3.125 0 0-1.005-.324-3.3 1.209a11.32 11.32 0 00-3-.398c-1.02 0-2.04.133-3 .398-2.295-1.518-3.3-1.209-3.3-1.209-.66 1.622-.24 2.83-.12 3.125-.765.825-1.23 1.887-1.23 3.169 0 4.51 2.79 5.527 5.46 5.822-.345.294-.66.81-.765 1.577-.69.31-2.415.81-3.495-.973-.225-.354-.9-1.223-1.845-1.209-1.005.015-.405.56.015.781.51.28 1.095 1.327 1.23 1.666.24.663 1.02 1.93 4.035 1.385 0 .988.015 1.916.015 2.196 0 .31-.225.664-.825.56C3.303 21.374-.003 16.867 0 11.791 0 5.276 5.37 0 12 0z"/></svg>
             </a>
           </div>
           <div class="about-brand">
             <img src="./icon-gShell-192.png" data-theme-icon data-dark-src="./icon-gShell-192.png" data-light-src="./icon-gShell-light-192.png" alt="">
-            <div class="about-copy"><b>Guitar Shell</b><small>吉他手的练琴工作站</small></div>
+            <div class="about-copy"><b>Guitar Shell</b><small>本地优先的练琴工作站</small></div>
             <span class="ver" id="appVer">v…</span>
           </div>
-          <p>零构建 Web Components<br>无账号 · 默认不上传</p>
+          <div class="local-first">
+            ${icon('shield', 18)}
+            <div class="local-copy">
+              <b>你的谱子，只待在你的机器里</b>
+              <small>无账号 · 默认不上传 · 备份由你手动保存</small>
+            </div>
+          </div>
         </section>
       </div>
     </aside>
@@ -678,14 +697,24 @@ class GuitarSettings extends HTMLElement {
   async refreshCloudStatus() {
     const el = this.$('cloudStatus');
     if (!el) return;
+    const dot = this.$('cloudDot');
+    const detail = this.$('cloudDetail');
     el.textContent = '正在读取同步状态…';
+    if (dot) dot.className = 'cloud-dot';
+    if (detail) detail.textContent = '正在读取本机同步记录';
     const path = localStorage.getItem('gs_cloud_path') || 'GuitarShell/backup.json';
     try {
       const summary = await getCloudSyncSummary(path);
-      el.textContent = describeCloudSync(summary, { compact: true });
+      el.textContent = summary.status === 'unknown'
+        ? '状态读取失败'
+        : describeCloudSync(summary, { compact: true });
+      if (dot) dot.className = `cloud-dot ${summary.status || 'unknown'}`;
+      if (detail) detail.textContent = cloudDetailText(summary);
     } catch (err) {
       console.warn('[云同步] 读取设置页状态失败:', err.message);
-      el.textContent = '同步状态读取失败 · 仍可手动上传 / 下载';
+      el.textContent = '状态读取失败';
+      if (dot) dot.className = 'cloud-dot unknown';
+      if (detail) detail.textContent = '状态读取失败，仍可手动上传 / 下载';
     }
   }
 

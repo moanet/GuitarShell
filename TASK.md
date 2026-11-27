@@ -12,11 +12,11 @@
 | GitHub Release | `v0.1.21d`（Release `460404007`，asset `799878660`，2026-11-27） |
 | 最终 APK | `dist/GuitarShell-0.1.21d-release.apk`，`4,558,620` 字节 |
 | APK SHA-256 | `33350F4424C70908B9D64A64B274FBBDAEC97764EA2AF0394F5141B47EBA1F41` |
-| 待发布构建 | 无 |
+| 待发布构建 | `0.1.22` / `versionCode 132`，`dist/GuitarShell-0.1.22-release.apk`，`4,559,168` 字节；已提交 `main`，按用户决定跳过真机、未创建 Release |
 | Android 包 | `com.guitarshell`，`minSdk 22` / `targetSdk 34` |
 | 签名证书 SHA-256 | `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E` |
 | 验证基线 | Web 360 主基线 + 320 边界回归；真机 `ca14b16`（Android 13+） |
-| 当前阶段 | `0.1.21d` 已通过真机观感确认并发布：删除静态提示、实时反馈回到仪表盘上方、标题贴近大读数、按钮组紧跟弦位行、仪表盘保持视觉中心；下一优先级为 UI 设计规范文件 |
+| 当前阶段 | `0.1.21d` 已发布；`0.1.22` 已构建并提交 `main`，未发布（用户选择跳过真机、不创建 Release） |
 | 历史入口 | `0.1.0` / `0.1.1` 见 [docs/archive](docs/archive)；其余版本见 [CHANGELOG.md](CHANGELOG.md) |
 | 并入关系 | `0.1.12a` → `v0.1.12b`；`0.1.13` → `v0.1.14c`；`0.1.15` / `0.1.16` / `0.1.17` / `0.1.18` / `0.1.19` / `0.1.20` / `0.1.21d` 独立发布 |
 
@@ -97,10 +97,11 @@
 
 ## 4. 活跃待办
 
-当前进行中：无；`0.1.21d` 已通过真机观感确认并发布，调音器主界面本轮收工。
+当前进行中：
+- 无。
 
 待启动（已确认）：
-- UI 设计规范文件：统一全软件的色彩、字体、字号层级、间距、圆角、线图标、按钮、开关、输入、底部弹层、深浅色与页面布局基线；作为后续 UI 改动的前置契约。建议先于 `0.1.22` 启动。
+- UI 设计规范 v0.1：评审稿只作为草案存档，不执行、不提交、不发布；后续 UI 改动仍以 `css/layout.css` token 与真机验收为准。
 
 已确认：
 - `0.1.19` 已发布：状态条 / 弦位行 / 调音设置 / 预设与自定义。
@@ -110,7 +111,7 @@
 - `0.1.21b` 已构建未发布：提示文字归位标题下、仪表盘居中、设置按钮 `72×44` 与节拍器一致、开始按钮 `140×46` 居中；由 `0.1.21c` 接续。
 - `0.1.21c` 已构建未发布：标题下移、提示移到开始按钮下方、按钮组上移、仪表盘保持视觉中心；由 `0.1.21d` 接续。
 - `0.1.21d` 已发布：真机观感确认；删除静态提示、实时反馈回到仪表盘上方、标题贴近大读数、按钮组紧跟弦位行。
-- `0.1.22` 建议在 UI 设计规范文件之后启动；`0.1.22–0.1.24` 只做方向占位，不提前细化。
+- `0.1.22` 已构建并提交 `main`，未发布：全局设置标题行 / 动作行统一、云同步三层信息、关于页本地优先；README 构建说明并入 TASK §7。按用户决定跳过真机，不创建 tag / Release。UI 规范评审稿只存档，不作为本版准入。
 
 未立项 / backlog：
 
@@ -160,18 +161,28 @@
 
 ## 7. 构建与发布速查
 
+### 7.1 本地运行
+
+网页端是零构建项目，使用任意静态服务器托管仓库根目录即可。Windows 下可直接运行：
+
 ```bat
 start-dev.bat
 ```
+
+### 7.2 Android 正式包
+
+需要 Node.js、JDK 21 与 Android SDK：
 
 ```bash
 npm install
 npm run apk:release
 ```
 
-- 产物：`android/app/build/outputs/apk/release/app-release.apk`
-- 环境：Node.js、JDK 21、Android SDK；`scripts/build-apk.mjs` 会自动定位 JDK 17–21，遇到 JDK 25 等不兼容版本直接报错。完整说明见 [README.md](README.md)「本地运行与构建」。
-- 发布前必须同步版本号与 SW 缓存；详见上一节门禁与发布清单。
+构建脚本会自动查找 JDK 17–21：优先使用 `JAVA_HOME`，找不到时回退到用户目录下的 `.jdks`。遇到 JDK 25 等不兼容版本会直接给出提示，不会继续打包。
+
+产物位于 `android/app/build/outputs/apk/release/app-release.apk`。
+
+发布前必须同步四处版本号：`package.json` / `package-lock.json`、`js/services/version.js`、`sw.js` 与 `android/app/build.gradle`，避免线上继续使用旧缓存。完整门禁与冒烟清单见 §6 与 [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)。
 
 ## 8. 避坑指南
 
@@ -204,11 +215,11 @@ npm run apk:release
 
 | 文档 | 唯一负责 | 更新时机 |
 | --- | --- | --- |
-| [README.md](README.md) | 产品定位、功能、下载安装、WebDAV 使用、本地构建、目录结构 | 用户可见行为或目录变化 |
+| [README.md](README.md) | 产品定位、功能、下载安装、WebDAV 使用、目录结构 | 用户可见行为或目录变化 |
 | [CHANGELOG.md](CHANGELOG.md) | 逐版本改动、测试、验收、APK / Release 证据 | 每次版本收尾 |
 | [CURRENT_TASK.md](CURRENT_TASK.md) | 当前迭代目标、边界、代码落点、验收标准 | 每轮开发开始与收尾 |
 | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | 可复用冒烟、真机约定、测试矩阵、发布门禁 | 发布流程或功能面变化 |
-| [TASK.md](TASK.md) | 长期基线、路线、活跃待办、开放风险、避坑、文档索引 | 每次发版只改基线 / 待办 / 风险 |
+| [TASK.md](TASK.md) | 长期基线、路线、活跃待办、开放风险、构建与发布速查、避坑、文档索引 | 每次发版只改基线 / 待办 / 风险 |
 | [docs/archive](docs/archive) | 已完成的 `CURRENT_TASK` 与一次性专项记录 | 每次迭代归档 |
 | [项目目录结构.txt](项目目录结构.txt) | 目录树速览 | 目录结构变化 |
 | [proxy/cloudflare-worker.js](proxy/cloudflare-worker.js) | 自建 WebDAV 代理参考 | WebDAV 通道变化 |

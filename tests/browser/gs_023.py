@@ -189,18 +189,47 @@ TEST_JS = r"""
   }, 8000);
   const cloudText = sRoot.getElementById('cloudStatus').textContent.trim();
   check('云同步状态文案保持单行短句', ['尚未同步', '待同步', '已同步'].includes(cloudText), cloudText);
+  check('未同步细节说明首次同步', sRoot.getElementById('cloudDetail').textContent.trim() === '还没建立第一次同步', sRoot.getElementById('cloudDetail').textContent.trim());
+  check('未同步状态点为灰点', sRoot.getElementById('cloudDot').className === 'cloud-dot never', sRoot.getElementById('cloudDot').className);
+  const cloudButton = sRoot.getElementById('btnCloudEntry');
+  const cloudButtonStyle = getComputedStyle(cloudButton);
+  check('云同步入口文案为管理', cloudButton.textContent.trim() === '管理', cloudButton.textContent.trim());
+  check('管理按钮 40 高且最小宽 64', Math.abs(cloudButton.getBoundingClientRect().height - 40) < 1 && cloudButtonStyle.minWidth === '64px', `${cloudButton.getBoundingClientRect().height}/${cloudButtonStyle.minWidth}`);
   localStorage.setItem('gs_cloud_sync:GuitarShell/backup.json', JSON.stringify({ at: 1 }));
   await settings.refreshCloudStatus();
   const pendingText = sRoot.getElementById('cloudStatus').textContent.trim();
   check('本机有改动时显示待同步', pendingText === '待同步', pendingText);
+  check('待同步细节与状态一致', sRoot.getElementById('cloudDetail').textContent.includes('本机有未同步改动') && sRoot.getElementById('cloudDetail').textContent.startsWith('上次同步'), sRoot.getElementById('cloudDetail').textContent.trim());
+  check('待同步状态点为强调色', sRoot.getElementById('cloudDot').className === 'cloud-dot pending', sRoot.getElementById('cloudDot').className);
+  localStorage.setItem('gs_cloud_sync:GuitarShell/backup.json', JSON.stringify({ at: Date.now() + 3600000 }));
+  await settings.refreshCloudStatus();
+  check('云端较新时显示已同步', sRoot.getElementById('cloudStatus').textContent.trim() === '已同步', sRoot.getElementById('cloudStatus').textContent.trim());
+  check('已同步细节说明本机最新', sRoot.getElementById('cloudDetail').textContent.includes('本机已是最新'), sRoot.getElementById('cloudDetail').textContent.trim());
+  check('已同步状态点为成功色', sRoot.getElementById('cloudDot').className === 'cloud-dot clean', sRoot.getElementById('cloudDot').className);
+  const dbmod = await import('/js/services/db.js');
+  const originalStamp = dbmod.dbService.getLocalChangeStamp;
+  dbmod.dbService.getLocalChangeStamp = async () => { throw new Error('test'); };
+  localStorage.setItem('gs_cloud_sync:GuitarShell/backup.json', JSON.stringify({ at: 1 }));
+  await settings.refreshCloudStatus();
+  check('读取失败时保留手动同步入口', sRoot.getElementById('cloudStatus').textContent.trim() === '状态读取失败'
+    && sRoot.getElementById('cloudDetail').textContent.trim() === '状态读取失败，仍可手动上传 / 下载'
+    && sRoot.getElementById('cloudDot').className === 'cloud-dot unknown', `${sRoot.getElementById('cloudStatus').textContent.trim()} / ${sRoot.getElementById('cloudDot').className}`);
+  dbmod.dbService.getLocalChangeStamp = originalStamp;
   localStorage.removeItem('gs_cloud_sync:GuitarShell/backup.json');
   await settings.refreshCloudStatus();
+  check('清除同步点后回到未同步', sRoot.getElementById('cloudStatus').textContent.trim() === '尚未同步' && sRoot.getElementById('cloudDetail').textContent.trim() === '还没建立第一次同步', `${sRoot.getElementById('cloudStatus').textContent.trim()} / ${sRoot.getElementById('cloudDetail').textContent.trim()}`);
   const drawer = sRoot.getElementById('drawer');
   const drawerWidth = drawer.getBoundingClientRect().width;
   const expectDrawerWidth = Math.min(innerWidth * 0.8, 360);
   check('设置抽屉宽度为 80vw 且不超过 360', Math.abs(drawerWidth - expectDrawerWidth) < 2.5, `${drawerWidth} vs ${expectDrawerWidth}`);
   const sectionTitles = Array.from(sRoot.querySelectorAll('.body .card h3')).map((el) => el.textContent.trim());
   check('设置分区顺序正确', sectionTitles.join(' / ') === '外观 / 数据与备份 / 云同步 / 存储与缓存 / 关于', sectionTitles.join(' / '));
+  const aboutText = sRoot.querySelector('.about').textContent.replace(/\s+/g, ' ').trim();
+  check('关于品牌副标题改为本地优先', sRoot.querySelector('.about-copy small').textContent.trim() === '本地优先的练琴工作站', sRoot.querySelector('.about-copy small').textContent.trim());
+  check('关于卡显示本地优先承诺', aboutText.includes('你的谱子，只待在你的机器里') && aboutText.includes('无账号 · 默认不上传 · 备份由你手动保存'), aboutText);
+  check('关于卡不再展示开发者构建信息', !aboutText.includes('零构建') && !aboutText.includes('Web Components'), aboutText);
+  check('版本徽标与 GitHub 入口保留', /^v\d+\.\d+\.\d+/.test(sRoot.getElementById('appVer').textContent.trim())
+    && sRoot.getElementById('btnGithub').getAttribute('href') === 'https://github.com/moanet/GuitarShell', `${sRoot.getElementById('appVer').textContent.trim()} / ${sRoot.getElementById('btnGithub').getAttribute('href')}`);
   const segBtns = Array.from(sRoot.querySelectorAll('[data-theme-choice]'));
   check('外观为两段控件', segBtns.length === 2 && segBtns.every((b) => b.classList.contains('seg-btn')), `${segBtns.length}`);
   check('外观默认只有一段选中', segBtns.filter((b) => b.classList.contains('active')).length === 1, '');

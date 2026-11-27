@@ -16,7 +16,7 @@
   <a href="https://moanet.github.io/GuitarShell/">
     <img src="https://img.shields.io/badge/Open-Web%20App-C7863F" alt="打开网页版">
   </a>
-  <img src="https://img.shields.io/badge/version-0.1.21d-8A8075" alt="当前版本 0.1.21d">
+  <img src="https://img.shields.io/badge/version-0.1.22-8A8075" alt="当前版本 0.1.22">
   <img src="https://img.shields.io/badge/data-local--first-6B8E23" alt="本地优先">
 </p>
 
@@ -180,22 +180,7 @@ flowchart LR
 
 ## 本地运行与构建
 
-网页端是零构建项目，使用任意静态服务器托管仓库根目录即可。Windows 下可直接运行：
-
-```bat
-start-dev.bat
-```
-
-Android 正式包需要 Node.js、JDK 21 与 Android SDK：
-
-```bash
-npm install
-npm run apk:release
-```
-
-构建脚本会自动查找 JDK 17–21：优先使用 `JAVA_HOME`，找不到时回退到用户目录下的 `.jdks`。遇到 JDK 25 等不兼容版本会直接给出提示，不会继续打包。
-
-构建产物位于 `android/app/build/outputs/apk/release/app-release.apk`。发布前请同步修改 `package.json` / `package-lock.json`、`js/services/version.js`、`sw.js` 与 `android/app/build.gradle` 中的版本号，避免线上继续使用旧缓存。
+开发与构建见 [TASK.md §7「构建与发布速查」](TASK.md#7-构建与发布速查)。
 
 ## 数据与隐私
 

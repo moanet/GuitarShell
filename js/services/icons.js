@@ -79,6 +79,10 @@ const ICON_PATHS = {
     <rect x="4" y="10" width="16" height="11" rx="2"/>
     <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
   `,
+  shield: `
+    <path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6Z"/>
+    <path d="m9 12 2 2 4-4"/>
+  `,
   play: `
     <path d="M8 5 19 12 8 19Z"/>
   `,
