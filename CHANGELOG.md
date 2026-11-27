@@ -26,7 +26,7 @@
 - `gs_016.py`、`gs_018.py`、`gs_019.py`、`gs_020.py`、`gs_021.py`、`gs_022.py`、`gs_024.py` 通过，覆盖 PDF 拆分、阅读页层级、相册导入、节拍器、WebDAV 服务层、文本谱与书架。
 - `npm run check` 通过：`v0.1.24，41 个 JS 文件，SW 缓存与版本一致`。
 - 真机验收通过。正式包 `dist/GuitarShell-0.1.24-release.apk`，`4,557,192` 字节，SHA-256 `D3810DCA2DD25ABF4CD085CCB00749A784B9DA00089875FBD2E158666F9EF768`；`aapt` 校验包名 `com.guitarshell`、`versionCode 134` / `versionName 0.1.24`、`minSdk 22` / `targetSdk 34`，`apksigner` 校验 v1 / v2 签名有效。
-- GitHub Release `v0.1.24` 上传正式 APK。
+- GitHub Release `v0.1.24` 已正式发布（Release ID `460619080`，https://github.com/moanet/GuitarShell/releases/tag/v0.1.24 ）；tag 指向 `4b09c17`，APK asset ID `800552130`，远端大小 `4,557,192` 字节、SHA-256 与本地一致。
 
 ## 0.1.23 — 全局设置折叠摘要与外观主题网格（已提交 main，未构建 APK，2026-11-27）
 

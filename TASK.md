@@ -9,7 +9,7 @@
 | 项 | 当前值 |
 | --- | --- |
 | 最新正式版 | `0.1.24` / `versionCode 134`（2026-11-27） |
-| GitHub Release | `v0.1.24`（2026-11-27） |
+| GitHub Release | [`v0.1.24`](https://github.com/moanet/GuitarShell/releases/tag/v0.1.24)（2026-11-27，ID `460619080`） |
 | 最终 APK | `dist/GuitarShell-0.1.24-release.apk`，`4,557,192` 字节 |
 | APK SHA-256 | `D3810DCA2DD25ABF4CD085CCB00749A784B9DA00089875FBD2E158666F9EF768` |
 | 待发布构建 | `0.1.22` / `versionCode 132`，`dist/GuitarShell-0.1.22-release.apk`，`4,559,168` 字节；已提交 `main`（`d0be544`），按用户决定跳过真机、未创建 Release |
