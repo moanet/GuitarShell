@@ -120,8 +120,6 @@ if (settingsBtn) {
 // ==================== 云同步中退出保护 ====================
 // 不提醒“离开前记得同步”；只保护已经在进行的上传，避免用户误关应用把备份写坏。
 let cloudTask = { busy: false, text: '' };
-let cloudExitPromptOpen = false;
-let pendingCloudExit = false;
 
 const syncNativeBackGuard = () => {
   try {
@@ -132,27 +130,10 @@ const syncNativeBackGuard = () => {
   }
 };
 
-const exitApplication = () => {
-  try {
-    const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BackGuard;
-    if (plugin && plugin.exitApp) {
-      plugin.exitApp();
-      return;
-    }
-  } catch (err) {
-    console.warn('退出应用失败:', err);
-  }
-  window.close();
-};
-
 window.addEventListener('gs-cloud-task', (event) => {
   const detail = event.detail || {};
   cloudTask = { busy: !!detail.busy, text: detail.text || '' };
   syncNativeBackGuard();
-  if (pendingCloudExit && !cloudTask.busy) {
-    pendingCloudExit = false;
-    setTimeout(exitApplication, 0);
-  }
 });
 syncNativeBackGuard();
 syncNativeLayerDepth(true);
@@ -171,34 +152,9 @@ window.addEventListener('beforeunload', (event) => {
   return event.returnValue;
 });
 
-const promptCloudExit = async () => {
-  if (!cloudTask.busy || cloudExitPromptOpen) return;
-  cloudExitPromptOpen = true;
-  const ok = await showConfirm({
-    title: '云同步仍在进行',
-    message: '现在退出可能中断上传，云端备份可能不完整。建议等同步完成，或先取消同步。',
-    details: [
-      { label: '当前任务', value: cloudTask.text || '云同步进行中' }
-    ],
-    cancelText: '继续同步',
-    confirmText: '取消同步并退出',
-    danger: true
-  });
-  cloudExitPromptOpen = false;
-  if (!ok) return;
-  if (!cloudTask.busy) {
-    exitApplication();
-    return;
-  }
-
-  pendingCloudExit = true;
-  window.dispatchEvent(new CustomEvent('gs-cloud-cancel-request'));
-  // 通常取消后很快会收到 busy=false；给网络层一点收尾时间，超时也按用户意愿退出
-  setTimeout(() => {
-    if (!pendingCloudExit) return;
-    pendingCloudExit = false;
-    exitApplication();
-  }, 1200);
+const promptCloudExit = () => {
+  if (!cloudTask.busy) return;
+  showToast('云同步仍在进行，完成或取消后再退出');
 };
 
 window.addEventListener('gs-cloud-exit-request', promptCloudExit);

@@ -1,18 +1,13 @@
 import { dbService } from '../services/db.js';
-import { webdavService } from '../services/webdav.js';
-import { vaultService } from '../services/vault.js';
-import { APP_VERSION, BACKUP_SCHEMA } from '../services/version.js';
 import { audioEngine } from '../services/audio.js';
 import { wakeLock } from '../services/wakelock.js';
 import { matchPinyin } from '../lib/pinyin.js';
 import { hashBlob } from '../services/file-hash.js';
 import { findDuplicateScore } from '../services/score-dedup.js';
-import { readSyncState, writeSyncState, formatSyncTime as fmtTime, getCloudSyncSummary, describeCloudSync } from '../services/sync-state.js';
 import { themeColor, onThemeChange } from '../services/theme.js';
 import { showConfirm, showAlert } from './app-dialog.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import { parseTagInput, uniqueTags, toggleTag, hasTag, applyTagChanges, collectTagStats } from '../services/tag-utils.js';
-import { saveBackupFile } from '../services/backup.js';
 import { splitPdfPages } from '../services/pdf-split.js';
 import { isNativeGalleryAvailable, pickGalleryImages, takeGalleryFiles } from '../services/gallery-picker.js';
 import { ensureCoverForScore } from '../services/cover-cache.js';
@@ -304,37 +299,6 @@ const readerCSS = `
   .toast { position: absolute; left: 50%; bottom: 100px; transform: translate(-50%, 10px); background: rgba(var(--accent-rgb), 0.92); color: var(--on-accent); padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 400; opacity: 0; pointer-events: none; transition: 0.3s; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-  .cloud-task {
-    position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 190;
-    display: none; align-items: center; gap: 8px; max-width: calc(100% - 32px); box-sizing: border-box;
-    padding: 8px 10px 8px 14px; border-radius: 999px; border: 1px solid var(--line-warm);
-    background: var(--surface-raised); color: var(--accent-text);
-    font-size: 12px; font-weight: 600; box-shadow: 0 8px 22px rgba(var(--shadow-rgb), .35);
-    white-space: nowrap; pointer-events: none; backdrop-filter: blur(4px);
-  }
-  .cloud-task.show { display: flex; }
-  .cloud-task-text { flex: 0 1 auto; min-width: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cloud-task-btn {
-    pointer-events: auto; display: none; align-items: center; justify-content: center; flex: none;
-    border: 1px solid var(--line-strong); background: var(--surface-hover); color: var(--accent-text);
-    border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 11px; line-height: 1.4; cursor: pointer;
-  }
-  .cloud-task-btn:disabled { opacity: .55; cursor: default; }
-  .cloud-task.busy .cloud-task-cancel { display: inline-flex; }
-  .cloud-task.failed { color: var(--danger-text); border-color: rgba(var(--danger-rgb), .45); }
-  .cloud-task.failed::before {
-    content: '!'; width: 12px; height: 12px; flex: none; border-radius: 50%;
-    border: 0; background: var(--danger); color: #fff; animation: none;
-    display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700;
-  }
-  .cloud-task.failed .cloud-task-retry, .cloud-task.failed .cloud-task-dismiss { display: inline-flex; }
-  .cloud-task::before {
-    content: ''; width: 12px; height: 12px; flex: none; border-radius: 50%;
-    border: 2px solid var(--line-strong); border-top-color: var(--primary);
-    animation: cloudSpin .8s linear infinite;
-  }
-  @keyframes cloudSpin { to { transform: rotate(360deg); } }
-
   .action-sheet-mask, .modal-mask { position: absolute; inset: 0; background: rgba(var(--shadow-rgb),0.6); display: none; align-items: flex-end; z-index: 200; }
   .action-sheet-mask.show, .modal-mask.show { display: flex; }
   .action-sheet { width: 100%; max-height: 80vh; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--surface-raised); border-radius: 16px 16px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; transform: translateY(100%); transition: transform 0.2s; }
@@ -598,12 +562,6 @@ const readerHTML = `
   </div>
 
   <div class="loading" id="loading">处理中...</div>
-  <div class="cloud-task" id="cloudTask">
-    <span class="cloud-task-text" id="cloudTaskText"></span>
-    <button class="cloud-task-btn cloud-task-cancel" id="cloudTaskCancel" type="button">取消</button>
-    <button class="cloud-task-btn cloud-task-retry" id="cloudTaskRetry" type="button">重试</button>
-    <button class="cloud-task-btn cloud-task-dismiss" id="cloudTaskDismiss" type="button" aria-label="关闭任务提示">×</button>
-  </div>
   <div class="toast" id="toast"></div>
 
   <div class="zen-lock" id="zenLock" role="dialog" aria-modal="true" aria-label="禅定模式已锁定">
@@ -731,31 +689,6 @@ const readerHTML = `
       <div class="split-picker-grid" id="splitPickerGrid"></div>
       <div class="modal-footer">
         <button class="modal-btn cancel" id="splitPickerCancel">返回</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-mask" id="cloudModalMask">
-    <div class="modal-box">
-      <h3>${icon('cloud', 18)} 云同步</h3>
-      <div class="modal-field"><label>账号</label><input type="text" class="modal-inp" id="cloudUser" placeholder="坚果云邮箱"></div>
-      <div class="modal-field"><label>应用密码</label><input type="password" class="modal-inp" id="cloudPass" placeholder="在坚果云安全选项申请"></div>
-      <div class="modal-field" id="cloudRememberRow" style="flex-direction:row;align-items:center;gap:8px;">
-        <input type="checkbox" id="cloudRemember" style="width:16px;height:16px;flex:none;margin:0;">
-        <label for="cloudRemember" style="flex:none;margin:0;font-size:13px;color: var(--accent-text);cursor:pointer;">记住应用密码（仅本机）</label>
-        <button type="button" id="cloudForget" style="margin-left:auto;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0;">清除已保存</button>
-      </div>
-      <div class="modal-field" id="cloudRememberHint" style="font-size:12px;color:var(--muted);line-height:1.6;margin-top:-4px;">
-        密码以 AES-GCM 加密存进本机 IndexedDB，密钥不可导出，也不会写进备份文件；换设备需重新填。
-      </div>
-      <div class="modal-field"><label>路径</label><input type="text" class="modal-inp" id="cloudPath" value="GuitarShell/backup.json"></div>
-      <div class="modal-field"><label>同步通道（留空自动选）</label><input type="text" class="modal-inp" id="cloudBase" placeholder="https://你的域名/dav/"></div>
-      <button class="modal-btn cancel" id="cloudTest" style="background:var(--line);color: var(--accent-text);font-size:13px;font-weight:normal;">测试连接</button>
-      <div id="cloudSyncState" style="font-size:12px;color:var(--muted);line-height:1.6;margin:-2px 2px 10px;">正在读取同步状态…</div>
-      <div class="modal-footer">
-        <button class="modal-btn cancel" id="cloudCancel">返回</button>
-        <button class="modal-btn confirm" id="cloudDownload">${icon('download', 15)} 覆盖本地</button>
-        <button class="modal-btn confirm" id="cloudUpload" style="background:var(--primary);">${icon('upload', 15)} 上传备份</button>
       </div>
     </div>
   </div>
@@ -889,9 +822,7 @@ class SheetReader extends HTMLElement {
     if (this.handleTabChange) window.removeEventListener('app-tab-changed', this.handleTabChange);
     if (this.handleMetronomeSettings) window.removeEventListener('metronome-settings', this.handleMetronomeSettings);
     if (this.handleDataChanged) window.removeEventListener('gs-data-changed', this.handleDataChanged);
-    if (this.handleCloudCancelRequest) window.removeEventListener('gs-cloud-cancel-request', this.handleCloudCancelRequest);
     if (this.offTheme) { this.offTheme(); this.offTheme = null; }
-    if (this.handleOpenCloudSync) window.removeEventListener('open-cloud-sync', this.handleOpenCloudSync);
     if (this.handleFullscreenChange) document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
     if (this.handleFullscreenChange) document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
     if (document.fullscreenElement && document.exitFullscreen) {
@@ -924,14 +855,6 @@ class SheetReader extends HTMLElement {
     const btnZenLock = $('btnZenLock');
     const loading = $('loading');
     const toastEl = $('toast');
-    const cloudTask = $('cloudTask');
-    const cloudTaskText = $('cloudTaskText');
-    const cloudTaskCancel = $('cloudTaskCancel');
-    const cloudTaskRetry = $('cloudTaskRetry');
-    const cloudTaskDismiss = $('cloudTaskDismiss');
-    this.cloudFailure = null;
-    this.cloudRetry = null;
-    
     const searchInp = $('searchInp');
     const sortSel = $('sortSel');
     const tagBar = $('tagBar');
@@ -955,7 +878,6 @@ class SheetReader extends HTMLElement {
     const tagModeRow = $('tagModeRow');
     const tagModeAdd = $('tagModeAdd');
     const tagModeRemove = $('tagModeRemove');
-    const cloudModalMask = $('cloudModalMask');
     const actionSheetMask = $('actionSheetMask');
     
     const showToast = (msg) => {
@@ -990,102 +912,10 @@ class SheetReader extends HTMLElement {
       danger: true
     });
 
-    const closeCloudModal = () => {
-      untrackLayer('cloud-modal');
-      cloudModalMask.classList.remove('show');
-    };
-
     const closeActionSheet = () => {
       untrackLayer('import-sheet');
       actionSheetMask.classList.remove('show');
     };
-
-    const isCloudCancel = (err) => !!(err && err.code === 'CLOUD_CANCELLED');
-
-    const setCloudButtonsDisabled = (disabled) => {
-      ['cloudUpload', 'cloudDownload', 'cloudTest'].forEach((id) => {
-        const btn = $(id);
-        if (btn) btn.disabled = !!disabled;
-      });
-    };
-
-    const publishCloudTaskState = (busy, text = '') => {
-      window.dispatchEvent(new CustomEvent('gs-cloud-task', {
-        detail: { busy: !!busy, text: text || '' }
-      }));
-    };
-
-    const setCloudBusy = (text) => {
-      this.cloudBusy = !!text;
-      publishCloudTaskState(this.cloudBusy, this.cloudBusy ? text : (this.cloudFailure || ''));
-      if (text) {
-        // 新任务开始：清掉上一次的失败 / 重试状态
-        this.cloudFailure = null;
-        this.cloudRetry = null;
-        cloudTask.classList.remove('failed');
-        cloudTask.classList.add('busy', 'show');
-        cloudTaskText.textContent = text;
-        cloudTask.title = '';
-        cloudTaskCancel.disabled = false;
-        const syncStateEl = $('cloudSyncState');
-        syncStateEl.textContent = text;
-        syncStateEl.style.color = 'var(--accent-text)';
-      } else if (!this.cloudFailure) {
-        cloudTask.classList.remove('busy', 'failed', 'show');
-        cloudTaskText.textContent = '';
-        cloudTask.title = '';
-        if (cloudModalMask.classList.contains('show')) refreshCloudStatus();
-      }
-      setCloudButtonsDisabled(!!text);
-    };
-
-    const setCloudFailure = (text, retry) => {
-      this.cloudBusy = false;
-      this.cloudFailure = text;
-      this.cloudRetry = retry || null;
-      publishCloudTaskState(false, text);
-      cloudTask.classList.remove('busy');
-      cloudTask.classList.add('failed', 'show');
-      cloudTaskText.textContent = text;
-      cloudTask.title = text;
-      cloudTaskCancel.disabled = false;
-      setCloudButtonsDisabled(false);
-      const syncStateEl = $('cloudSyncState');
-      if (cloudModalMask.classList.contains('show')) {
-        syncStateEl.textContent = text;
-        syncStateEl.style.color = 'var(--danger-text)';
-      }
-    };
-
-    const dismissCloudFailure = () => {
-      this.cloudFailure = null;
-      this.cloudRetry = null;
-      publishCloudTaskState(false, '');
-      cloudTask.classList.remove('busy', 'failed', 'show');
-      cloudTaskText.textContent = '';
-      cloudTask.title = '';
-      if (cloudModalMask.classList.contains('show')) refreshCloudStatus();
-    };
-
-    const requestCloudCancel = () => {
-      if (!this.cloudBusy) return;
-      if (webdavService.cancelTask()) {
-        cloudTaskText.textContent = '正在取消...';
-        cloudTaskCancel.disabled = true;
-      }
-    };
-
-    cloudTaskCancel.onclick = requestCloudCancel;
-    cloudTaskRetry.onclick = () => {
-      const retry = this.cloudRetry;
-      if (!retry || this.cloudBusy) return;
-      // 不在点击时清失败态：任务真正启动后由 setCloudBusy 清；
-      // 若表单校验没过，失败胶囊和错误仍在，避免提示凭空消失。
-      retry();
-    };
-    cloudTaskDismiss.onclick = () => dismissCloudFailure();
-    this.handleCloudCancelRequest = requestCloudCancel;
-    window.addEventListener('gs-cloud-cancel-request', this.handleCloudCancelRequest);
 
     if (this.isMobile) {
       $('btnFolderMain').style.display = 'none';
@@ -2767,8 +2597,6 @@ class SheetReader extends HTMLElement {
 
     $('editCancel').onclick = closeEditModal;
     bindBackdrop(editModalMask, closeEditModal);
-    $('cloudCancel').onclick = closeCloudModal;
-    bindBackdrop(cloudModalMask, closeCloudModal);
 
     // 核心修复：极其宽容的文件过滤逻辑
     const handleFiles = async (filesArray, { extraNotice = '' } = {}) => {
@@ -2908,412 +2736,6 @@ class SheetReader extends HTMLElement {
       }
     };
     bindBackdrop(actionSheetMask, closeActionSheet);
-
-    // 打包：本地导出与云端上传共用同一份数据（含阅读进度与打卡记录）
-    const buildBackupPayload = async ({ showLoading = true } = {}) => {
-      const scores = await dbService.getAllScores();
-      const logs = await dbService.getAllLogs();
-      if (scores.length === 0 && logs.length === 0) { showToast('没有可备份的数据'); return null; }
-      if (showLoading) { loading.textContent = '正在打包...'; loading.classList.add('show'); }
-      try {
-        const exportScores = [];
-        for (const item of scores) {
-          const base64Data = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(item.fileBlob);
-          });
-          exportScores.push({
-            name: item.name, createdAt: item.createdAt, data: base64Data, tags: item.tags || [],
-            updatedAt: item.updatedAt || 0,
-            lastReadPage: item.lastReadPage || 0,
-            lastReadPageRatio: item.lastReadPageRatio || 0,
-            lastReadScrollY: item.lastReadScrollY || 0,
-            lastReadAt: item.lastReadAt || 0,
-            bookmarks: Array.isArray(item.bookmarks) ? item.bookmarks : [],
-            fileHash: item.fileHash || ''
-          });
-        }
-        return { version: APP_VERSION, schema: BACKUP_SCHEMA, exportedAt: Date.now(), scores: exportScores, logs: logs };
-      } finally { if (showLoading) loading.classList.remove('show'); }
-    };
-
-    // 恢复：先完整校验并转好 Blob，再清空写入，保证「要么全成功，要么不动本地」
-    const restoreFromPayload = async (payload, confirmOverwrite = true, confirmEmpty = true) => {
-      if (!payload || !Array.isArray(payload.scores)) throw new Error('备份文件格式不正确');
-      if (payload.logs && !Array.isArray(payload.logs)) throw new Error('备份文件的打卡记录格式不正确');
-      const badScore = payload.scores.find((item) => !item || typeof item.name !== 'string' || typeof item.data !== 'string' || !item.data.startsWith('data:'));
-      if (badScore) throw new Error('备份中存在无效的乐谱数据');
-
-      // 空备份保护：云端失联时可能拿到空载荷，绝不能用一句普通 confirm 就把本地清空
-      const scoreCount = payload.scores.length;
-      const logCount = (payload.logs || []).length;
-      if (scoreCount === 0 && logCount === 0 && confirmEmpty) {
-        const localScores = await dbService.getAllScores();
-        const localLogs = await dbService.getAllLogs();
-        const ok = await showConfirm({
-          title: '备份是空的',
-          message: '继续会把本地乐谱和练习记录清空，且无法撤销。',
-          details: [
-            { label: '备份', value: '0 份乐谱 / 0 条记录' },
-            { label: '本地', value: `${localScores.length} 份乐谱 / ${localLogs.length} 条记录` }
-          ],
-          confirmText: '仍然恢复',
-          danger: true
-        });
-        if (!ok) { showToast('已取消：空备份未写入'); return false; }
-      } else if (confirmOverwrite) {
-        const ok = await showConfirm({
-          title: '覆盖本地数据',
-          message: '备份会替换本机现有的乐谱与练习记录。',
-          details: [
-            { label: '备份', value: `${scoreCount} 份乐谱 / ${logCount} 条记录` },
-            {
-              label: '备份时间',
-              value: payload.exportedAt ? new Date(payload.exportedAt).toLocaleString('zh-CN', { hour12: false }) : '未知'
-            }
-          ],
-          confirmText: '覆盖',
-          danger: true
-        });
-        if (!ok) return false;
-      }
-
-      loading.textContent = '正在恢复...'; loading.classList.add('show');
-      try {
-        const scoreRecords = [];
-        for (const item of payload.scores) {
-          if (!item || !item.data) throw new Error('备份中存在无效的乐谱数据');
-          const blob = await (await fetch(item.data)).blob();
-          scoreRecords.push({
-            name: item.name, fileBlob: blob, createdAt: item.createdAt || Date.now(),
-            updatedAt: item.updatedAt || item.createdAt || Date.now(),
-            tags: item.tags || [], fileHash: item.fileHash || '',
-            lastReadPage: item.lastReadPage || 0,
-            lastReadPageRatio: item.lastReadPageRatio || 0,
-            lastReadScrollY: item.lastReadScrollY || 0,
-            lastReadAt: item.lastReadAt || 0,
-            bookmarks: Array.isArray(item.bookmarks) ? item.bookmarks : []
-          });
-        }
-        await dbService.clearAllData();
-        await dbService.bulkImport(scoreRecords, payload.logs || []);
-        this.loadShelf();
-        window.dispatchEvent(new CustomEvent('log-updated'));
-        showToast('恢复完成');
-        return true;
-      } finally { loading.classList.remove('show'); }
-    };
-
-    // 本地备份 / 恢复 / 清空已统一收进全局设置抽屉；这里只保留云同步所需的数据打包与恢复。
-    // ==================== 云同步（坚果云 WebDAV） ====================
-    const REMEMBER_KEY = 'gs_cloud_remember';
-    const PASS_SECRET = 'webdav-pass';
-
-    const readCloudForm = () => {
-      const user = $('cloudUser').value.trim();
-      const pass = $('cloudPass').value;
-      const path = $('cloudPath').value.trim() || 'GuitarShell/backup.json';
-      const base = $('cloudBase').value.trim();
-      if (!user || !pass) { showToast('请填写账号与应用密码'); return null; }
-      localStorage.setItem('gs_cloud_user', user);
-      localStorage.setItem('gs_cloud_path', path);
-      // 自定义通道：留空即清掉，回到自动选择
-      if (base) localStorage.setItem('gs_dav_base', base);
-      else localStorage.removeItem('gs_dav_base');
-
-      // 记住密码：只存密文，明文不进 localStorage；取消勾选即删除
-      const remember = !!$('cloudRemember').checked;
-      localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
-      if (remember) vaultService.save(PASS_SECRET, pass).catch(err => console.warn('[云同步] 保存密码失败:', err.message));
-      else vaultService.clear(PASS_SECRET).catch(() => {});
-
-      return { user, pass, path };
-    };
-
-    const openCloudModal = () => {
-      $('cloudUser').value = localStorage.getItem('gs_cloud_user') || '';
-      $('cloudPath').value = localStorage.getItem('gs_cloud_path') || 'GuitarShell/backup.json';
-      $('cloudBase').value = localStorage.getItem('gs_dav_base') || '';
-      $('cloudPass').value = '';
-
-      const supported = vaultService.isSupported();
-      $('cloudRemember').checked = supported && localStorage.getItem(REMEMBER_KEY) === '1';
-      $('cloudRememberRow').style.display = supported ? '' : 'none';
-      $('cloudRememberHint').textContent = supported
-        ? '密码以 AES-GCM 加密存进本机 IndexedDB，密钥不可导出，也不会写进备份文件；换设备需重新填。'
-        : '当前页面不是 HTTPS / localhost，浏览器不提供加密能力，只能每次手填。';
-
-      if (supported && $('cloudRemember').checked) {
-        // 异步回填：用户已经动手打字就别覆盖他输的内容
-        vaultService.load(PASS_SECRET).then((saved) => {
-          if (saved && !$('cloudPass').value) $('cloudPass').value = saved;
-        }).catch(() => {});
-      }
-      cloudModalMask.classList.add('show');
-      trackLayer('cloud-modal', closeCloudModal);
-      cloudModalMask.scrollTop = 0;
-      refreshCloudStatus();
-    };
-    this.handleOpenCloudSync = () => openCloudModal();
-    window.addEventListener('open-cloud-sync', this.handleOpenCloudSync);
-
-    // Android WebView 键盘弹出后会把视口压短：输入框获得焦点时把它滚进可视区，
-    // 避免云同步账号 / 密码栏被键盘顶出弹窗。
-    ['cloudUser', 'cloudPass', 'cloudPath', 'cloudBase'].forEach((id) => {
-      const el = $(id);
-      if (!el) return;
-      el.addEventListener('focus', () => {
-        setTimeout(() => {
-          try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (err) {}
-        }, 120);
-      });
-    });
-
-    $('cloudForget').onclick = async () => {
-      await vaultService.clear(PASS_SECRET);
-      localStorage.setItem(REMEMBER_KEY, '0');
-      $('cloudRemember').checked = false;
-      $('cloudPass').value = '';
-      showToast('已清除本机保存的应用密码');
-    };
-
-    // ==================== A2 冲突检测 ====================
-    // 同步点读写统一走 sync-state.js，读谱页弹窗与全局设置共用同一份状态
-
-    // 打开弹窗 / 切换路径 / 同步成功后刷新本机状态摘要
-    const refreshCloudStatus = async () => {
-      const el = $('cloudSyncState');
-      if (!el) return;
-      el.style.color = 'var(--muted)';
-      if (this.cloudFailure) {
-        el.textContent = this.cloudFailure;
-        el.style.color = 'var(--danger-text)';
-        return;
-      }
-      if (cloudTask.classList.contains('show')) {
-        el.textContent = cloudTaskText.textContent;
-        el.style.color = 'var(--accent-text)';
-        return;
-      }
-      el.textContent = '正在读取同步状态…';
-      const path = $('cloudPath').value.trim() || 'GuitarShell/backup.json';
-      try {
-        const summary = await getCloudSyncSummary(path);
-        el.textContent = describeCloudSync(summary);
-      } catch (err) {
-        console.warn('[云同步] 刷新状态失败:', err.message);
-        el.textContent = '同步状态读取失败 · 仍可手动上传 / 下载';
-      }
-    };
-    const cloudPathInput = $('cloudPath');
-    if (cloudPathInput) cloudPathInput.addEventListener('change', refreshCloudStatus);
-
-    // 云端在本机上次同步后是否被改过：优先比 etag（不受两机时钟差影响），缺失再退化到时间戳
-    const cloudChangeState = (remote, path) => {
-      const state = readSyncState(path);
-      if (!state.at && !state.etag) return 'first';
-      if (state.etag && remote.etag) return remote.etag !== state.etag ? 'changed' : 'same';
-      if (state.at && remote.lastModified) return remote.lastModified > state.at ? 'changed' : 'same';
-      return 'unknown';
-    };
-
-    // 同步成功后更新同步点；etag 必须重新读一次（PUT 之后云端 etag 已变）
-    const markSynced = async (form) => {
-      writeSyncState(form.path, { at: Date.now() });
-      try {
-        const remote = await webdavService.stat(form.user, form.pass, form.path);
-        if (remote && remote.etag) writeSyncState(form.path, { etag: remote.etag });
-      } catch (err) {
-        console.warn('[云同步] 同步后读取云端状态失败:', err.message);
-      }
-    };
-
-    $('cloudUpload').onclick = async () => {
-      if (this.cloudBusy) return;
-      const form = readCloudForm(); if (!form) return;
-      closeCloudModal();
-      webdavService.beginTask();
-      try {
-        setCloudBusy('正在检查云端状态...');
-        // 老代理可能不放开 PROPFIND，读不到就当「未知」继续，不因检查失败挡住同步
-        const remote = await webdavService.stat(form.user, form.pass, form.path).catch((err) => {
-          if (isCloudCancel(err)) throw err;
-          console.warn('[云同步] 读取云端状态失败:', err.message);
-          return null;
-        });
-
-        if (remote && remote.exists === true) {
-          const state = cloudChangeState(remote, form.path);
-          const when = remote.lastModified ? fmtTime(remote.lastModified) : '时间未知';
-          if (state === 'changed') {
-            setCloudBusy(null);
-            const ok = await showConfirm({
-              title: '云端备份已被改动',
-              message: '云端自本机上次同步后又被改过，可能来自另一台设备。继续上传会用本机数据覆盖它。',
-              details: [
-                { label: '云端备份时间', value: when },
-                { label: '本次操作', value: '用本机数据覆盖云端' }
-              ],
-              confirmText: '继续上传',
-              danger: true
-            });
-            if (!ok) { showToast('已取消上传'); return; }
-          } else if (state === 'first') {
-            setCloudBusy(null);
-            const ok = await showConfirm({
-              title: '覆盖云端备份',
-              message: '云端已有一份备份，而本机从未同步过。继续上传会覆盖云端数据。',
-              details: [
-                { label: '云端备份时间', value: when },
-                { label: '本次操作', value: '用本机数据覆盖云端' }
-              ],
-              confirmText: '继续上传',
-              danger: true
-            });
-            if (!ok) { showToast('已取消上传'); return; }
-          }
-        }
-
-        setCloudBusy('正在打包备份...');
-        const payload = await buildBackupPayload({ showLoading: false });
-        if (!payload) return;
-        if (webdavService.isCancelled()) throw Object.assign(new Error('已取消云同步任务'), { code: 'CLOUD_CANCELLED' });
-        setCloudBusy('正在上传到云端...');
-        await webdavService.upload(form.user, form.pass, form.path, JSON.stringify(payload));
-        await markSynced(form);
-        await refreshCloudStatus();
-        showToast(`已上传到云端 · ${webdavService.getEndpointLabel()}`);
-      } catch (err) {
-        if (isCloudCancel(err)) {
-          showToast('已取消云同步任务');
-          return;
-        }
-        console.error(err);
-        showToast('上传失败，可点状态条重试');
-        setCloudFailure(`上传失败：${err.message}`, () => $('cloudUpload').onclick());
-      } finally {
-        webdavService.endTask();
-        if (!this.cloudFailure) setCloudBusy(null);
-      }
-    };
-
-    $('cloudDownload').onclick = async () => {
-      if (this.cloudBusy) return;
-      const form = readCloudForm(); if (!form) return;
-      closeCloudModal();
-      webdavService.beginTask();
-      try {
-        setCloudBusy('正在检查云端状态...');
-        const remote = await webdavService.stat(form.user, form.pass, form.path).catch((err) => {
-          if (isCloudCancel(err)) throw err;
-          console.warn('[云同步] 读取云端状态失败:', err.message);
-          return null;
-        });
-        // 正式文件可能在上次上传中断后缺失，但 .uploading 临时文件是完整的；
-        // 不在 stat 阶段拦截，交给 download 回退读取临时文件。
-        setCloudBusy('正在下载云端备份...');
-        const text = await webdavService.download(form.user, form.pass, form.path);
-        const payload = JSON.parse(text);
-        if (!payload || !Array.isArray(payload.scores)) throw new Error('云端备份格式不正确');
-        if (payload.logs && !Array.isArray(payload.logs)) throw new Error('云端备份的练习记录格式不正确');
-
-        const local = await dbService.getLocalChangeStamp();
-        const syncedAt = Number(readSyncState(form.path).at) || 0;
-        const cloudLogs = payload.logs || [];
-        const backupTime = payload.exportedAt
-          ? fmtTime(payload.exportedAt)
-          : (remote && remote.lastModified ? fmtTime(remote.lastModified) : '时间未知');
-
-        // 下载已完成，先把「本地 vs 云端」摆给用户看，再决定是否覆盖
-        const localTouched = syncedAt && local.at > syncedAt;
-        const neverSyncedWithData = !syncedAt && (local.scoreCount || local.logCount);
-        const emptyBackup = payload.scores.length === 0 && cloudLogs.length === 0;
-        let message = '用云端备份覆盖本机数据？';
-        if (emptyBackup) {
-          message = '云端备份是空的，继续会清空本机乐谱和练习记录，且无法撤销。';
-        } else if (localTouched) {
-          message = `本机自上次同步后又有改动（${fmtTime(local.at)}，含阅读进度），覆盖会丢失这些改动。`;
-        } else if (neverSyncedWithData) {
-          message = '本机已有数据但还没有同步记录，覆盖会清空本机现有内容。';
-        }
-
-        setCloudBusy(null);
-        const ok = await showConfirm({
-          title: emptyBackup ? '云端备份是空的' : '用云端备份覆盖本地',
-          message,
-          details: [
-            { label: '本地', value: `${local.scoreCount || 0} 份乐谱 / ${local.logCount || 0} 条记录` },
-            { label: '云端', value: `${payload.scores.length} 份乐谱 / ${cloudLogs.length} 条记录` },
-            { label: '云端备份时间', value: backupTime }
-          ],
-          extra: {
-            label: '先导出本地备份',
-            onClick: async () => {
-              try {
-                const backup = await buildBackupPayload({ showLoading: false });
-                if (!backup) return;
-                const saved = await saveBackupFile(backup);
-                showToast(saved.native ? `本地备份已保存到 ${saved.path}` : `本地备份已导出到${saved.path}`);
-              } catch (err) {
-                console.error('[云同步] 导出本地备份失败:', err);
-                showToast(`导出失败：${err.message}`);
-              }
-            }
-          },
-          confirmText: '覆盖本地',
-          danger: true
-        });
-        if (!ok) { showToast('已取消覆盖本地'); return; }
-
-        // 覆盖确认已在上面完成，空备份也在同一弹窗提示过；这里只做写入
-        const restored = await restoreFromPayload(payload, false, false);
-        if (restored === false) return;
-        await markSynced(form);
-        await refreshCloudStatus();
-        showToast(`已用云端备份覆盖本地 · ${webdavService.getEndpointLabel()}`);
-      } catch (err) {
-        if (isCloudCancel(err)) {
-          showToast('已取消云同步任务');
-          return;
-        }
-        console.error(err);
-        showToast('下载失败，可点状态条重试');
-        setCloudFailure(`下载失败：${err.message}`, () => $('cloudDownload').onclick());
-      } finally {
-        webdavService.endTask();
-        if (!this.cloudFailure) setCloudBusy(null);
-      }
-    };
-
-    // 连通性探测：国内访问 Worker 偶发失联，上传前先试一手，别把备份扔进断网
-    $('cloudTest').onclick = async () => {
-      if (this.cloudBusy) return;
-      const form = readCloudForm(); if (!form) return;
-      const btn = $('cloudTest');
-      webdavService.beginTask();
-      setCloudBusy('正在测试连接...');
-      btn.textContent = '测试中...';
-      try {
-        const r = await webdavService.probe(form.user, form.pass, form.path);
-        if (r.exists === null) showToast(`端点可达 · ${r.endpoint}`);
-        else if (r.exists) showToast(`连接正常 · ${r.endpoint} · 云端已有备份`);
-        else showToast(`连接正常 · ${r.endpoint} · 云端暂无该文件`);
-      } catch (err) {
-        if (isCloudCancel(err)) {
-          showToast('已取消云同步任务');
-          return;
-        }
-        console.error(err);
-        showToast('连接失败，可点状态条重试');
-        setCloudFailure(`连接失败：${err.message}`, () => $('cloudTest').onclick());
-      } finally {
-        webdavService.endTask();
-        if (!this.cloudFailure) setCloudBusy(null);
-        btn.textContent = '测试连接';
-      }
-    };
 
     // 沉浸式虚化状态机：谱面交互 → 虚化；鼠标移入控件 → 实体化（无自动恢复定时器）
     const setMmFaded = (faded) => {

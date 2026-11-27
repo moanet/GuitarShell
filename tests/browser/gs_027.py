@@ -128,7 +128,7 @@ TEST = r"""
     const sRoot = settings.shadowRoot;
     await waitFor(() => sRoot.querySelector('.mask.show'), 8000);
     await waitFor(() => {
-      const text = sRoot.getElementById('cloudStatus')?.textContent.trim() || '';
+      const text = sRoot.getElementById('cloudStatusText')?.textContent.trim() || '';
       return text && !text.includes('正在读取');
     }, 8000);
     await sleep(200);
@@ -141,7 +141,7 @@ TEST = r"""
     const headers = [
       sRoot.getElementById('btnToggleAppearance'),
       sRoot.getElementById('btnToggleData'),
-      sRoot.querySelector('.card:nth-child(3) .card-head'),
+      sRoot.getElementById('btnToggleCloud'),
       sRoot.getElementById('btnToggleStorage'),
       sRoot.querySelector('.about .card-head')
     ];
@@ -157,7 +157,7 @@ TEST = r"""
     check('五张标题单行不换行', titleRects.every((r) => r.height <= 20), titleRects.map((r) => Math.round(r.height)).join(' / '));
     check('外观与数据标题行高 40', [0, 1].every((i) => Math.abs(headerRects[i].height - 40) < 1), [0, 1].map((i) => Math.round(headerRects[i].height)).join(' / '));
     check('存储标题行高 40', Math.abs(headerRects[3].height - 40) < 1, `${Math.round(headerRects[3].height)}`);
-    check('云同步与关于保持 36 标题行', [2, 4].every((i) => Math.abs(headerRects[i].height - 36) < 1), [2, 4].map((i) => Math.round(headerRects[i].height)).join(' / '));
+    check('云同步折叠行 40、关于 36', Math.abs(headerRects[2].height - 40) < 1 && Math.abs(headerRects[4].height - 36) < 1, [2, 4].map((i) => Math.round(headerRects[i].height)).join(' / '));
     check('折叠行均为整行按钮', [0, 1, 3].every((i) => headers[i].tagName === 'BUTTON' && headers[i].getAttribute('aria-controls')), '');
 
     check('抽屉标题副标题已删除', !sRoot.querySelector('.head p'), '');
@@ -326,19 +326,51 @@ true
         cloud_open = cdp.ev("""
 (async () => {
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-  let opened = 0;
-  const onCloud = () => { opened += 1; };
-  window.addEventListener('open-cloud-sync', onCloud, { once: true });
-  document.querySelector('guitar-settings').shadowRoot.getElementById('btnCloudEntry').click();
-  await sleep(600);
-  window.removeEventListener('open-cloud-sync', onCloud);
-  return opened;
+  const s = document.querySelector('guitar-settings');
+  const r = s.shadowRoot;
+  r.getElementById('btnToggleCloud').click();
+  await sleep(300);
+  return {
+    open: !r.getElementById('cloudBody').hidden,
+    expanded: r.getElementById('btnToggleCloud').getAttribute('aria-expanded') === 'true',
+    fields: ['cloudAccount', 'cloudSecret', 'cloudPath', 'cloudBase', 'btnCloudTest', 'btnCloudUpload', 'btnCloudDownload']
+      .every(id => !!r.getElementById(id)),
+    othersClosed: r.getElementById('appearanceBody').hidden && r.getElementById('dataBody').hidden && r.getElementById('storageBody').hidden,
+    noOldModal: !r.getElementById('cloudModalMask') && !r.getElementById('btnCloudEntry')
+  };
 })()
 """)
-        check_cloud = cloud_open == 1
-        print(("[PASS] " if check_cloud else "[FAIL] ") + f"管理按钮仍打开云同步面板事件 — {cloud_open}")
+        check_cloud = all(cloud_open.values())
+        print(("[PASS] " if check_cloud else "[FAIL] ") + f"云同步折叠行展开表单且旧入口消失 — {json.dumps(cloud_open, ensure_ascii=False)}")
         if not check_cloud:
             failed += 1
+
+        print(" ", cdp.shot("settings_cloud_top"))
+        cdp.ev("""
+const r = document.querySelector('guitar-settings').shadowRoot;
+r.querySelector('.body').scrollTop = r.querySelector('.body').scrollHeight;
+true
+""")
+        time.sleep(0.25)
+        print(" ", cdp.shot("settings_cloud_bottom"))
+        cdp.ev("""
+{
+  const s = document.querySelector('guitar-settings').shadowRoot;
+  s.querySelector('[data-theme-choice="light"]').click();
+  s.querySelector('.body').scrollTop = 0;
+}
+true
+""")
+        time.sleep(0.25)
+        print(" ", cdp.shot("settings_cloud_light_top"))
+        cdp.ev("""
+{
+  const s = document.querySelector('guitar-settings').shadowRoot;
+  s.querySelector('[data-theme-choice="deep"]').click();
+}
+true
+""")
+        time.sleep(0.15)
 
         total = len(out["checks"]) + 1
         print("")

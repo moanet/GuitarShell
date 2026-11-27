@@ -190,15 +190,30 @@ def main():
   const wd = await import('/js/services/webdav.js');
   out.timeouts = wd.webdavService.getTimeouts();
 
-  window.dispatchEvent(new CustomEvent('open-cloud-sync')); await sleep(200);
-  sr.querySelector('#cloudUser').value = 'test@example.com';
-  sr.querySelector('#cloudPass').value = 'pass';
-  sr.querySelector('#cloudPath').value = 'GuitarShell/test.json';
-  sr.querySelector('#cloudBase').value = 'http://127.0.0.1:8123/';
+  const settings = document.querySelector('guitar-settings');
+  const st = settings.shadowRoot;
+  settings.open(); await sleep(280);
+  st.getElementById('btnToggleCloud').click(); await sleep(220);
+
+  const fill = () => {
+    st.getElementById('cloudAccount').value = 'test@example.com';
+    st.getElementById('cloudSecret').value = 'pass';
+    st.getElementById('cloudPath').value = 'GuitarShell/test.json';
+    st.getElementById('cloudBase').value = 'http://127.0.0.1:8123/';
+  };
+  fill();
+  out.form = {
+    bodyOpen: !st.getElementById('cloudBody').hidden,
+    fields: ['cloudAccount', 'cloudSecret', 'cloudPath', 'cloudBase'].every((id) => !!st.getElementById(id)),
+    actions: ['btnCloudTest', 'btnCloudUpload', 'btnCloudDownload'].every((id) => !!st.getElementById(id)),
+    actionLabels: [st.getElementById('btnCloudUpload').textContent.trim(), st.getElementById('btnCloudDownload').textContent.trim()],
+    oldSettingsEntry: !st.getElementById('btnCloudEntry'),
+    oldSheetModal: !sr.querySelector('#cloudModalMask'),
+    oldSheetTask: !sr.querySelector('#cloudTask'),
+    oldSheetFields: !sr.querySelector('#cloudUser')
+  };
 
   const realFetch = window.fetch;
-  // 上传已改成 PUT 临时文件 → PROPFIND 校验 → DELETE 旧文件 → MOVE 正式文件；
-  // 这个通用 mock 只验证 UI 流程，不校验远端状态。PROPFIND 返回 405 表示跳过校验。
   const okStatus = (opt = {}) => {
     const method = (opt.method || 'GET').toUpperCase();
     if (method === 'PUT' || method === 'MOVE') return 201;
@@ -209,7 +224,7 @@ def main():
   const slowFetch = (url, opt = {}) => new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       resolve(new Response('', { status: okStatus(opt) }));
-    }, 900);
+    }, 1500);
     if (opt.signal) {
       opt.signal.addEventListener('abort', () => {
         clearTimeout(timer);
@@ -217,79 +232,144 @@ def main():
       }, { once: true });
     }
   });
+  const toastText = () => document.querySelector('.app-toast')?.textContent.trim() || '';
+  const clearToast = () => document.querySelector('.app-toast')?.classList.remove('show');
 
-  // 取消：请求挂起时先验证“同步中退出确认”，再点浮动胶囊取消
+  // 关闭抽屉不取消任务：挂起请求中关掉再打开，仍能看到进度和取消按钮
   window.fetch = slowFetch;
-  sr.querySelector('#cloudUpload').click(); await sleep(140);
-  window.dispatchEvent(new CustomEvent('gs-cloud-exit-request')); await sleep(140);
-  const exitDlg = document.querySelector('guitar-app-dialog');
-  const exitSr = exitDlg?.shadowRoot;
-  out.exitPrompt = {
-    busy: r.cloudBusy,
-    open: !!exitDlg,
-    title: exitSr?.querySelector('#dlgTitle')?.textContent || '',
-    message: exitSr?.querySelector('#dlgMessage')?.textContent || '',
-    detail: exitSr?.querySelector('.detail-row .v')?.textContent || '',
-    cancelText: exitSr?.querySelector('#dlgCancel')?.textContent || '',
-    confirmText: exitSr?.querySelector('#dlgConfirm')?.textContent || ''
+  clearToast();
+  st.getElementById('btnCloudUpload').click(); await sleep(180);
+  st.getElementById('cloudCancel').scrollIntoView({ block: 'center' }); await sleep(160);
+  const cancelRect = st.getElementById('cloudCancel').getBoundingClientRect();
+  const cancelHit = st.elementFromPoint(cancelRect.left + cancelRect.width / 2, cancelRect.top + cancelRect.height / 2);
+  out.taskStart = {
+    busy: settings.cloud.busy,
+    cancelVisible: !st.getElementById('cloudCancel').hidden,
+    cancelHit: cancelHit?.id === 'cloudCancel',
+    inViewport: cancelRect.left >= 0 && cancelRect.right <= innerWidth && cancelRect.top >= 0 && cancelRect.bottom <= innerHeight,
+    uploadDisabled: st.getElementById('btnCloudUpload').disabled,
+    summary: st.getElementById('cloudStatusText').textContent.trim()
   };
-  exitSr?.querySelector('#dlgCancel')?.click(); await sleep(260);
-  out.exitPrompt.closed = !document.querySelector('guitar-app-dialog');
-  out.exitPrompt.stillBusy = r.cloudBusy;
 
-  const cancelRect = sr.querySelector('#cloudTaskCancel').getBoundingClientRect();
-  const cancelHit = sr.elementFromPoint(cancelRect.left + cancelRect.width / 2, cancelRect.top + cancelRect.height / 2);
-  out.cancelStart = {
-    busy: r.cloudBusy,
-    task: sr.querySelector('#cloudTask').classList.contains('show'),
-    cancelVisible: getComputedStyle(sr.querySelector('#cloudTaskCancel')).display !== 'none',
-    cancelHit: cancelHit?.id === 'cloudTaskCancel',
-    inViewport: cancelRect.left >= 0 && cancelRect.right <= innerWidth
+  settings.close(); await sleep(180);
+  out.closedTask = {
+    drawerOpen: st.getElementById('mask').classList.contains('show'),
+    busy: settings.cloud.busy,
+    toast: toastText()
   };
-  sr.querySelector('#cloudTaskCancel').click(); await sleep(400);
+  settings.open(); await sleep(280);
+  st.getElementById('btnToggleCloud').click(); await sleep(180);
+  fill();
+  out.reopenTask = {
+    busy: settings.cloud.busy,
+    bodyOpen: !st.getElementById('cloudBody').hidden,
+    cancelVisible: !st.getElementById('cloudCancel').hidden,
+    summary: st.getElementById('cloudStatusText').textContent.trim(),
+    state: st.getElementById('cloudSyncState').textContent.trim()
+  };
+
+  clearToast();
+  st.getElementById('cloudCancel').click(); await sleep(700);
   out.cancelEnd = {
-    busy: r.cloudBusy,
-    task: sr.querySelector('#cloudTask').classList.contains('show'),
-    toast: sr.querySelector('#toast').textContent,
-    uploadDisabled: sr.querySelector('#cloudUpload').disabled
+    busy: settings.cloud.busy,
+    cancelHidden: st.getElementById('cloudCancel').hidden,
+    uploadDisabled: st.getElementById('btnCloudUpload').disabled,
+    toast: toastText()
   };
 
-  // 失败：全部端点拒绝，出现失败胶囊与“重试”
+  // 失败：全部端点拒绝，摘要行、状态行与重试按钮同时保留错误
+  fill();
+  clearToast();
   window.fetch = () => Promise.reject(new TypeError('Failed to fetch'));
-  sr.querySelector('#cloudUpload').click(); await sleep(350);
-  const retryRect = sr.querySelector('#cloudTaskRetry').getBoundingClientRect();
-  const retryHit = sr.elementFromPoint(retryRect.left + retryRect.width / 2, retryRect.top + retryRect.height / 2);
+  st.getElementById('btnCloudUpload').click(); await sleep(650);
+  st.getElementById('cloudRetry').scrollIntoView({ block: 'center' }); await sleep(220);
+  const retryRect = st.getElementById('cloudRetry').getBoundingClientRect();
+  const retryHit = st.elementFromPoint(retryRect.left + retryRect.width / 2, retryRect.top + retryRect.height / 2);
   out.fail = {
-    busy: r.cloudBusy,
-    failed: sr.querySelector('#cloudTask').classList.contains('failed'),
-    text: sr.querySelector('#cloudTaskText').textContent,
-    toast: sr.querySelector('#toast').textContent,
-    retryVisible: getComputedStyle(sr.querySelector('#cloudTaskRetry')).display !== 'none',
-    retryHit: retryHit?.id === 'cloudTaskRetry',
-    inViewport: retryRect.left >= 0 && retryRect.right <= innerWidth
+    busy: settings.cloud.busy,
+    failure: settings.cloud.failure?.text || '',
+    summary: st.getElementById('cloudStatusText').textContent.trim(),
+    detail: st.getElementById('cloudDetail').textContent.trim(),
+    state: st.getElementById('cloudSyncState').textContent.trim(),
+    toast: toastText(),
+    retryVisible: !st.getElementById('cloudRetry').hidden,
+    dismissVisible: !st.getElementById('cloudDismiss').hidden,
+    cancelHidden: st.getElementById('cloudCancel').hidden,
+    retryHit: retryHit?.id === 'cloudRetry',
+    inViewport: retryRect.left >= 0 && retryRect.right <= innerWidth && retryRect.top >= 0 && retryRect.bottom <= innerHeight
   };
 
-  // 错误应保留在云同步弹窗状态行
-  window.dispatchEvent(new CustomEvent('open-cloud-sync')); await sleep(180);
-  out.fail.modalState = sr.querySelector('#cloudSyncState').textContent;
-  sr.querySelector('#cloudCancel').click(); await sleep(80);
-  sr.querySelector('#cloudPass').value = 'pass';
-
-  // 重试：恢复成功响应后点“重试”
+  // 重试：恢复成功响应后点“重试”，任务重新跑完并回到已同步
   window.fetch = (url, opt = {}) => Promise.resolve(
     new Response('', { status: okStatus(opt) })
   );
-  sr.querySelector('#cloudTaskRetry').click(); await sleep(500);
+  clearToast();
+  st.getElementById('cloudRetry').click();
+  for (let i = 0; i < 30; i += 1) {
+    if (!settings.cloud.busy) break;
+    await sleep(200);
+  }
+  await sleep(350);
   out.retry = {
-    busy: r.cloudBusy,
-    task: sr.querySelector('#cloudTask').classList.contains('show'),
-    failed: sr.querySelector('#cloudTask').classList.contains('failed'),
-    toast: sr.querySelector('#toast').textContent,
-    uploadDisabled: sr.querySelector('#cloudUpload').disabled
+    busy: settings.cloud.busy,
+    failure: settings.cloud.failure,
+    summary: st.getElementById('cloudStatusText').textContent.trim(),
+    retryHidden: st.getElementById('cloudRetry').hidden,
+    dismissHidden: st.getElementById('cloudDismiss').hidden,
+    uploadDisabled: st.getElementById('btnCloudUpload').disabled,
+    toast: toastText()
+  };
+
+  // 下载空备份：必须走危险确认，确认后清空本机并回到已同步
+  window.fetch = (url, opt = {}) => {
+    const method = (opt.method || 'GET').toUpperCase();
+    if (method === 'GET') {
+      return Promise.resolve(new Response(
+        JSON.stringify({ scores: [], logs: [], exportedAt: 1 }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      ));
+    }
+    return Promise.resolve(new Response('', { status: okStatus(opt) }));
+  };
+  fill();
+  clearToast();
+  st.getElementById('btnCloudDownload').click();
+  let dlg = null;
+  for (let i = 0; i < 25; i += 1) {
+    dlg = document.querySelector('guitar-app-dialog');
+    if (dlg) break;
+    await sleep(120);
+  }
+  const dsr = dlg?.shadowRoot;
+  out.emptyDialog = {
+    open: !!dlg,
+    title: dsr?.querySelector('#dlgTitle')?.textContent.trim() || '',
+    message: dsr?.querySelector('#dlgMessage')?.textContent.trim() || '',
+    confirmText: dsr?.querySelector('#dlgConfirm')?.textContent.trim() || '',
+    danger: dsr?.querySelector('#dlgConfirm')?.className.includes('danger') || false,
+    extraText: dsr?.querySelector('#dlgExtra')?.textContent.trim() || '',
+    details: dsr ? Array.from(dsr.querySelectorAll('.detail-row')).map((row) => row.textContent.trim()) : []
+  };
+  dsr?.querySelector('#dlgConfirm')?.click();
+  for (let i = 0; i < 30; i += 1) {
+    if (!settings.cloud.busy) break;
+    await sleep(200);
+  }
+  await sleep(300);
+  for (let i = 0; i < 10; i += 1) {
+    if (sr.querySelectorAll('.score-card').length === 0) break;
+    await sleep(200);
+  }
+  const dbm = await import('/js/services/db.js');
+  out.downloadEmpty = {
+    busy: settings.cloud.busy,
+    summary: st.getElementById('cloudStatusText').textContent.trim(),
+    toast: toastText(),
+    readerCards: sr.querySelectorAll('.score-card').length,
+    scoreCount: (await dbm.dbService.getAllScores()).length
   };
 
   window.fetch = realFetch;
-  out.returnLabel = sr.querySelector('#cloudCancel').textContent.trim();
   return out;
 })()
 """)
@@ -301,32 +381,58 @@ def main():
         assert out["batchChip"]["active"] is None, out
         assert out["batchChip"]["inputFocused"] is False, out
         assert out["timeouts"] == {"upload": 60000, "download": 30000, "meta": 12000}, out
-        assert out["exitPrompt"]["busy"] is True, out
-        assert out["exitPrompt"]["open"] is True, out
-        assert out["exitPrompt"]["title"] == "云同步仍在进行", out
-        assert "可能中断上传" in out["exitPrompt"]["message"], out
-        assert out["exitPrompt"]["cancelText"] == "继续同步", out
-        assert out["exitPrompt"]["confirmText"] == "取消同步并退出", out
-        assert out["exitPrompt"]["closed"] is True, out
-        assert out["exitPrompt"]["stillBusy"] is True, out
-        assert out["cancelStart"]["busy"] is True, out
-        assert out["cancelStart"]["cancelVisible"] is True, out
-        assert out["cancelStart"]["cancelHit"] is True, out
-        assert out["cancelStart"]["inViewport"] is True, out
+        assert out["form"]["bodyOpen"] is True, out
+        assert out["form"]["fields"] is True, out
+        assert out["form"]["actions"] is True, out
+        assert out["form"]["actionLabels"] == ["上传备份", "覆盖本地"], out
+        assert out["form"]["oldSettingsEntry"] is True, out
+        assert out["form"]["oldSheetModal"] is True, out
+        assert out["form"]["oldSheetTask"] is True, out
+        assert out["form"]["oldSheetFields"] is True, out
+        assert out["taskStart"]["busy"] is True, out
+        assert out["taskStart"]["cancelVisible"] is True, out
+        assert out["taskStart"]["cancelHit"] is True, out
+        assert out["taskStart"]["inViewport"] is True, out
+        assert out["taskStart"]["uploadDisabled"] is True, out
+        assert "上传" in out["taskStart"]["summary"], out
+        assert out["closedTask"]["drawerOpen"] is False, out
+        assert out["closedTask"]["busy"] is True, out
+        assert out["reopenTask"]["busy"] is True, out
+        assert out["reopenTask"]["bodyOpen"] is True, out
+        assert out["reopenTask"]["cancelVisible"] is True, out
         assert out["cancelEnd"]["busy"] is False, out
-        assert out["cancelEnd"]["task"] is False, out
-        assert out["cancelEnd"]["toast"] == "已取消云同步任务", out
+        assert out["cancelEnd"]["cancelHidden"] is True, out
         assert out["cancelEnd"]["uploadDisabled"] is False, out
-        assert out["fail"]["failed"] is True, out
-        assert out["fail"]["toast"] == "上传失败，可点状态条重试", out
+        assert out["cancelEnd"]["toast"] == "已取消", out
+        assert out["fail"]["busy"] is False, out
+        assert out["fail"]["failure"] == "上传失败", out
+        assert out["fail"]["summary"] == "上传失败", out
+        assert out["fail"]["state"] == "上传失败", out
+        assert out["fail"]["toast"] == "上传失败，可点重试", out
         assert out["fail"]["retryVisible"] is True, out
+        assert out["fail"]["dismissVisible"] is True, out
+        assert out["fail"]["cancelHidden"] is True, out
         assert out["fail"]["retryHit"] is True, out
         assert out["fail"]["inViewport"] is True, out
-        assert out["fail"]["modalState"] == out["fail"]["text"], out
-        assert out["retry"]["task"] is False, out
-        assert out["retry"]["failed"] is False, out
+        assert out["retry"]["busy"] is False, out
+        assert out["retry"]["failure"] is None, out
+        assert out["retry"]["summary"] == "已同步", out
+        assert out["retry"]["retryHidden"] is True, out
+        assert out["retry"]["dismissHidden"] is True, out
         assert out["retry"]["uploadDisabled"] is False, out
-        assert out["returnLabel"] == "返回", out
+        assert out["retry"]["toast"] == "已上传到云端", out
+        assert out["emptyDialog"]["open"] is True, out
+        assert out["emptyDialog"]["title"] == "云端备份是空的", out
+        assert "无法撤销" in out["emptyDialog"]["message"], out
+        assert out["emptyDialog"]["confirmText"] == "覆盖本机", out
+        assert out["emptyDialog"]["danger"] is True, out
+        assert out["emptyDialog"]["extraText"] == "先导出本地备份", out
+        assert len(out["emptyDialog"]["details"]) == 3, out
+        assert out["downloadEmpty"]["busy"] is False, out
+        assert out["downloadEmpty"]["toast"] == "已从云端恢复 0 份乐谱、0 条练习", out
+        assert out["downloadEmpty"]["scoreCount"] == 0, out
+        assert out["downloadEmpty"]["readerCards"] == 0, out
+        assert out["downloadEmpty"]["summary"] == "已同步", out
         print(json.dumps(out, ensure_ascii=False, indent=2))
     finally:
         if cdp:

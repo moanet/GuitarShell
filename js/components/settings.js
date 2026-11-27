@@ -8,7 +8,6 @@ import { APP_VERSION } from '../services/version.js';
 import { showToast } from '../services/toast.js';
 import { dbService } from '../services/db.js';
 import { getTheme, setTheme, onThemeChange, syncThemeImages } from '../services/theme.js';
-import { getCloudSyncSummary, describeCloudSync, formatSyncTime } from '../services/sync-state.js';
 import { showConfirm } from './app-dialog.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 import {
@@ -19,15 +18,7 @@ import {
   findOrphanAssets, formatBytes
 } from '../services/storage-stats.js';
 import { icon } from '../services/icons.js';
-
-function cloudDetailText(summary) {
-  if (!summary) return '正在读取本机同步记录';
-  if (summary.status === 'unknown') return '状态读取失败，仍可手动上传 / 下载';
-  if (summary.status === 'never') return '还没建立第一次同步';
-  const time = formatSyncTime(summary.at);
-  if (summary.status === 'pending') return `上次同步 ${time} · 本机有未同步改动`;
-  return `上次同步 ${time} · 本机已是最新`;
-}
+import { CloudSyncController } from './cloud-sync.js';
 
 // 当前两套主题；未来新增主题只在数组末尾追加一项，设置页网格自动排下一行。
 // 真正启用新主题仍需同步扩展 theme.js 的白名单、系统栏颜色与图标资源。
@@ -133,14 +124,42 @@ const settingsCSS = `
   .hint b { color: var(--txt-soft); font-weight: 600; }
   .status { min-height: 15px; margin-top: 6px; font-size: 10.5px; color: var(--accent-text); line-height: 1.5; word-break: break-all; }
   .status:empty { display: none; }
-  .cloud-note { margin: 0 2px 6px; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
-  .cloud-note b { color: var(--txt-soft); font-weight: 600; }
-  .cloud-status { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; font-weight: 600; line-height: 1.5; color: var(--txt-soft); }
+  /* 云同步：摘要行 + 展开表单 */
+  .cloud-summary { display: flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
+  .cloud-summary span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 600; color: var(--txt-soft); }
   .cloud-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--muted); }
   .cloud-dot.pending { background: var(--accent); }
-  .cloud-dot.clean { background: var(--success-text); }
+  .cloud-dot.success { background: var(--success-text); }
   .cloud-dot.unknown { background: var(--danger-text); }
-  .cloud-detail { margin: 4px 2px 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
+  .cloud-field { margin-top: 9px; }
+  .cloud-field label { display: block; margin: 0 2px 4px; font-size: 10.5px; font-weight: 600; color: var(--muted); }
+  .cloud-field input {
+    width: 100%; height: 40px; padding: 0 10px; border-radius: 10px;
+    border: 1px solid var(--line-strong); background: var(--surface-raised);
+    color: var(--txt); font: inherit; font-size: 12px;
+  }
+  .cloud-field input:focus { border-color: var(--primary); }
+  .cloud-field input::placeholder { color: var(--muted-soft); }
+  .cloud-field-hint { margin: 4px 2px 0; font-size: 10px; line-height: 1.5; color: var(--muted); }
+  .cloud-remember { display: flex; align-items: center; gap: 7px; margin-top: 9px; min-height: 24px; font-size: 11px; color: var(--txt-soft); }
+  .cloud-remember input { width: 15px; height: 15px; margin: 0; accent-color: var(--primary); }
+  .cloud-remember button {
+    margin-left: auto; padding: 2px 0; border: 0; background: transparent;
+    color: var(--accent-text); font: inherit; font-size: 10.5px; font-weight: 600; cursor: pointer;
+  }
+  .cloud-state {
+    min-height: 32px; margin-top: 8px; padding: 7px 9px; border-radius: 9px;
+    background: rgba(var(--bg1-rgb), .4); border: 1px solid var(--line);
+    font-size: 10.5px; line-height: 1.5; color: var(--muted);
+  }
+  .cloud-links { display: flex; justify-content: flex-end; gap: 14px; margin-top: 6px; }
+  .cloud-links button {
+    padding: 2px 0; border: 0; background: transparent; font: inherit;
+    font-size: 10.5px; font-weight: 600; color: var(--accent-text); cursor: pointer;
+  }
+  .cloud-links button[hidden] { display: none; }
+  .cloud-links button:disabled { opacity: .5; cursor: default; }
+  .cloud-actions { margin-top: 8px; }
 
   /* 数据与备份：摘要行 + 展开动作 */
   .danger-link {
@@ -184,10 +203,7 @@ const settingsCSS = `
   .storage-line b { color: var(--txt-soft); font-weight: 600; font-variant-numeric: tabular-nums; }
   .cap-hint { margin: 0 2px 9px; font-size: 10px; line-height: 1.5; color: var(--muted); }
 
-  /* 云同步：状态与入口同一行 */
-  .cloud-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
-  .cloud-row .cloud-status { flex: 1; min-width: 0; }
-  .act.small { width: auto; flex: 0 0 auto; min-width: 64px; min-height: 40px; padding: 0 12px; font-size: 11px; }
+  /* 云同步：状态与操作 */
 
   .about-brand { display: flex; align-items: center; gap: 8px; }
   .about-brand img { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; box-shadow: 0 4px 14px rgba(var(--shadow-rgb), .28); }
@@ -250,14 +266,49 @@ const settingsHTML = `
           </div>
         </section>
 
-        <section class="card">
-          <div class="card-head"><span class="ico">${icon('cloud', 16)}</span><h3>云同步</h3></div>
-          <p class="cloud-note">坚果云 WebDAV · 手动上传 / 下载，密码本机加密。</p>
-          <div class="cloud-row">
-            <p class="cloud-status"><i class="cloud-dot" id="cloudDot" aria-hidden="true"></i><span id="cloudStatus">正在读取同步状态…</span></p>
-            <button class="act small" id="btnCloudEntry" type="button">管理</button>
+        <section class="card fold-card" id="cloudCard">
+          <button class="fold-head" id="btnToggleCloud" type="button" aria-expanded="false" aria-controls="cloudBody">
+            <span class="ico">${icon('cloud', 16)}</span><h3>云同步</h3>
+            <span class="cloud-summary"><i class="cloud-dot" id="cloudDot" aria-hidden="true"></i><span id="cloudStatusText">正在读取…</span></span>
+            <span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <p class="fold-note" id="cloudDetail">正在读取本机同步记录</p>
+          <div class="fold-body" id="cloudBody" hidden>
+            <p class="hint">坚果云 WebDAV · 手动上传 / 下载。使用应用密码，不填登录密码。</p>
+            <div class="cloud-field">
+              <label for="cloudAccount">账号</label>
+              <input id="cloudAccount" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="坚果云账号（邮箱）">
+            </div>
+            <div class="cloud-field">
+              <label for="cloudSecret">应用密码</label>
+              <input id="cloudSecret" type="password" autocomplete="current-password" placeholder="坚果云第三方应用密码">
+            </div>
+            <div class="cloud-remember" id="cloudRememberRow">
+              <input type="checkbox" id="cloudRemember">
+              <label for="cloudRemember">记住密码</label>
+              <button id="cloudForget" type="button" hidden>清除</button>
+            </div>
+            <p class="cloud-field-hint" id="cloudRememberHint">不勾选时密码只在本次填写中有效，不会写盘。</p>
+            <div class="cloud-field">
+              <label for="cloudPath">备份路径</label>
+              <input id="cloudPath" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="GuitarShell/backup.json">
+            </div>
+            <div class="cloud-field">
+              <label for="cloudBase">同步通道</label>
+              <input id="cloudBase" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="留空自动选通道">
+            </div>
+            <button class="act cloud-actions" id="btnCloudTest" type="button">测试连接</button>
+            <div class="cloud-state" id="cloudSyncState">正在读取同步状态…</div>
+            <div class="cloud-links">
+              <button id="cloudCancel" type="button" hidden>取消</button>
+              <button id="cloudRetry" type="button" hidden>重试</button>
+              <button id="cloudDismiss" type="button" hidden>关闭</button>
+            </div>
+            <div class="grid2 cloud-actions">
+              <button class="act" id="btnCloudDownload" type="button">覆盖本地</button>
+              <button class="act primary" id="btnCloudUpload" type="button">上传备份</button>
+            </div>
           </div>
-          <p class="cloud-detail" id="cloudDetail">正在读取本机同步记录</p>
         </section>
 
         <section class="card fold-card storage-card" id="storageCard">
@@ -359,7 +410,6 @@ class GuitarSettings extends HTMLElement {
     });
 
     this.$('btnBackup').onclick = () => this.backup();
-    this.$('btnCloudEntry').onclick = () => this.openCloud();
     this.$('btnRestore').onclick = () => this.$('backupFile').click();
     this.$('btnGithub').onclick = (e) => {
       e.preventDefault();
@@ -383,12 +433,14 @@ class GuitarSettings extends HTMLElement {
     this.folds = {
       appearance: { card: 'appearanceCard', btn: 'btnToggleAppearance', body: 'appearanceBody' },
       data: { card: 'dataCard', btn: 'btnToggleData', body: 'dataBody' },
+      cloud: { card: 'cloudCard', btn: 'btnToggleCloud', body: 'cloudBody' },
       storage: { card: 'storageCard', btn: 'btnToggleStorage', body: 'storageBody' }
     };
     Object.keys(this.folds).forEach((name) => {
       const fold = this.folds[name];
       this.$(fold.btn).onclick = () => this.setFoldOpen(name, this.$(fold.body).hidden);
     });
+    this.cloud = new CloudSyncController(this);
     this._swipeOff = this.bindSwipe();
   }
 
@@ -405,6 +457,10 @@ class GuitarSettings extends HTMLElement {
     body.hidden = !open;
     this.$(fold.card).classList.toggle('open', open);
     this.$(fold.btn).setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (name === 'cloud' && open && this.cloud) {
+      this.cloud.loadForm();
+      this.cloud.refreshStatus();
+    }
   }
 
   closeAllFolds() {
@@ -582,7 +638,7 @@ class GuitarSettings extends HTMLElement {
     }
     this.refreshStats();
     this.refreshStorage();
-    this.refreshCloudStatus();
+    this.cloud?.refreshStatus();
   }
 
   close() {
@@ -711,30 +767,6 @@ class GuitarSettings extends HTMLElement {
     }
   }
 
-  async refreshCloudStatus() {
-    const el = this.$('cloudStatus');
-    if (!el) return;
-    const dot = this.$('cloudDot');
-    const detail = this.$('cloudDetail');
-    el.textContent = '正在读取同步状态…';
-    if (dot) dot.className = 'cloud-dot';
-    if (detail) detail.textContent = '正在读取本机同步记录';
-    const path = localStorage.getItem('gs_cloud_path') || 'GuitarShell/backup.json';
-    try {
-      const summary = await getCloudSyncSummary(path);
-      el.textContent = summary.status === 'unknown'
-        ? '状态读取失败'
-        : describeCloudSync(summary, { compact: true });
-      if (dot) dot.className = `cloud-dot ${summary.status || 'unknown'}`;
-      if (detail) detail.textContent = cloudDetailText(summary);
-    } catch (err) {
-      console.warn('[云同步] 读取设置页状态失败:', err.message);
-      el.textContent = '状态读取失败';
-      if (dot) dot.className = 'cloud-dot unknown';
-      if (detail) detail.textContent = '状态读取失败，仍可手动上传 / 下载';
-    }
-  }
-
   async backup() {
     if (this.busy) return;
     this.setBusy(true, '正在打包备份…');
@@ -754,16 +786,6 @@ class GuitarSettings extends HTMLElement {
       this.setBusy(false, '备份失败');
       showToast(`备份失败：${err.message}`);
     }
-  }
-
-  openCloud() {
-    this.close();
-    const readerTab = document.querySelector('.tab-btn[data-target="view-reader"]');
-    if (readerTab) readerTab.click();
-    // 等读谱视图和抽屉退场动画完成后再打开云同步弹窗，避免弹窗落在隐藏视图里
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('open-cloud-sync'));
-    }, 300);
   }
 
   async restore(file) {

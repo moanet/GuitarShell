@@ -184,40 +184,47 @@ TEST_JS = r"""
   await sleep(320);
   const sRoot = settings.shadowRoot;
   await waitFor(() => {
-    const t = sRoot.getElementById('cloudStatus')?.textContent.trim() || '';
+    const t = sRoot.getElementById('cloudStatusText')?.textContent.trim() || '';
     return t && !t.includes('正在读取');
   }, 8000);
-  const cloudText = sRoot.getElementById('cloudStatus').textContent.trim();
-  check('云同步状态文案保持单行短句', ['尚未同步', '待同步', '已同步'].includes(cloudText), cloudText);
+  const cloudText = sRoot.getElementById('cloudStatusText').textContent.trim();
+  check('云同步状态文案保持单行短句', ['尚未同步', '待同步', '已同步', '状态读取失败'].includes(cloudText), cloudText);
   check('未同步细节说明首次同步', sRoot.getElementById('cloudDetail').textContent.trim() === '还没建立第一次同步', sRoot.getElementById('cloudDetail').textContent.trim());
   check('未同步状态点为灰点', sRoot.getElementById('cloudDot').className === 'cloud-dot never', sRoot.getElementById('cloudDot').className);
-  const cloudButton = sRoot.getElementById('btnCloudEntry');
-  const cloudButtonStyle = getComputedStyle(cloudButton);
-  check('云同步入口文案为管理', cloudButton.textContent.trim() === '管理', cloudButton.textContent.trim());
-  check('管理按钮 40 高且最小宽 64', Math.abs(cloudButton.getBoundingClientRect().height - 40) < 1 && cloudButtonStyle.minWidth === '64px', `${cloudButton.getBoundingClientRect().height}/${cloudButtonStyle.minWidth}`);
+  const cloudHead = sRoot.getElementById('btnToggleCloud');
+  const cloudHeadRect = cloudHead.getBoundingClientRect();
+  check('云同步变为 40 高整行折叠按钮', Math.abs(cloudHeadRect.height - 40) < 1 && cloudHead.getAttribute('aria-expanded') === 'false', `${cloudHeadRect.height}/${cloudHead.getAttribute('aria-expanded')}`);
+  check('云同步展开体默认收起且无旧管理入口', sRoot.getElementById('cloudBody').hidden && !sRoot.getElementById('btnCloudEntry'), `${sRoot.getElementById('cloudBody').hidden}`);
+  cloudHead.click();
+  await sleep(260);
+  check('云同步折叠行可展开表单', !sRoot.getElementById('cloudBody').hidden
+    && ['cloudAccount', 'cloudSecret', 'cloudPath', 'cloudBase'].every((id) => !!sRoot.getElementById(id)),
+    `${sRoot.getElementById('cloudBody').hidden}/fields`);
   localStorage.setItem('gs_cloud_sync:GuitarShell/backup.json', JSON.stringify({ at: 1 }));
-  await settings.refreshCloudStatus();
-  const pendingText = sRoot.getElementById('cloudStatus').textContent.trim();
+  await settings.cloud.refreshStatus();
+  const pendingText = sRoot.getElementById('cloudStatusText').textContent.trim();
   check('本机有改动时显示待同步', pendingText === '待同步', pendingText);
   check('待同步细节与状态一致', sRoot.getElementById('cloudDetail').textContent.includes('本机有未同步改动') && sRoot.getElementById('cloudDetail').textContent.startsWith('上次同步'), sRoot.getElementById('cloudDetail').textContent.trim());
   check('待同步状态点为强调色', sRoot.getElementById('cloudDot').className === 'cloud-dot pending', sRoot.getElementById('cloudDot').className);
   localStorage.setItem('gs_cloud_sync:GuitarShell/backup.json', JSON.stringify({ at: Date.now() + 3600000 }));
-  await settings.refreshCloudStatus();
-  check('云端较新时显示已同步', sRoot.getElementById('cloudStatus').textContent.trim() === '已同步', sRoot.getElementById('cloudStatus').textContent.trim());
+  await settings.cloud.refreshStatus();
+  check('云端较新时显示已同步', sRoot.getElementById('cloudStatusText').textContent.trim() === '已同步', sRoot.getElementById('cloudStatusText').textContent.trim());
   check('已同步细节说明本机最新', sRoot.getElementById('cloudDetail').textContent.includes('本机已是最新'), sRoot.getElementById('cloudDetail').textContent.trim());
-  check('已同步状态点为成功色', sRoot.getElementById('cloudDot').className === 'cloud-dot clean', sRoot.getElementById('cloudDot').className);
+  check('已同步状态点为成功色', sRoot.getElementById('cloudDot').className === 'cloud-dot success', sRoot.getElementById('cloudDot').className);
   const dbmod = await import('/js/services/db.js');
   const originalStamp = dbmod.dbService.getLocalChangeStamp;
   dbmod.dbService.getLocalChangeStamp = async () => { throw new Error('test'); };
   localStorage.setItem('gs_cloud_sync:GuitarShell/backup.json', JSON.stringify({ at: 1 }));
-  await settings.refreshCloudStatus();
-  check('读取失败时保留手动同步入口', sRoot.getElementById('cloudStatus').textContent.trim() === '状态读取失败'
+  await settings.cloud.refreshStatus();
+  check('读取失败时保留手动同步入口', sRoot.getElementById('cloudStatusText').textContent.trim() === '状态读取失败'
     && sRoot.getElementById('cloudDetail').textContent.trim() === '状态读取失败，仍可手动上传 / 下载'
-    && sRoot.getElementById('cloudDot').className === 'cloud-dot unknown', `${sRoot.getElementById('cloudStatus').textContent.trim()} / ${sRoot.getElementById('cloudDot').className}`);
+    && sRoot.getElementById('cloudDot').className === 'cloud-dot unknown', `${sRoot.getElementById('cloudStatusText').textContent.trim()} / ${sRoot.getElementById('cloudDot').className}`);
   dbmod.dbService.getLocalChangeStamp = originalStamp;
   localStorage.removeItem('gs_cloud_sync:GuitarShell/backup.json');
-  await settings.refreshCloudStatus();
-  check('清除同步点后回到未同步', sRoot.getElementById('cloudStatus').textContent.trim() === '尚未同步' && sRoot.getElementById('cloudDetail').textContent.trim() === '还没建立第一次同步', `${sRoot.getElementById('cloudStatus').textContent.trim()} / ${sRoot.getElementById('cloudDetail').textContent.trim()}`);
+  await settings.cloud.refreshStatus();
+  check('清除同步点后回到未同步', sRoot.getElementById('cloudStatusText').textContent.trim() === '尚未同步' && sRoot.getElementById('cloudDetail').textContent.trim() === '还没建立第一次同步', `${sRoot.getElementById('cloudStatusText').textContent.trim()} / ${sRoot.getElementById('cloudDetail').textContent.trim()}`);
+  settings.closeAllFolds();
+  await sleep(220);
   const drawer = sRoot.getElementById('drawer');
   const drawerWidth = drawer.getBoundingClientRect().width;
   const expectDrawerWidth = Math.min(innerWidth * 0.8, 360);
