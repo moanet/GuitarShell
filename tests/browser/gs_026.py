@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==========================================
 # tests/browser/gs_026.py
-# 0.1.21a 浏览器回归：调音器底部安全区、A4 快捷档、统一开关与自绘音高选择器
+# 0.1.21b 浏览器回归：调音器底部安全区、A4 快捷档、统一开关与自绘音高选择器
 #
 # 用法（仓库根目录）：
 #   python tests/browser/gs_026.py
@@ -212,6 +212,34 @@ def main():
       startRect: (() => { const r = $('btnToggle').getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }; })(),
       displayHeight: Math.round(sr.querySelector('.display-area').getBoundingClientRect().height),
       bottomGap: Math.round(window.innerHeight - $('btnToggle').getBoundingClientRect().bottom),
+      hint: (() => {
+        const name = $('tuningName').getBoundingClientRect();
+        const hint = $('statusText').getBoundingClientRect();
+        const note = $('noteName').getBoundingClientRect();
+        const freq = $('freqVal').getBoundingClientRect();
+        return {
+          gap: Math.round(hint.top - name.bottom),
+          aboveNote: hint.top < note.top,
+          aboveFreq: hint.top < freq.top,
+          align: getComputedStyle($('statusText')).textAlign,
+          centerOffset: Math.round(Math.abs((hint.left + hint.width / 2) - (container.getBoundingClientRect().left + container.clientWidth / 2))),
+        };
+      })(),
+      meter: (() => {
+        const r = sr.querySelector('.meter-wrap').getBoundingClientRect();
+        return { top: Math.round(r.top), center: Math.round(r.top + r.height / 2), height: Math.round(r.height) };
+      })(),
+      actions: (() => {
+        const srRect = $('openSettings').getBoundingClientRect();
+        const stRect = $('btnToggle').getBoundingClientRect();
+        const cRect = container.getBoundingClientRect();
+        return {
+          settingsText: $('openSettings').textContent.trim(),
+          settingsCenterY: Math.round(srRect.top + srRect.height / 2),
+          startCenterY: Math.round(stRect.top + stRect.height / 2),
+          startCenterOffset: Math.round(Math.abs((stRect.left + stRect.width / 2) - (cRect.left + cRect.width / 2))),
+        };
+      })(),
       autoLines: (() => {
         const auto = sr.querySelector('.string-btn.auto');
         const range = document.createRange();
@@ -221,14 +249,13 @@ def main():
     },
   };
 
-  // 设置入口已移到底部动作行，主界面从顶部起排
-  const topPadding = parseFloat(getComputedStyle(container).paddingTop);
-  state.layout.headOffset = state.layout.headTop - state.layout.containerTop;
-  state.layout.topPadding = topPadding;
+  state.layout.screenCenter = Math.round(window.innerHeight / 2);
+  state.layout.meterCenterOffset = Math.round(Math.abs(state.layout.meter['center'] - state.layout.screenCenter));
   state.layout.settingsLeftOfStart = state.layout.settingsRect.left < state.layout.startRect.left;
-  state.layout.actionsSameRow = Math.abs(state.layout.settingsRect.top - state.layout.startRect.top) <= 2;
-  state.layout.startFlexible = state.layout.startRect.width > state.layout.settingsRect.width * 1.5;
-  state.layout.displayFlex = getComputedStyle(sr.querySelector('.display-area')).flexGrow;
+  state.layout.actionsSameRow = Math.abs(state.layout.actions.settingsCenterY - state.layout.actions.startCenterY) <= 2;
+  const topPadding = parseFloat(getComputedStyle(container).paddingTop);
+  state.layout.topPadding = topPadding;
+  state.layout.headOffset = state.layout.headTop - state.layout.containerTop;
 
   // 打开调音设置：三项分区、自绘预设下拉、两行调弦、A4 单行
   $('openSettings').click();
@@ -401,7 +428,7 @@ def main():
 
         print(json.dumps(out, ensure_ascii=False, indent=2))
 
-        check("版本为 v0.1.21a", out["version"] == "v0.1.21a", out["version"])
+        check("版本为 v0.1.21b", out["version"] == "v0.1.21b", out["version"])
         check("默认调弦名常驻", out["default"]["name"] == "标准调弦", out["default"]["name"])
         check("A4 440 默认不显示", out["default"]["a4Hidden"] and out["default"]["a4Text"] == "", out["default"])
         check("默认六弦音名", out["default"]["notes"] == ["E", "A", "D", "G", "B", "e"], str(out["default"]["notes"]))
@@ -411,11 +438,14 @@ def main():
         check("主界面无横向溢出", not out["layout"]["containerOverflow"], f"{out['layout']['width']}/{out['layout']['scrollWidth']}")
         check("主界面从顶部起排", out["layout"]["headOffset"] <= out["layout"]["topPadding"] + 8, f"offset={out['layout']['headOffset']} pad={out['layout']['topPadding']}")
         check("调弦名放大到 19px", out["layout"]["headFont"] == "19px", out["layout"]["headFont"])
-        check("设置入口在底部且位于开始调音左侧", out["layout"]["settingsLeftOfStart"] and out["layout"]["actionsSameRow"], f"{out['layout']['settingsRect']} / {out['layout']['startRect']}")
-        check("开始调音吸收剩余宽度", out["layout"]["startFlexible"], f"{out['layout']['settingsRect']['width']} / {out['layout']['startRect']['width']}")
-        check("读数区弹性吸收高度", out["layout"]["displayFlex"] == "1", out["layout"]["displayFlex"])
-        check("中下部整体上移", out["layout"]["displayHeight"] <= 360, f"display={out['layout']['displayHeight']}")
-        check("底部留出安全区", out["layout"]["bottomGap"] >= 24, f"gap={out['layout']['bottomGap']}")
+        check("提示文字贴在调弦名下方", out["layout"]["hint"]["gap"] <= 10 and out["layout"]["hint"]["aboveNote"] and out["layout"]["hint"]["aboveFreq"], str(out["layout"]["hint"]))
+        check("提示文字水平居中", out["layout"]["hint"]["align"] == "center" and out["layout"]["hint"]["centerOffset"] <= 2, str(out["layout"]["hint"]))
+        check("设置按钮与节拍器同尺寸", out["layout"]["settingsRect"]["width"] == 72 and out["layout"]["settingsRect"]["height"] == 44 and out["layout"]["actions"]["settingsText"] == "设置", f"{out['layout']['settingsRect']} / {out['layout']['actions']['settingsText']}")
+        check("设置按钮位于开始调音左侧", out["layout"]["settingsLeftOfStart"] and out["layout"]["actionsSameRow"], f"{out['layout']['settingsRect']} / {out['layout']['startRect']}")
+        check("开始调音缩窄并水平居中", out["layout"]["startRect"]["width"] <= 150 and out["layout"]["actions"]["startCenterOffset"] <= 2, f"{out['layout']['startRect']} / 偏移 {out['layout']['actions']['startCenterOffset']}")
+        check("读数区固定高度", 160 <= out["layout"]["displayHeight"] <= 236, out["layout"]["displayHeight"])
+        check("仪表盘回到视觉中心", out["layout"]["meterCenterOffset"] <= 12, f"仪表中心 {out['layout']['meter']['center']} / 屏幕中心 {out['layout']['screenCenter']}")
+        check("底部留出安全区", 24 <= out["layout"]["bottomGap"] <= 40, f"gap={out['layout']['bottomGap']}")
         check("自动按钮不折行", out["layout"]["autoLines"] == 1, out["layout"]["autoLines"])
         check("设置面板打开", out["settingsOpen"])
         check("调音设置三分区", out["settingsSections"] == 3, str(out["settingsSections"]))

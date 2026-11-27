@@ -62,11 +62,11 @@ const tunerCSS = `
   .container { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; padding: 16px 20px; gap: 20px; box-sizing: border-box; }
   
   /* 提示与音符显示 */
-  .display-area { flex: 1 1 auto; min-height: 180px; max-height: clamp(200px, 40vh, 360px); text-align: center; height: auto; display: flex; flex-direction: column; justify-content: center; }
+  .display-area { flex: 0 0 auto; height: clamp(160px, calc(50vh - 214px), 236px); min-height: 0; max-height: none; text-align: center; display: flex; flex-direction: column; justify-content: center; }
   .note-name { font-size: 72px; font-weight: bold; color: var(--heading); line-height: 1; transition: color 0.2s; text-shadow: 0 8px 28px rgba(var(--shadow-rgb),.35); }
   .note-name.in-tune { color: var(--success); text-shadow: 0 0 24px rgba(var(--success-rgb), 0.48); }
   .freq-val { font-size: 14px; color: var(--muted); margin-top: 8px; letter-spacing: 2px; }
-  .status-text { font-size: 16px; color: var(--accent-text); margin-top: 10px; height: 20px; font-weight: bold; }
+  .status-text { width: 100%; text-align: center; font-size: 14px; color: var(--accent-text); margin: 0; height: 19px; font-weight: 700; line-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* 仪表盘 */
   .meter-wrap { position: relative; width: 100%; height: 80px; background: linear-gradient(180deg, var(--bg1), var(--surface-deep)); border-radius: 18px; border: 1px solid var(--line); overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(var(--secondary-rgb),.04); }
@@ -121,7 +121,7 @@ const tunerCSS = `
   .feedback-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* 控制按钮 */
-  .btn-toggle { flex: 1 1 auto; height: 56px; padding: 0 22px; border-radius: 28px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; outline: none; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
+  .btn-toggle { flex: 0 0 140px; width: 140px; height: 46px; padding: 0 18px; border-radius: 16px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; outline: none; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
   .btn-toggle:focus { outline: none !important; }
   .btn-toggle:focus-visible { outline: none !important; }
   .btn-toggle:active { outline: none !important; }
@@ -132,13 +132,14 @@ const tunerCSS = `
   /* 0.1.21：顶部状态、底部动作行与调音设置 */
   :host { position: relative; }
   .container { flex: 1 1 auto; padding: 10px 20px max(28px, env(safe-area-inset-bottom, 0px)); gap: 12px; }
-  .tuning-head { width: 100%; max-width: 460px; display: flex; align-items: baseline; gap: 10px; min-width: 0; padding: 0 2px; flex: none; }
+  .head-block { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 5px; padding: 0 2px; flex: none; }
+  .tuning-head { width: 100%; display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: none; }
   .tuning-head .tuning-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; font-weight: 700; color: var(--heading); line-height: 1.25; }
   .tuning-a4 { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; }
-  .action-row { width: 100%; max-width: 460px; display: flex; align-items: center; gap: 10px; flex: none; }
-  .settings-btn { flex: 0 0 92px; height: 56px; border-radius: 20px; border: 1px solid var(--line-warm); background: var(--surface-raised); color: var(--accent-text); display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
+  .action-row { position: relative; width: 100%; max-width: 460px; height: 46px; display: flex; align-items: center; justify-content: center; flex: none; margin-top: auto; }
+  .settings-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 72px; height: 44px; border-radius: 14px; border: 1px solid var(--line-warm); background: var(--surface-raised); color: var(--accent-text); display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.6px; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
   .settings-btn span { white-space: nowrap; }
-  .settings-btn:active { transform: scale(0.95); background: rgba(var(--primary-rgb), 0.10); }
+  .settings-btn:active { transform: translateY(-50%) scale(0.95); background: rgba(var(--primary-rgb), 0.10); }
   .string-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 7px 0 6px; line-height: 1.1; min-width: 0; white-space: nowrap; }
   .string-note { font-size: 16px; font-weight: 700; line-height: 1.05; }
   .string-num { font-size: 9px; font-weight: 600; color: var(--muted-soft); line-height: 1.05; }
@@ -148,8 +149,7 @@ const tunerCSS = `
   @keyframes tuner-pulse { 0%, 100% { box-shadow: 0 0 0 rgba(var(--accent-rgb), 0); } 50% { box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.4); } }
   @media (max-width: 340px) {
     .container { padding-left: 16px; padding-right: 16px; }
-    .settings-btn { flex-basis: 84px; font-size: 12px; gap: 4px; padding: 0 6px; }
-    .btn-toggle { padding: 0 16px; font-size: 17px; gap: 8px; }
+    .btn-toggle { width: 132px; flex-basis: 132px; padding: 0 14px; font-size: 15.5px; gap: 6px; }
   }
 
   .settings-mask { position: absolute; inset: 0; z-index: 500; display: flex; align-items: flex-end; justify-content: center; background: rgba(var(--shadow-rgb), 0.66); opacity: 0; pointer-events: none; transition: opacity 0.18s; }
@@ -240,15 +240,17 @@ const tunerCSS = `
 
 const tunerHTML = `
   <div class="container">
-    <div class="tuning-head">
-      <span class="tuning-name" id="tuningName">标准调弦</span>
-      <span class="tuning-a4" id="a4Status" hidden></span>
+    <div class="head-block">
+      <div class="tuning-head">
+        <span class="tuning-name" id="tuningName">标准调弦</span>
+        <span class="tuning-a4" id="a4Status" hidden></span>
+      </div>
+      <div class="status-text" id="statusText">点击“开始调音”并允许麦克风</div>
     </div>
 
     <div class="display-area">
       <div class="note-name" id="noteName">--</div>
       <div class="freq-val" id="freqVal">0.0 Hz</div>
-      <div class="status-text" id="statusText">点击下方按钮开始调音</div>
     </div>
 
     <div class="meter-wrap">
@@ -286,7 +288,7 @@ const tunerHTML = `
 
     <div class="action-row">
       <button class="settings-btn" id="openSettings" type="button" aria-haspopup="dialog" aria-controls="settingsMask">
-        ${icon('settings', 15)}<span>调音设置</span>
+        ${icon('settings', 15)}<span>设置</span>
       </button>
       <button class="btn-toggle start" id="btnToggle">${icon('mic', 18)} 开始调音</button>
     </div>
