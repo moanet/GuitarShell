@@ -14,14 +14,22 @@ const logCSS = `
   .stats-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; margin: 10px 4px 0; padding: 10px 4px 2px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
   .stats-line .stat-val { font-size: 13px; font-weight: 700; color: var(--accent-text); }
   .stats-line .stats-sep { color: var(--muted-soft); margin: 0 3px; }
-  .form-box { padding: 14px 16px 16px; background: var(--surface-deep); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
-  .form-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .form-title { font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .3px; }
-  .form-hint { font-size: 11px; color: var(--muted); }
+  .form-box { padding: 0 16px; background: var(--surface-deep); border-bottom: 1px solid var(--line); flex-shrink: 0; }
+  .form-head { width: 100%; min-height: 48px; padding: 0; border: 0; background: transparent; color: inherit; font-family: inherit; display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer; }
+  .form-title { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .3px; flex-shrink: 0; }
+  .form-title svg { display: block; color: var(--accent-text); }
+  .form-peek { margin-left: auto; min-width: 0; max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .form-peek b { color: var(--accent-text); font-weight: 700; }
+  .form-chevron { flex: 0 0 auto; width: 16px; display: grid; place-items: center; color: var(--muted); transition: transform .2s; }
+  .form-chevron svg { display: block; }
+  .form-box:not(.collapsed) .form-chevron { transform: rotate(90deg); }
+  .form-body { display: flex; flex-direction: column; gap: 8px; padding: 0 0 10px; }
+  .form-box.collapsed .form-body { display: none; }
+  .form-hint { margin: -2px 2px 0; font-size: 11px; color: var(--muted); }
   .input-row { display: flex; gap: 8px; }
-  .inp { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 14px; outline: none; transition: 0.2s; }
+  .inp { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 14px; outline: none; transition: 0.2s; }
   .inp:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(var(--primary-rgb),.12); }
-  .btn-submit { width: 100%; padding: 12px; background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border: 1px solid rgba(var(--secondary-rgb),.10); border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 6px 16px rgba(var(--primary-rgb),.18); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn-submit { width: 100%; padding: 11px; background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border: 1px solid rgba(var(--secondary-rgb),.10); border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 6px 16px rgba(var(--primary-rgb),.18); display: flex; align-items: center; justify-content: center; gap: 6px; }
   .list-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px 0; font-size: 13px; font-weight: 700; color: var(--txt); flex-shrink: 0; }
   .list-count { font-size: 11px; font-weight: 400; color: var(--muted); }
   .log-list { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -74,17 +82,21 @@ const logCSS = `
 `;
 
 const logHTML = `
-  <div class="form-box">
-    <div class="form-head">
-      <span class="form-title">记录本次练习</span>
-      <span class="form-hint">填写后点保存</span>
+  <div class="form-box collapsed" id="formBox">
+    <button class="form-head" id="formToggle" type="button" aria-expanded="false" aria-controls="formBody">
+      <span class="form-title">${icon('pencil', 14)}记录本次练习</span>
+      <span class="form-peek" id="formPeek">今天还未打卡</span>
+      <span class="form-chevron" aria-hidden="true">${icon('chevronRight', 14)}</span>
+    </button>
+    <div class="form-body" id="formBody">
+      <div class="form-hint">填写后点保存</div>
+      <div class="input-row"><input type="text" id="inpName" class="inp" placeholder="练习曲目 / 内容" maxlength="30"></div>
+      <div class="input-row">
+        <input type="number" id="inpTime" class="inp" placeholder="练习时长 (分钟)" min="1">
+        <input type="number" id="inpBpm" class="inp" placeholder="最高 BPM (选填)" min="30" max="250">
+      </div>
+      <button class="btn-submit" id="btnSubmit">${icon('check', 15)} 保存本次练习</button>
     </div>
-    <div class="input-row"><input type="text" id="inpName" class="inp" placeholder="练习曲目 / 内容" maxlength="30"></div>
-    <div class="input-row">
-      <input type="number" id="inpTime" class="inp" placeholder="练习时长 (分钟)" min="1">
-      <input type="number" id="inpBpm" class="inp" placeholder="最高 BPM (选填)" min="30" max="250">
-    </div>
-    <button class="btn-submit" id="btnSubmit">${icon('check', 15)} 保存本次练习</button>
   </div>
   <div class="trend-box collapsed" id="trendBox">
     <div class="trend-head">
@@ -147,6 +159,7 @@ class GuitarPracticeLog extends HTMLElement {
     const btnSubmit = $('btnSubmit'), logList = $('logList');
     const statCount = $('statCount'), statTime = $('statTime'), toastEl = $('toast');
     const listCount = $('listCount'), trendPeek = $('trendPeek');
+    const formBox = $('formBox'), formToggle = $('formToggle'), formPeek = $('formPeek');
     const chartWrap = $('chartWrap'), topList = $('topList'), trendSummary = $('trendSummary');
     const segBtns = $('segBtns'), trendBox = $('trendBox'), trendToggle = $('trendToggle'), trendChevron = $('trendChevron');
     const btnShare = $('btnShare');
@@ -211,6 +224,16 @@ class GuitarPracticeLog extends HTMLElement {
     };
     // 默认收起：先看记录，需要看曲线时再展开
     setTrendOpen(false);
+
+    const setFormOpen = (open) => {
+      formBox.classList.toggle('collapsed', !open);
+      formToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (!open) {
+        const focused = this.shadowRoot.activeElement;
+        if (focused && focused.tagName === 'INPUT') focused.blur();
+      }
+    };
+    formToggle.onclick = () => setFormOpen(formBox.classList.contains('collapsed'));
 
     segBtns.querySelectorAll('.seg-btn').forEach(btn => {
       btn.onclick = () => {
@@ -287,6 +310,10 @@ class GuitarPracticeLog extends HTMLElement {
     this.loadLogs = async () => {
       const logs = await dbService.getAllLogs();
       this.currentLogs = logs;
+      const today = getTodayPracticeSummary(logs);
+      formPeek.innerHTML = today.count
+        ? `今天 <b>${today.count}</b> 次 · <b>${formatMinutes(today.minutes)}</b> 分钟`
+        : '今天还未打卡';
       logList.innerHTML = '';
       let totalTime = 0;
       statCount.textContent = logs.length;
@@ -337,6 +364,7 @@ class GuitarPracticeLog extends HTMLElement {
       
       showToast('打卡成功！');
       inpName.value = ''; inpTime.value = ''; inpBpm.value = '';
+      setFormOpen(false);
       
       this.loadLogs();
       // 这里也广播一下，万一未来其他页面需要知道数据变了呢
