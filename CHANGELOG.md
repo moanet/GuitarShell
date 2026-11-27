@@ -5,6 +5,10 @@
 
 > **历史说明**：0.1.21a–c、0.1.22、0.1.23、0.1.25 为未发布的中间记录；其中 0.1.25 有本地验收 APK，无 tag/Release。0.1.26 为稳定快照（tag v0.1.26，Release 460687203）。从 0.1.27 起使用 [Unreleased] + ## [x] 格式。
 
+## [Unreleased]
+
+> 下一稳定快照 `0.1.27` / `versionCode 137`，尚未立项；启动后按 `新增` / `修复` / `变更` 记录。
+
 ## 0.1.26 — 练习记录页表单折叠（合并 0.1.25 发布，2026-11-27）
 
 > 版本号 `0.1.26` / `versionCode 136`。练习记录表单默认折叠为今日摘要行，趋势与记录列表上移；同时带上 `0.1.25` 书架长按改动。真机验收通过后发布 `v0.1.26`。
@@ -33,6 +37,7 @@
 - GitHub Release `v0.1.26`：ID `460687203`，asset ID `800763012`，`https://github.com/moanet/GuitarShell/releases/tag/v0.1.26`。
 - 上传资产 `GuitarShell-0.1.26-release.apk`，GitHub digest `sha256:5ab03b5b7a669d81f025f574f2b00e074679c703d9baf1bc90162f8e1babc801`；下载复核 SHA-256 与本地一致。
 - `0.1.25` 未创建独立 tag / Release，已由 `0.1.26` 覆盖发布。
+- 当前任务归档：[docs/archive/CURRENT_TASK-0.1.26.md](docs/archive/CURRENT_TASK-0.1.26.md)。
 
 ## 0.1.25 — 书架文件名禁选与长按批量管理（真机验收通过，跳过发布，并入 0.1.26，2026-11-27）
 
