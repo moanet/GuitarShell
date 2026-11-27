@@ -2,6 +2,7 @@
 
 > 每次正式发版复用的手工检查表。历史通过情况与证据写进 `CHANGELOG.md`，不写回本文件。
 > 当前迭代范围见 `CURRENT_TASK.md`；长期边界与风险见 `TASK.md`。
+> 版本号与发布规则以 [VERSIONING.md](VERSIONING.md) 为准；本清单只负责执行检查，冲突时以 VERSIONING 为准。
 
 ## 1. 真机测试协作约定
 
@@ -15,7 +16,7 @@
 ## 2. 发布前静态检查
 
 - [ ] `CURRENT_TASK.md` 的目标、边界、验收项已覆盖；未完成项已移出本版。
-- [ ] 版本号四处同步：`package.json` / `package-lock.json`、`js/services/version.js`、`sw.js`、`android/app/build.gradle`。
+- [ ] 四处核心同步：`package.json`、`js/services/version.js`、`sw.js`、`android/app/build.gradle`；`package-lock.json` 与 README 版本徽标做一致性检查。
 - [ ] `versionCode` 递增，`versionName` 与发布版本一致。
 - [ ] 新增静态 import 已加入 `sw.js` 的 `ASSETS_TO_CACHE`，无遗漏、无死路径。
 - [ ] `npm run check` 通过，JS 文件数、SW 缓存与版本号一致。
@@ -151,14 +152,16 @@
 - [ ] `aapt` 校验包名 `com.guitarshell`、`versionCode`、`versionName`。
 - [ ] `apksigner` 校验 v1 / v2 签名通过；证书 SHA-256 与本项目 release 证书一致。
 - [ ] 记录最终 APK 字节数、SHA-256 与本地路径。
+- [ ] 最终 APK 复制/命名为 `dist/GuitarShell-<版本号>.apk`；`0.1.26` 的 `-release` 命名为历史例外。
 - [ ] 用最终产物（不是中间构建）完成最后一轮真机关键路径确认。
 
 ## 7. 发布与发布后
 
 - [ ] 提交并推送 `main`；提交信息按 `feat:` / `fix:` / `docs:` / `chore:` 规范。
-- [ ] 创建 tag `vX.Y.Z`；Release 标题严格为 `vX.Y.Z`，不加副标题。
+- [ ] 先建 draft Release（`tag_name` 为 `vX.Y.Z`，指向版本提交）；上传签名 APK，用 API 核对 asset 名称、大小、digest，不下载。
+- [ ] asset 成功后再创建 / 推送 tag `vX.Y.Z`，publish draft；Release 标题严格为 `vX.Y.Z`，不加副标题。
 - [ ] Release notes 说明本版内容；被并入的未发布版本单独成段说明。
-- [ ] 上传签名 APK；远端下载后复核大小与 SHA-256。
+- [ ] 上传或下载超时按 `docs/VERSIONING.md` 第 5 节处理：立即报告并停止，不重试、不下载校验；停在 draft，不 publish、不打 tag。
 - [ ] README 下载入口、版本徽标、界面预览按需更新；目录变更同步 `项目目录结构.txt`。
 - [ ] `CHANGELOG.md` 补齐改动、验收、APK 校验与 Release ID / asset ID。
 - [ ] `TASK.md` 只更新当前基线、活跃待办与开放风险，不追加版本叙述。

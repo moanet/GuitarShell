@@ -1,5 +1,7 @@
 # Guitar Shell 工程维护手册
 
+> **版本号与发布规则**：见 [docs/VERSIONING.md](docs/VERSIONING.md)，所有任务必须遵守。
+
 > **定位**：整个项目的长期风向标。只记录跨版本仍然成立的基线、路线、活跃待办、开放风险、发布门禁、避坑经验和文档入口。
 > **不负责**：逐版本改了什么、怎么验、APK 证据 → [CHANGELOG.md](CHANGELOG.md)；当前迭代目标与验收 → [CURRENT_TASK.md](CURRENT_TASK.md)；手工发版步骤 → [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)。
 > **原则**：一个事实只有一个主文档；这里只写“现在仍然成立”的内容，历史只留链接。
