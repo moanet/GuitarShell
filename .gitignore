@@ -38,7 +38,8 @@ android/.idea/
 docs/Sheet Music Engine/
 
 # 制谱引擎原型代码与验收脚本（仅本地，不入库；M4 接入时再把正式代码放到提交路径）
-js/sheet/proto/
+js/sheet/
+tests/sheet-p2.test.mjs
 tests/sheet-m*.test.mjs
 
 # 本地功能整理指南（仅本地，不入库）
