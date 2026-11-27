@@ -163,6 +163,11 @@ window.addEventListener('gs-cloud-exit-request', promptCloudExit);
 // 目的：一眼看出「现在跑的是哪版」，并区分「线上已有新版」与「本机缓存没换」
 const CACHE_PREFIX = 'guitar-shell-v';
 const badge = document.getElementById('appVersion');
+const params = new URLSearchParams(location.search);
+const isLocalDevHost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+const devStamp = isLocalDevHost ? (params.get('dev') || '') : '';
+const devMode = Boolean(devStamp);
+const devSuffix = devMode && devStamp !== '1' ? ` · dev ${devStamp}` : '';
 
 // 线上 sw.js 里写的版本号（带时间戳绕开 CDN 缓存，只看内容不看响应头）
 const readLiveVersion = async () => {
@@ -182,14 +187,15 @@ const readCacheVersion = async () => {
 };
 
 const paintBadge = (liveVersion) => {
+  const currentLabel = `v${APP_VERSION}${devSuffix}`;
   if (liveVersion && liveVersion !== APP_VERSION) {
-    badge.textContent = `v${APP_VERSION} → v${liveVersion}`;
+    badge.textContent = `${currentLabel} → v${liveVersion}`;
     badge.classList.add('has-update');
     badge.title = `线上已是 v${liveVersion}，点我重新加载`;
   } else {
-    badge.textContent = `v${APP_VERSION}`;
+    badge.textContent = currentLabel;
     badge.classList.remove('has-update');
-    badge.title = '点按检查线上版本';
+    badge.title = devMode ? '开发模式：不注册离线缓存' : '点按检查线上版本';
   }
 };
 
@@ -247,13 +253,25 @@ const isNativeShell = () => Boolean(
   window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()
 );
 if ('serviceWorker' in navigator && !isNativeShell()) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${base}sw.js`)
-      .then(reg => {
-        console.log('Guitar Shell 离线引擎已就绪！', reg.scope);
-      })
-      .catch(err => {
-        console.warn('离线引擎注册失败:', err);
-      });
-  });
+  if (devMode) {
+    console.log('Guitar Shell 开发模式：跳过 SW 注册并清理本机缓存');
+    navigator.serviceWorker.getRegistrations()
+      .then(regs => Promise.all(regs.map(reg => reg.unregister())))
+      .catch(err => console.warn('开发模式注销离线引擎失败:', err));
+    if ('caches' in window) {
+      caches.keys()
+        .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+        .catch(err => console.warn('开发模式清理缓存失败:', err));
+    }
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(`${base}sw.js`)
+        .then(reg => {
+          console.log('Guitar Shell 离线引擎已就绪！', reg.scope);
+        })
+        .catch(err => {
+          console.warn('离线引擎注册失败:', err);
+        });
+    });
+  }
 }

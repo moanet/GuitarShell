@@ -9,6 +9,7 @@
     "cap:add": "npm run www && cap add android",
     "cap:sync": "npm run www && cap sync android",
     "apk:debug": "node scripts/build-apk.mjs debug",
+    "apk:dev": "node scripts/build-apk.mjs dev",
     "apk:release": "node scripts/build-apk.mjs"
   },
   "dependencies": {

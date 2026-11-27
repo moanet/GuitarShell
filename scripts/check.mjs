@@ -37,13 +37,13 @@ if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(packageVersion)) {
 const displayVersion = packageVersion.replace(/-([0-9A-Za-z]+)$/, '$1');
 const versionJs = read('js/services/version.js').match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
 const swVersion = read('sw.js').match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
-const gradleVersion = read('android/app/build.gradle').match(/versionName\s+["']([^"']+)["']/);
+const gradleVersion = read('android/app/build.gradle').match(/def baseVersionName\s*=\s*["']([^"']+)["']/);
 
 if (!versionJs) fail('js/services/version.js 找不到 APP_VERSION');
 else if (versionJs[1] !== displayVersion) fail(`version.js=${versionJs[1]}，展示版本=${displayVersion}`);
 if (!swVersion) fail('sw.js 找不到 APP_VERSION');
 else if (swVersion[1] !== displayVersion) fail(`sw.js=${swVersion[1]}，展示版本=${displayVersion}`);
-if (!gradleVersion) fail('build.gradle 找不到 versionName');
+if (!gradleVersion) fail('build.gradle 找不到 baseVersionName');
 else if (gradleVersion[1] !== displayVersion) fail(`build.gradle=${gradleVersion[1]}，展示版本=${displayVersion}`);
 
 const readme = read('README.md');

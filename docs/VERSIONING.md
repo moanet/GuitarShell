@@ -26,6 +26,7 @@
   ```
 
 - 放在 `dist/dev/`。
+- 使用 `npm run apk:dev` 构建；脚本自动计算时间、commit、dirty 状态，写入上述文件名，并把 Android `versionName` 设为 `<上一稳定版本号>-dev.<YYYYMMDD-HHmm>`，`versionCode` 沿用上一稳定快照。
 - 不占用稳定版本号，不修改 `package.json` / `version.js` / `sw.js` 的稳定版本字段，不打 tag，不发 Release。
 - 工作区有未提交改动时，文件名必须带 `-dirty`。
 - `-dirty` 构建只能作为开发包，不能成为稳定快照。
@@ -41,6 +42,7 @@
 
 - 打 tag `v<版本号>`，创建 GitHub Release。
 - Release 标题只用 `v<版本号>`，不加副标题。
+- 使用 `npm run apk:release` 构建时，脚本输出 `dist/GuitarShell-<版本号>.apk`。
 
 ### 2.2 一个版本号只对应一个 APK
 
@@ -182,7 +184,7 @@
   5. 发布后把 `main` 合回 `dev`，作为下一轮基线。
 - tag 只指向 `main` 上的版本提交，不指向 `dev` 的普通提交。
 - 如果 GitHub Pages 绑定 `main`，推 `main` 就等于更新线上网页；开发轮次不要推 `main`。
-- 现有 CI 只在 `push main` 和 PR 时运行；单独推 `dev` 不触发，需本地 `npm run check` 或开 `dev → main` 的 PR。
+- 现有 CI 在 `push main`、`push dev` 和 PR 时运行；推 `dev` 也会跑静态检查。
 
 ## 9. 下一版本
 
