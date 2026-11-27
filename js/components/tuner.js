@@ -57,12 +57,12 @@ const REFERENCE_LEVELS = {
 
 const tunerCSS = `
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
-  :host { display: flex; flex-direction: column; height: 100%; width: 100%; background: linear-gradient(180deg, var(--bg2), var(--bg0)); color: var(--txt); overflow: hidden; font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif; align-items: center; justify-content: center; }
+  :host { display: flex; flex-direction: column; height: 100%; width: 100%; background: linear-gradient(180deg, var(--bg2), var(--bg0)); color: var(--txt); overflow: hidden; font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif; align-items: center; justify-content: flex-start; }
   
-  .container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; padding: 16px 20px; gap: 20px; box-sizing: border-box; }
+  .container { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; padding: 16px 20px; gap: 20px; box-sizing: border-box; }
   
   /* 提示与音符显示 */
-  .display-area { text-align: center; height: 120px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .display-area { flex: 1 1 auto; min-height: 140px; text-align: center; height: auto; display: flex; flex-direction: column; justify-content: center; }
   .note-name { font-size: 72px; font-weight: bold; color: var(--heading); line-height: 1; transition: color 0.2s; text-shadow: 0 8px 28px rgba(var(--shadow-rgb),.35); }
   .note-name.in-tune { color: var(--success); text-shadow: 0 0 24px rgba(var(--success-rgb), 0.48); }
   .freq-val { font-size: 14px; color: var(--muted); margin-top: 8px; letter-spacing: 2px; }
@@ -121,7 +121,7 @@ const tunerCSS = `
   .feedback-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* 控制按钮 */
-  .btn-toggle { padding: 16px 40px; border-radius: 30px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 10px; margin-top: 20px; outline: none; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
+  .btn-toggle { flex: 1 1 auto; height: 56px; padding: 0 22px; border-radius: 28px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; outline: none; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
   .btn-toggle:focus { outline: none !important; }
   .btn-toggle:focus-visible { outline: none !important; }
   .btn-toggle:active { outline: none !important; }
@@ -129,15 +129,16 @@ const tunerCSS = `
   .btn-toggle.stop { background: var(--danger); color: var(--on-danger); box-shadow: 0 6px 20px rgba(var(--danger-rgb), 0.28); }
   .btn-toggle:active { transform: scale(0.95); }
 
-  /* 0.1.19：状态条、弦位行与调音设置 */
+  /* 0.1.21：顶部状态、底部动作行与调音设置 */
   :host { position: relative; }
-  .container { padding: 14px 20px; gap: 14px; }
-  .tuning-strip { width: 100%; max-width: 460px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-raised); color: var(--txt); cursor: pointer; font-family: inherit; text-align: left; transition: 0.2s; }
-  .tuning-strip:hover { border-color: var(--line-strong); background: var(--surface-hover); }
-  .tuning-summary { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
-  .tuning-name { min-width: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; color: var(--heading); }
-  .tuning-a4 { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .tuning-settings { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--accent-text); }
+  .container { flex: 1 1 auto; padding: 10px 20px calc(12px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
+  .tuning-head { width: 100%; max-width: 460px; display: flex; align-items: baseline; gap: 10px; min-width: 0; padding: 0 2px; flex: none; }
+  .tuning-head .tuning-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; font-weight: 700; color: var(--heading); line-height: 1.25; }
+  .tuning-a4 { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; }
+  .action-row { width: 100%; max-width: 460px; display: flex; align-items: center; gap: 10px; flex: none; }
+  .settings-btn { flex: 0 0 92px; height: 56px; border-radius: 20px; border: 1px solid var(--line-warm); background: var(--surface-raised); color: var(--accent-text); display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
+  .settings-btn span { white-space: nowrap; }
+  .settings-btn:active { transform: scale(0.95); background: rgba(var(--primary-rgb), 0.10); }
   .string-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 7px 0 6px; line-height: 1.1; min-width: 0; }
   .string-note { font-size: 16px; font-weight: 700; line-height: 1.05; }
   .string-num { font-size: 9px; font-weight: 600; color: var(--muted-soft); line-height: 1.05; }
@@ -145,41 +146,65 @@ const tunerCSS = `
   .string-btn.auto { max-width: 72px; font-size: 13px; }
   .string-btn.playing { animation: tuner-pulse 0.95s ease-in-out infinite; }
   @keyframes tuner-pulse { 0%, 100% { box-shadow: 0 0 0 rgba(var(--accent-rgb), 0); } 50% { box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.4); } }
+  @media (max-width: 340px) {
+    .container { padding-left: 16px; padding-right: 16px; }
+    .settings-btn { flex-basis: 84px; font-size: 12px; gap: 4px; padding: 0 6px; }
+    .btn-toggle { padding: 0 16px; font-size: 17px; gap: 8px; }
+  }
 
   .settings-mask { position: absolute; inset: 0; z-index: 500; display: flex; align-items: flex-end; justify-content: center; background: rgba(var(--shadow-rgb), 0.66); opacity: 0; pointer-events: none; transition: opacity 0.18s; }
   .settings-mask.show { opacity: 1; pointer-events: auto; }
-  .settings-sheet { width: 100%; max-width: 500px; max-height: 90%; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; }
+  .settings-sheet { width: 90%; max-width: 400px; max-height: 90%; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px)); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; }
   .settings-mask.show .settings-sheet { transform: translateY(0); }
   .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  .sheet-eyebrow { font-size: 9px; letter-spacing: 2px; color: var(--muted-soft); margin-bottom: 2px; }
   .sheet-title { margin: 0; font-size: 18px; color: var(--heading); }
   .icon-btn { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-hover); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
   .settings-page { display: flex; flex-direction: column; gap: 12px; }
   .settings-page[hidden], .settings-mask[hidden], [hidden] { display: none !important; }
   .sheet-section { display: flex; flex-direction: column; gap: 6px; padding: 9px; border-radius: 12px; background: var(--surface-deep); border: 1px solid var(--line); }
   .section-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--heading); }
-  .preset-list { display: flex; flex-direction: column; gap: 4px; }
-  .preset-item { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: 9px; border: 1px solid transparent; background: var(--surface-raised); color: var(--txt); cursor: pointer; text-align: left; font-family: inherit; }
-  .preset-item:hover { background: var(--surface-hover); }
-  .preset-item.active { border-color: var(--accent); background: rgba(var(--primary-rgb), 0.13); }
+  .preset-select { position: relative; }
+  .preset-field { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 9px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); cursor: pointer; text-align: left; font-family: inherit; transition: 0.18s; }
+  .preset-field:hover { background: var(--surface-hover); }
+  .preset-field[aria-expanded="true"] { border-color: var(--accent); background: rgba(var(--primary-rgb), 0.10); }
+  .preset-field-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .preset-field-name { font-size: 13px; font-weight: 600; color: var(--heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .preset-field-notes { font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .preset-field-chevron { flex: none; color: var(--muted); display: inline-flex; transition: transform 0.18s; }
+  .preset-field[aria-expanded="true"] .preset-field-chevron { transform: rotate(90deg); color: var(--accent-text); }
+  .preset-menu { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-raised); box-shadow: 0 12px 30px rgba(var(--shadow-rgb), 0.42); }
+  .preset-option { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 8px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--txt); cursor: pointer; text-align: left; font-family: inherit; }
+  .preset-option:hover, .preset-option:active { background: var(--surface-hover); }
+  .preset-option.active { border-color: var(--accent); background: rgba(var(--primary-rgb), 0.12); }
   .preset-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .preset-name { font-size: 13px; font-weight: 600; color: var(--heading); }
   .preset-notes { font-size: 10px; color: var(--muted); }
-  .preset-check { flex: none; color: var(--success); display: inline-flex; }
-  .custom-entry { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 8px; border-radius: 9px; border: 1px dashed var(--line-strong); background: transparent; color: var(--txt); cursor: pointer; text-align: left; font-family: inherit; }
+  .preset-option .preset-check { flex: none; color: var(--success); display: inline-flex; }
+  .custom-entry { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 9px; border-radius: 10px; border: 1px dashed var(--line-strong); background: transparent; color: var(--txt); cursor: pointer; text-align: left; font-family: inherit; }
   .custom-entry.active { border-style: solid; border-color: var(--accent); background: rgba(var(--primary-rgb), 0.13); }
   .custom-entry-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  .custom-entry-name { font-size: 13px; font-weight: 600; color: var(--heading); }
-  .custom-entry-hint { font-size: 10px; color: var(--muted); }
+  .custom-entry-name { font-size: 13px; font-weight: 600; color: var(--heading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .custom-entry-hint { font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .custom-entry-icon { flex: none; color: var(--muted); }
-  .a4-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  .a4-value { font-size: 18px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; }
-  .a4-value small { font-size: 11px; color: var(--muted); font-weight: 500; margin-left: 3px; }
-  .a4-actions { display: flex; align-items: center; gap: 6px; }
-  .a4-quick { display: flex; gap: 6px; }
+  .a4-section { padding: 0; border: none; background: transparent; }
+  .a4-line { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; width: 100%; }
+  .a4-stepper { display: flex; align-items: center; gap: 4px; flex: none; }
+  .a4-value { min-width: 52px; text-align: center; font-size: 17px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; line-height: 1; }
+  .a4-value small { font-size: 10px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+  .a4-line .step-btn { width: 26px; height: 26px; }
+  .a4-quick { display: flex; gap: 4px; flex: none; }
+  .a4-line .mini-chip { padding: 4px 8px; font-size: 11px; }
+  .a4-line .link-btn { margin-left: auto; flex: none; align-self: center; white-space: nowrap; }
   .mini-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); font-size: 11px; cursor: pointer; }
   .mini-chip.active { border-color: var(--accent); color: var(--accent-text); background: rgba(var(--primary-rgb), 0.12); }
-  .link-btn { align-self: flex-start; border: none; background: transparent; color: var(--muted); padding: 0; font-size: 11px; cursor: pointer; text-decoration: underline; }
+  .link-btn { border: none; background: transparent; color: var(--muted); padding: 0; font-size: 11px; cursor: pointer; text-decoration: underline; }
+  @media (max-width: 340px) {
+    .a4-line { gap: 6px; }
+    .a4-value { min-width: 46px; font-size: 16px; }
+    .a4-line .step-btn { width: 24px; height: 24px; }
+    .a4-line .mini-chip { padding: 4px 7px; font-size: 10.5px; }
+    .a4-line .link-btn { font-size: 10.5px; }
+  }
   .switch-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-raised); color: var(--txt); text-align: left; cursor: pointer; font-family: inherit; }
   .switch-row:disabled { opacity: 0.55; cursor: not-allowed; }
   .switch-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -205,13 +230,10 @@ const tunerCSS = `
 
 const tunerHTML = `
   <div class="container">
-    <button class="tuning-strip" id="openSettings" type="button" aria-haspopup="dialog" aria-controls="settingsMask">
-      <span class="tuning-summary">
-        <span class="tuning-name" id="tuningName">标准调弦</span>
-        <span class="tuning-a4" id="a4Status" hidden></span>
-      </span>
-      <span class="tuning-settings">${icon('settings', 14)} 调音设置</span>
-    </button>
+    <div class="tuning-head">
+      <span class="tuning-name" id="tuningName">标准调弦</span>
+      <span class="tuning-a4" id="a4Status" hidden></span>
+    </div>
 
     <div class="display-area">
       <div class="note-name" id="noteName">--</div>
@@ -252,14 +274,18 @@ const tunerHTML = `
       <button class="string-btn" data-slot="5" type="button"><span class="string-note">e</span><span class="string-num">1</span></button>
     </div>
 
-    <button class="btn-toggle start" id="btnToggle">${icon('mic', 18)} 开始调音</button>
+    <div class="action-row">
+      <button class="settings-btn" id="openSettings" type="button" aria-haspopup="dialog" aria-controls="settingsMask">
+        ${icon('settings', 15)}<span>调音设置</span>
+      </button>
+      <button class="btn-toggle start" id="btnToggle">${icon('mic', 18)} 开始调音</button>
+    </div>
   </div>
 
   <div class="settings-mask" id="settingsMask" hidden aria-hidden="true">
     <div class="settings-sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
       <div class="sheet-head">
         <div>
-          <div class="sheet-eyebrow">TUNER SETTINGS</div>
           <h2 class="sheet-title" id="settingsTitle">调音设置</h2>
         </div>
         <button class="icon-btn" id="closeSettings" type="button" aria-label="关闭调音设置">${icon('close', 18)}</button>
@@ -268,30 +294,39 @@ const tunerHTML = `
       <div class="settings-page" id="settingsMain">
         <section class="sheet-section">
           <div class="section-title">${icon('music', 14)} 调弦</div>
-          <div class="preset-list" id="presetList"></div>
+          <div class="preset-select">
+            <button class="preset-field" id="presetField" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="presetMenu">
+              <span class="preset-field-copy">
+                <span class="preset-field-name" id="presetFieldName">选择预设</span>
+                <span class="preset-field-notes" id="presetFieldNotes">点开切换预设调弦</span>
+              </span>
+              <span class="preset-field-chevron">${icon('chevronRight', 14)}</span>
+            </button>
+            <div class="preset-menu" id="presetMenu" role="listbox" aria-label="预设调弦" hidden></div>
+          </div>
           <button class="custom-entry" id="customEntry" type="button">
             <span class="custom-entry-copy">
-              <span class="custom-entry-name">自定义调弦</span>
+              <span class="custom-entry-name" id="customEntryName">自定义调弦</span>
               <span class="custom-entry-hint" id="customEntryHint">自己设置六弦音高</span>
             </span>
             <span class="custom-entry-icon">${icon('chevronRight', 14)}</span>
           </button>
         </section>
 
-        <section class="sheet-section">
+        <section class="sheet-section a4-section">
           <div class="section-title">${icon('gauge', 14)} A4 校准</div>
           <div class="a4-line">
-            <div class="a4-value"><span id="a4SheetVal">440</span><small>Hz</small></div>
-            <div class="a4-actions">
+            <div class="a4-stepper">
               <button class="step-btn" id="a4SheetMinus" type="button" aria-label="A4 降低 1Hz">${icon('minus', 14)}</button>
+              <div class="a4-value"><span id="a4SheetVal">440</span><small>Hz</small></div>
               <button class="step-btn" id="a4SheetPlus" type="button" aria-label="A4 升高 1Hz">${icon('plus', 14)}</button>
             </div>
+            <div class="a4-quick">
+              <button class="mini-chip" type="button" data-a4="440">440</button>
+              <button class="mini-chip" type="button" data-a4="442">442</button>
+            </div>
+            <button class="link-btn" id="a4Reset" type="button">恢复 440</button>
           </div>
-          <div class="a4-quick">
-            <button class="mini-chip" type="button" data-a4="440">440</button>
-            <button class="mini-chip" type="button" data-a4="442">442</button>
-          </div>
-          <button class="link-btn" id="a4Reset" type="button">恢复 440</button>
         </section>
 
         <section class="sheet-section">
@@ -376,6 +411,8 @@ class GuitarTuner extends HTMLElement {
     // 调弦预设 / 自定义调弦：目标频率按弦位维护，允许重复音高
     this.tuning = readTuningState();
     this.customTuning = this.tuning.custom || null;
+    this._presetMenuOpen = false;
+    this._presetMenuLayerOff = null;
     this.refreshTargets();
   }
 
@@ -438,7 +475,7 @@ class GuitarTuner extends HTMLElement {
     if (a4Status) {
       const off = this.a4 !== A4_DEFAULT;
       a4Status.hidden = !off;
-      a4Status.textContent = off ? `· A4 ${this.a4}` : '';
+      a4Status.textContent = off ? `A4 ${this.a4}` : '';
     }
 
     root.querySelectorAll('.string-btn').forEach(btn => {
@@ -457,8 +494,10 @@ class GuitarTuner extends HTMLElement {
     if (autoBtn) autoBtn.classList.toggle('active', this.targetSlot === 'auto');
 
     const customEntry = root.getElementById('customEntry');
+    const customName = root.getElementById('customEntryName');
     const customHint = root.getElementById('customEntryHint');
     if (customEntry) customEntry.classList.toggle('active', this.tuning.id === CUSTOM_TUNING_ID);
+    if (customName) customName.textContent = this.customTuning ? this.customTuning.name : '自定义调弦';
     if (customHint) customHint.textContent = this.customTuning
       ? formatTuningNotes(this.customTuning.notes)
       : '自己设置六弦音高';
@@ -480,46 +519,97 @@ class GuitarTuner extends HTMLElement {
 
   renderPresetList() {
     if (!this.shadowRoot) return;
-    const list = this.shadowRoot.getElementById('presetList');
-    if (!list) return;
-    list.innerHTML = '';
-    for (const preset of TUNING_PRESETS) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'preset-item';
-      btn.dataset.preset = preset.id;
-      const active = this.tuning.id === preset.id;
-      btn.classList.toggle('active', active);
+    const root = this.shadowRoot;
+    const fieldName = root.getElementById('presetFieldName');
+    const fieldNotes = root.getElementById('presetFieldNotes');
+    const menu = root.getElementById('presetMenu');
+    const preset = this.tuning.id === CUSTOM_TUNING_ID ? null : getPresetById(this.tuning.id);
 
-      const copy = document.createElement('span');
-      copy.className = 'preset-copy';
-      const name = document.createElement('span');
-      name.className = 'preset-name';
-      name.textContent = preset.name;
-      const notes = document.createElement('span');
-      notes.className = 'preset-notes';
-      notes.textContent = formatTuningNotes(preset.notes);
-      copy.append(name, notes);
-      btn.append(copy);
+    if (fieldName) fieldName.textContent = preset ? preset.name : '选择预设';
+    if (fieldNotes) fieldNotes.textContent = preset ? formatTuningNotes(preset.notes) : '点开切换预设调弦';
 
-      if (active) {
-        const check = document.createElement('span');
-        check.className = 'preset-check';
-        check.innerHTML = icon('check', 14);
-        btn.append(check);
+    if (menu) {
+      menu.innerHTML = '';
+      for (const option of TUNING_PRESETS) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'preset-option';
+        btn.dataset.preset = option.id;
+        btn.setAttribute('role', 'option');
+        const active = this.tuning.id === option.id;
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        btn.classList.toggle('active', active);
+
+        const copy = document.createElement('span');
+        copy.className = 'preset-copy';
+        const name = document.createElement('span');
+        name.className = 'preset-name';
+        name.textContent = option.name;
+        const notes = document.createElement('span');
+        notes.className = 'preset-notes';
+        notes.textContent = formatTuningNotes(option.notes);
+        copy.append(name, notes);
+        btn.append(copy);
+
+        if (active) {
+          const check = document.createElement('span');
+          check.className = 'preset-check';
+          check.innerHTML = icon('check', 14);
+          btn.append(check);
+        }
+
+        btn.onclick = (event) => {
+          event.stopPropagation();
+          this.applyPreset(option.id);
+        };
+        menu.append(btn);
       }
-
-      btn.onclick = () => this.applyPreset(preset.id);
-      list.append(btn);
     }
 
-    const customEntry = this.shadowRoot.getElementById('customEntry');
+    const customEntry = root.getElementById('customEntry');
     if (customEntry) customEntry.classList.toggle('active', this.tuning.id === CUSTOM_TUNING_ID);
+  }
+
+  togglePresetMenu() {
+    if (this._presetMenuOpen) this.closePresetMenu();
+    else this.openPresetMenu();
+  }
+
+  openPresetMenu() {
+    if (!this.shadowRoot) return;
+    const menu = this.shadowRoot.getElementById('presetMenu');
+    const field = this.shadowRoot.getElementById('presetField');
+    if (!menu || !field) return;
+    this.renderPresetList();
+    menu.hidden = false;
+    field.setAttribute('aria-expanded', 'true');
+    this._presetMenuOpen = true;
+    if (!this._presetMenuLayerOff) {
+      this._presetMenuLayerOff = registerLayer({
+        id: 'tuner-preset-menu',
+        close: () => this.closePresetMenu()
+      });
+    }
+  }
+
+  closePresetMenu() {
+    if (!this.shadowRoot) return;
+    const menu = this.shadowRoot.getElementById('presetMenu');
+    const field = this.shadowRoot.getElementById('presetField');
+    if (menu) menu.hidden = true;
+    if (field) field.setAttribute('aria-expanded', 'false');
+    this._presetMenuOpen = false;
+    if (this._presetMenuLayerOff) {
+      const off = this._presetMenuLayerOff;
+      this._presetMenuLayerOff = null;
+      off();
+    }
   }
 
   applyPreset(presetId) {
     const preset = getPresetById(presetId);
     if (!preset) return;
+    this.closePresetMenu();
     const tuning = { ...preset, custom: this.customTuning };
     this.setTuning(tuning, this.customTuning, true);
     this.showSettingsMain();
@@ -530,6 +620,7 @@ class GuitarTuner extends HTMLElement {
     const root = this.shadowRoot;
     const mask = root.getElementById('settingsMask');
     if (!mask) return;
+    this.closePresetMenu();
     this.renderPresetList();
     this.updateA4UI();
     this.updateTuningUI();
@@ -555,6 +646,10 @@ class GuitarTuner extends HTMLElement {
   // 返回键：自定义调弦编辑先退回设置主页，再关整个调音设置
   handleSettingsBack() {
     if (!this.shadowRoot) return;
+    if (this._presetMenuOpen) {
+      this.closePresetMenu();
+      return;
+    }
     const editor = this.shadowRoot.getElementById('customEditor');
     if (editor && !editor.hidden) {
       this.showSettingsMain();
@@ -568,6 +663,7 @@ class GuitarTuner extends HTMLElement {
     const root = this.shadowRoot;
     const mask = root.getElementById('settingsMask');
     if (!mask) return;
+    this.closePresetMenu();
     if (this._settingsLayerOff) {
       this._settingsLayerOff();
       this._settingsLayerOff = null;
@@ -581,6 +677,7 @@ class GuitarTuner extends HTMLElement {
 
   showSettingsMain() {
     if (!this.shadowRoot) return;
+    this.closePresetMenu();
     const main = this.shadowRoot.getElementById('settingsMain');
     const editor = this.shadowRoot.getElementById('customEditor');
     if (main) main.hidden = false;
@@ -590,6 +687,7 @@ class GuitarTuner extends HTMLElement {
   showCustomEditor() {
     if (!this.shadowRoot) return;
     const root = this.shadowRoot;
+    this.closePresetMenu();
     const main = root.getElementById('settingsMain');
     const editor = root.getElementById('customEditor');
     const nameInput = root.getElementById('customName');
@@ -827,6 +925,10 @@ class GuitarTuner extends HTMLElement {
       this._settingsLayerOff();
       this._settingsLayerOff = null;
     }
+    if (this._presetMenuLayerOff) {
+      this._presetMenuLayerOff();
+      this._presetMenuLayerOff = null;
+    }
     this.stopTuner();
   }
 
@@ -914,7 +1016,9 @@ class GuitarTuner extends HTMLElement {
     // 状态条 / 调音设置面板
     const openSettings = $('openSettings');
     const settingsMask = $('settingsMask');
+    const settingsSheet = $('settingsSheet');
     const closeSettings = $('closeSettings');
+    const presetField = $('presetField');
     const a4SheetMinus = $('a4SheetMinus');
     const a4SheetPlus = $('a4SheetPlus');
     const a4Reset = $('a4Reset');
@@ -928,6 +1032,23 @@ class GuitarTuner extends HTMLElement {
     if (settingsMask) {
       this._settingsBackdropOff = bindBackdrop(settingsMask, () => this.closeSettings());
     }
+    if (presetField) {
+      presetField.onclick = (event) => {
+        event.stopPropagation();
+        this.togglePresetMenu();
+      };
+    }
+    if (settingsSheet) {
+      settingsSheet.addEventListener('scroll', () => {
+        if (this._presetMenuOpen) this.closePresetMenu();
+      }, { passive: true });
+    }
+    this.shadowRoot.addEventListener('pointerdown', (event) => {
+      if (!this._presetMenuOpen) return;
+      const path = event.composedPath();
+      if (path.some(node => node && node.classList && node.classList.contains('preset-select'))) return;
+      this.closePresetMenu();
+    });
     if (a4SheetMinus) a4SheetMinus.onclick = () => this.setA4(this.a4 - 1);
     if (a4SheetPlus) a4SheetPlus.onclick = () => this.setA4(this.a4 + 1);
     if (a4Reset) a4Reset.onclick = () => this.setA4(A4_DEFAULT);
