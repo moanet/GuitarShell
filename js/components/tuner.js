@@ -62,7 +62,7 @@ const tunerCSS = `
   .container { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; padding: 16px 20px; gap: 20px; box-sizing: border-box; }
   
   /* 提示与音符显示 */
-  .display-area { flex: 1 1 auto; min-height: 140px; text-align: center; height: auto; display: flex; flex-direction: column; justify-content: center; }
+  .display-area { flex: 1 1 auto; min-height: 180px; max-height: clamp(200px, 40vh, 360px); text-align: center; height: auto; display: flex; flex-direction: column; justify-content: center; }
   .note-name { font-size: 72px; font-weight: bold; color: var(--heading); line-height: 1; transition: color 0.2s; text-shadow: 0 8px 28px rgba(var(--shadow-rgb),.35); }
   .note-name.in-tune { color: var(--success); text-shadow: 0 0 24px rgba(var(--success-rgb), 0.48); }
   .freq-val { font-size: 14px; color: var(--muted); margin-top: 8px; letter-spacing: 2px; }
@@ -131,7 +131,7 @@ const tunerCSS = `
 
   /* 0.1.21：顶部状态、底部动作行与调音设置 */
   :host { position: relative; }
-  .container { flex: 1 1 auto; padding: 10px 20px calc(12px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
+  .container { flex: 1 1 auto; padding: 10px 20px max(28px, env(safe-area-inset-bottom, 0px)); gap: 12px; }
   .tuning-head { width: 100%; max-width: 460px; display: flex; align-items: baseline; gap: 10px; min-width: 0; padding: 0 2px; flex: none; }
   .tuning-head .tuning-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; font-weight: 700; color: var(--heading); line-height: 1.25; }
   .tuning-a4 { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; }
@@ -139,7 +139,7 @@ const tunerCSS = `
   .settings-btn { flex: 0 0 92px; height: 56px; border-radius: 20px; border: 1px solid var(--line-warm); background: var(--surface-raised); color: var(--accent-text); display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 8px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
   .settings-btn span { white-space: nowrap; }
   .settings-btn:active { transform: scale(0.95); background: rgba(var(--primary-rgb), 0.10); }
-  .string-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 7px 0 6px; line-height: 1.1; min-width: 0; }
+  .string-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 7px 0 6px; line-height: 1.1; min-width: 0; white-space: nowrap; }
   .string-note { font-size: 16px; font-weight: 700; line-height: 1.05; }
   .string-num { font-size: 9px; font-weight: 600; color: var(--muted-soft); line-height: 1.05; }
   .strings-row { gap: 6px; }
@@ -154,7 +154,7 @@ const tunerCSS = `
 
   .settings-mask { position: absolute; inset: 0; z-index: 500; display: flex; align-items: flex-end; justify-content: center; background: rgba(var(--shadow-rgb), 0.66); opacity: 0; pointer-events: none; transition: opacity 0.18s; }
   .settings-mask.show { opacity: 1; pointer-events: auto; }
-  .settings-sheet { width: 90%; max-width: 400px; max-height: 90%; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px)); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; }
+  .settings-sheet { width: 90%; max-width: 400px; max-height: 90%; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px max(24px, calc(14px + env(safe-area-inset-bottom, 0px))); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; }
   .settings-mask.show .settings-sheet { transform: translateY(0); }
   .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .sheet-title { margin: 0; font-size: 18px; color: var(--heading); }
@@ -179,7 +179,7 @@ const tunerCSS = `
   .preset-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
   .preset-name { font-size: 13px; font-weight: 600; color: var(--heading); }
   .preset-notes { font-size: 10px; color: var(--muted); }
-  .preset-option .preset-check { flex: none; color: var(--success); display: inline-flex; }
+  .preset-option .preset-check { flex: none; color: var(--accent-text); display: inline-flex; }
   .custom-entry { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 9px; border-radius: 10px; border: 1px dashed var(--line-strong); background: transparent; color: var(--txt); cursor: pointer; text-align: left; font-family: inherit; }
   .custom-entry.active { border-style: solid; border-color: var(--accent); background: rgba(var(--primary-rgb), 0.13); }
   .custom-entry-copy { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -192,40 +192,50 @@ const tunerCSS = `
   .a4-value { min-width: 52px; text-align: center; font-size: 17px; font-weight: 700; color: var(--heading); font-variant-numeric: tabular-nums; line-height: 1; }
   .a4-value small { font-size: 10px; color: var(--muted); font-weight: 500; margin-left: 2px; }
   .a4-line .step-btn { width: 26px; height: 26px; }
-  .a4-quick { display: flex; gap: 4px; flex: none; }
+  .a4-quick { display: flex; gap: 4px; flex: none; margin-left: auto; }
   .a4-line .mini-chip { padding: 4px 8px; font-size: 11px; }
-  .a4-line .link-btn { margin-left: auto; flex: none; align-self: center; white-space: nowrap; }
   .mini-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); font-size: 11px; cursor: pointer; }
   .mini-chip.active { border-color: var(--accent); color: var(--accent-text); background: rgba(var(--primary-rgb), 0.12); }
-  .link-btn { border: none; background: transparent; color: var(--muted); padding: 0; font-size: 11px; cursor: pointer; text-decoration: underline; }
   @media (max-width: 340px) {
     .a4-line { gap: 6px; }
     .a4-value { min-width: 46px; font-size: 16px; }
     .a4-line .step-btn { width: 24px; height: 24px; }
     .a4-line .mini-chip { padding: 4px 7px; font-size: 10.5px; }
-    .a4-line .link-btn { font-size: 10.5px; }
   }
   .switch-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 8px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-raised); color: var(--txt); text-align: left; cursor: pointer; font-family: inherit; }
   .switch-row:disabled { opacity: 0.55; cursor: not-allowed; }
   .switch-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .switch-title { font-size: 13px; font-weight: 600; color: var(--heading); }
   .switch-help { font-size: 10px; color: var(--muted); }
-  .switch-track { flex: none; width: 38px; height: 22px; border-radius: 999px; background: var(--line-strong); position: relative; transition: 0.2s; }
-  .switch-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--heading); transition: 0.2s; }
-  .switch-row[aria-pressed="true"] .switch-track { background: var(--success); }
-  .switch-row[aria-pressed="true"] .switch-thumb { transform: translateX(16px); background: var(--on-success, #fff); }
+  .switch-track { flex: none; width: 42px; height: 24px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-raised); position: relative; transition: background 0.15s, border-color 0.15s; }
+  .switch-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: left 0.15s, background 0.15s; }
+  .switch-row[aria-pressed="true"] .switch-track { border-color: var(--primary); background: rgba(var(--primary-rgb), 0.24); }
+  .switch-row[aria-pressed="true"] .switch-thumb { left: 21px; background: var(--primary); }
   .sheet-subhead { display: flex; align-items: center; gap: 8px; }
   .sheet-subhead h3 { margin: 0; font-size: 16px; color: var(--heading); }
   .custom-field { display: flex; flex-direction: column; gap: 5px; }
-  .custom-field label, .note-field label { font-size: 11px; color: var(--muted); }
+  .custom-field label, .note-field-label { font-size: 11px; color: var(--muted); }
   .custom-name { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--surface-deep); color: var(--txt); font-size: 14px; font-family: inherit; }
   .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .note-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-  .note-select { width: 100%; box-sizing: border-box; padding: 8px 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-family: inherit; font-size: 13px; }
+  .note-field-btn { width: 100%; min-height: 40px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 9px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--heading); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; }
+  .note-field-btn:active { background: var(--surface-hover); }
+  .note-field-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .note-field-chevron { flex: none; color: var(--muted); display: inline-flex; transform: rotate(90deg); }
   .editor-actions { display: flex; gap: 8px; margin-top: 2px; }
   .editor-actions button { flex: 1; padding: 11px 10px; border-radius: 9px; border: 1px solid var(--line-strong); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
   .btn-reset { background: var(--surface-hover); color: var(--txt); }
   .btn-save { background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border-color: transparent; }
+
+  /* 自定义调弦音高选择：应用内底部弹层，替代原生 select */
+  .note-picker-mask { position: absolute; inset: 0; z-index: 600; display: flex; align-items: flex-end; justify-content: center; background: rgba(var(--shadow-rgb), 0.56); opacity: 0; pointer-events: none; transition: opacity 0.18s; }
+  .note-picker-mask.show { opacity: 1; pointer-events: auto; }
+  .note-picker-sheet { width: 90%; max-width: 400px; max-height: 72%; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px max(24px, calc(14px + env(safe-area-inset-bottom, 0px))); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; }
+  .note-picker-mask.show .note-picker-sheet { transform: translateY(0); }
+  .note-picker-sub { margin-top: 2px; font-size: 10px; color: var(--muted); }
+  .note-picker-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 2px; }
+  .note-option { min-height: 40px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-raised); color: var(--txt); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .note-option.active { border-color: var(--accent); background: rgba(var(--primary-rgb), 0.14); color: var(--accent-text); }
 `;
 
 const tunerHTML = `
@@ -325,7 +335,6 @@ const tunerHTML = `
               <button class="mini-chip" type="button" data-a4="440">440</button>
               <button class="mini-chip" type="button" data-a4="442">442</button>
             </div>
-            <button class="link-btn" id="a4Reset" type="button">恢复 440</button>
           </div>
         </section>
 
@@ -363,6 +372,19 @@ const tunerHTML = `
           <button class="btn-save" id="customSave" type="button">保存并使用</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="note-picker-mask" id="notePickerMask" hidden aria-hidden="true">
+    <div class="note-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="notePickerTitle">
+      <div class="sheet-head">
+        <div>
+          <h2 class="sheet-title" id="notePickerTitle">第6弦音高</h2>
+          <div class="note-picker-sub">D2 – E5</div>
+        </div>
+        <button class="icon-btn" id="closeNotePicker" type="button" aria-label="关闭音高选择">${icon('close', 18)}</button>
+      </div>
+      <div class="note-picker-list" id="notePickerList" role="listbox" aria-label="音高选择"></div>
     </div>
   </div>
 `;
@@ -413,6 +435,10 @@ class GuitarTuner extends HTMLElement {
     this.customTuning = this.tuning.custom || null;
     this._presetMenuOpen = false;
     this._presetMenuLayerOff = null;
+    this._customNotesDraft = null;
+    this._notePickerSlot = null;
+    this._notePickerOpen = false;
+    this._notePickerLayerOff = null;
     this.refreshTargets();
   }
 
@@ -664,6 +690,7 @@ class GuitarTuner extends HTMLElement {
     const mask = root.getElementById('settingsMask');
     if (!mask) return;
     this.closePresetMenu();
+    this.closeNotePicker();
     if (this._settingsLayerOff) {
       this._settingsLayerOff();
       this._settingsLayerOff = null;
@@ -678,6 +705,7 @@ class GuitarTuner extends HTMLElement {
   showSettingsMain() {
     if (!this.shadowRoot) return;
     this.closePresetMenu();
+    this.closeNotePicker();
     const main = this.shadowRoot.getElementById('settingsMain');
     const editor = this.shadowRoot.getElementById('customEditor');
     if (main) main.hidden = false;
@@ -688,6 +716,7 @@ class GuitarTuner extends HTMLElement {
     if (!this.shadowRoot) return;
     const root = this.shadowRoot;
     this.closePresetMenu();
+    this.closeNotePicker();
     const main = root.getElementById('settingsMain');
     const editor = root.getElementById('customEditor');
     const nameInput = root.getElementById('customName');
@@ -703,36 +732,114 @@ class GuitarTuner extends HTMLElement {
     const wrap = this.shadowRoot.getElementById('customNotes');
     if (!wrap) return;
     wrap.innerHTML = '';
-    const options = guitarNoteOptions();
+    const fallback = TUNING_PRESETS[0].notes;
+    this._customNotesDraft = [];
+    for (let slot = 0; slot < 6; slot++) {
+      this._customNotesDraft.push(notes[slot] || fallback[slot]);
+    }
     for (let slot = 0; slot < 6; slot++) {
       const field = document.createElement('div');
       field.className = 'note-field';
-      const label = document.createElement('label');
+      const label = document.createElement('span');
+      label.className = 'note-field-label';
       label.textContent = `第${6 - slot}弦`;
-      label.htmlFor = `customNote${slot}`;
-      const select = document.createElement('select');
-      select.className = 'note-select';
-      select.id = `customNote${slot}`;
-      select.dataset.slot = String(slot);
-      for (const opt of options) {
-        const option = document.createElement('option');
-        option.value = opt.note;
-        option.textContent = opt.note;
-        select.append(option);
-      }
-      select.value = notes[slot] || TUNING_PRESETS[0].notes[slot];
-      field.append(label, select);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'note-field-btn';
+      btn.id = `customNote${slot}`;
+      btn.dataset.slot = String(slot);
+      btn.setAttribute('aria-haspopup', 'dialog');
+      btn.setAttribute('aria-label', `第${6 - slot}弦音高，当前 ${this._customNotesDraft[slot]}`);
+      const value = document.createElement('span');
+      value.className = 'note-field-value';
+      value.textContent = this._customNotesDraft[slot];
+      const chevron = document.createElement('span');
+      chevron.className = 'note-field-chevron';
+      chevron.innerHTML = icon('chevronRight', 12);
+      btn.append(value, chevron);
+      btn.addEventListener('click', () => this.openNotePicker(slot));
+      field.append(label, btn);
       wrap.append(field);
     }
   }
 
-  readCustomNotes() {
-    if (!this.shadowRoot) return null;
-    const values = [];
-    this.shadowRoot.querySelectorAll('#customNotes select').forEach(select => {
-      values.push(select.value);
+  updateCustomNoteButton(slot) {
+    if (!this.shadowRoot || !this._customNotesDraft) return;
+    const btn = this.shadowRoot.getElementById(`customNote${slot}`);
+    if (!btn) return;
+    const value = btn.querySelector('.note-field-value');
+    if (value) value.textContent = this._customNotesDraft[slot];
+    btn.setAttribute('aria-label', `第${6 - slot}弦音高，当前 ${this._customNotesDraft[slot]}`);
+  }
+
+  openNotePicker(slot) {
+    if (!this.shadowRoot || slot < 0 || slot > 5) return;
+    if (!Array.isArray(this._customNotesDraft) || this._customNotesDraft.length !== 6) return;
+    const root = this.shadowRoot;
+    this.closePresetMenu();
+    this.closeNotePicker();
+    this._notePickerSlot = slot;
+
+    const mask = root.getElementById('notePickerMask');
+    const list = root.getElementById('notePickerList');
+    const title = root.getElementById('notePickerTitle');
+    if (!mask || !list) return;
+    if (title) title.textContent = `第${6 - slot}弦音高`;
+    list.innerHTML = '';
+    for (const opt of guitarNoteOptions()) {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'note-option';
+      option.dataset.note = opt.note;
+      option.textContent = opt.note;
+      option.setAttribute('role', 'option');
+      const active = opt.note === this._customNotesDraft[slot];
+      option.setAttribute('aria-selected', String(active));
+      if (active) option.classList.add('active');
+      option.addEventListener('click', () => {
+        this._customNotesDraft[slot] = opt.note;
+        this.updateCustomNoteButton(slot);
+        this.closeNotePicker();
+      });
+      list.append(option);
+    }
+
+    mask.hidden = false;
+    mask.setAttribute('aria-hidden', 'false');
+    this._notePickerOpen = true;
+    this._notePickerLayerOff = registerLayer({ id: 'tuner-note-picker', close: () => this.closeNotePicker() });
+    requestAnimationFrame(() => {
+      if (!this._notePickerOpen) return;
+      mask.classList.add('show');
+      const selected = list.querySelector('.note-option.active');
+      if (selected) {
+        try {
+          selected.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        } catch (err) {}
+      }
     });
-    return values.length === 6 ? values : null;
+  }
+
+  closeNotePicker() {
+    if (this._notePickerLayerOff) {
+      this._notePickerLayerOff();
+      this._notePickerLayerOff = null;
+    }
+    this._notePickerOpen = false;
+    this._notePickerSlot = null;
+    if (!this.shadowRoot) return;
+    const mask = this.shadowRoot.getElementById('notePickerMask');
+    if (!mask) return;
+    mask.classList.remove('show');
+    mask.setAttribute('aria-hidden', 'true');
+    setTimeout(() => {
+      if (!mask.classList.contains('show')) mask.hidden = true;
+    }, 220);
+  }
+
+  readCustomNotes() {
+    if (!Array.isArray(this._customNotesDraft) || this._customNotesDraft.length !== 6) return null;
+    return this._customNotesDraft.slice();
   }
 
   saveCustomTuning() {
@@ -929,6 +1036,11 @@ class GuitarTuner extends HTMLElement {
       this._presetMenuLayerOff();
       this._presetMenuLayerOff = null;
     }
+    this.closeNotePicker();
+    if (this._notePickerBackdropOff) {
+      this._notePickerBackdropOff();
+      this._notePickerBackdropOff = null;
+    }
     this.stopTuner();
   }
 
@@ -1021,7 +1133,6 @@ class GuitarTuner extends HTMLElement {
     const presetField = $('presetField');
     const a4SheetMinus = $('a4SheetMinus');
     const a4SheetPlus = $('a4SheetPlus');
-    const a4Reset = $('a4Reset');
     const customEntry = $('customEntry');
     const customBack = $('customBack');
     const customReset = $('customReset');
@@ -1032,6 +1143,12 @@ class GuitarTuner extends HTMLElement {
     if (settingsMask) {
       this._settingsBackdropOff = bindBackdrop(settingsMask, () => this.closeSettings());
     }
+    const notePickerMask = $('notePickerMask');
+    const closeNotePickerBtn = $('closeNotePicker');
+    if (notePickerMask) {
+      this._notePickerBackdropOff = bindBackdrop(notePickerMask, () => this.closeNotePicker());
+    }
+    if (closeNotePickerBtn) closeNotePickerBtn.onclick = () => this.closeNotePicker();
     if (presetField) {
       presetField.onclick = (event) => {
         event.stopPropagation();
@@ -1051,7 +1168,6 @@ class GuitarTuner extends HTMLElement {
     });
     if (a4SheetMinus) a4SheetMinus.onclick = () => this.setA4(this.a4 - 1);
     if (a4SheetPlus) a4SheetPlus.onclick = () => this.setA4(this.a4 + 1);
-    if (a4Reset) a4Reset.onclick = () => this.setA4(A4_DEFAULT);
     if (customEntry) customEntry.onclick = () => this.showCustomEditor();
     if (customBack) customBack.onclick = () => this.showSettingsMain();
     if (customReset) customReset.onclick = () => this.fillCustomStandard();

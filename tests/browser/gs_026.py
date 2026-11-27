@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==========================================
 # tests/browser/gs_026.py
-# 0.1.21 浏览器回归：调音器顶部状态、底部动作行、调音设置两行调弦与 A4 单行
+# 0.1.21a 浏览器回归：调音器底部安全区、A4 快捷档、统一开关与自绘音高选择器
 #
 # 用法（仓库根目录）：
 #   python tests/browser/gs_026.py
@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BASE = os.environ.get("GS_BASE_URL", "http://127.0.0.1:8123/").rstrip("/") + "/"
 PORT = int(os.environ.get("GS_CDP_PORT", "9369"))
 WIDTH = int(os.environ.get("GS_WIDTH", "360"))
+HEIGHT = int(os.environ.get("GS_HEIGHT", "900"))
 THEME = os.environ.get("GS_THEME", "deep").lower()
 if THEME not in ("deep", "light"):
     THEME = "deep"
@@ -108,7 +109,7 @@ class CDP:
         return res.get("result", {}).get("value")
 
     def shot(self, name):
-        path = Path(tempfile.gettempdir()) / f"gs_026_{WIDTH}_{THEME}_{name}.png"
+        path = Path(tempfile.gettempdir()) / f"gs_026_{WIDTH}x{HEIGHT}_{THEME}_{name}.png"
         data = self.cmd("Page.captureScreenshot", {"format": "png"})["result"]["data"]
         path.write_bytes(base64.b64decode(data))
         return str(path)
@@ -150,7 +151,7 @@ def main():
         cdp.cmd("Runtime.enable")
         cdp.cmd("Page.enable")
         cdp.cmd("Emulation.setDeviceMetricsOverride", {
-            "width": WIDTH, "height": 900, "deviceScaleFactor": 1, "mobile": True,
+            "width": WIDTH, "height": HEIGHT, "deviceScaleFactor": 1, "mobile": True,
         })
         cdp.cmd("Emulation.setTouchEmulationEnabled", {"enabled": True, "maxTouchPoints": 5})
         for _ in range(80):
@@ -209,6 +210,14 @@ def main():
       headFont: getComputedStyle($('tuningName')).fontSize,
       settingsRect: (() => { const r = $('openSettings').getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }; })(),
       startRect: (() => { const r = $('btnToggle').getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }; })(),
+      displayHeight: Math.round(sr.querySelector('.display-area').getBoundingClientRect().height),
+      bottomGap: Math.round(window.innerHeight - $('btnToggle').getBoundingClientRect().bottom),
+      autoLines: (() => {
+        const auto = sr.querySelector('.string-btn.auto');
+        const range = document.createRange();
+        range.selectNodeContents(auto);
+        return range.getClientRects().length;
+      })(),
     },
   };
 
@@ -230,6 +239,7 @@ def main():
     width: Math.round($('settingsSheet').getBoundingClientRect().width),
     eyebrow: !!sr.querySelector('.sheet-eyebrow'),
     overflow: $('settingsSheet').scrollWidth > $('settingsSheet').clientWidth + 1,
+    paddingBottom: parseFloat(getComputedStyle($('settingsSheet')).paddingBottom),
   };
   state.presetMenuHidden = $('presetMenu')?.hidden;
   $('presetField').click();
@@ -251,11 +261,16 @@ def main():
   state.customEntry = !!$('customEntry');
   state.a4Steps = ['a4SheetMinus', 'a4SheetPlus'].filter(id => $(id) ? true : false).length;
   state.feedbackRows = sr.querySelectorAll('.switch-row').length;
+  state.switchSize = (() => {
+    const track = sr.querySelector('.switch-row[aria-pressed="true"] .switch-track');
+    const r = track.getBoundingClientRect();
+    return { w: Math.round(r.width), h: Math.round(r.height) };
+  })();
   state.a4Row = {
-    resetTop: Math.round($('a4Reset').getBoundingClientRect().top),
-    minusTop: Math.round($('a4SheetMinus').getBoundingClientRect().top),
+    hasReset: !!$('a4Reset'),
+    hasQuick: !!sr.querySelector('.a4-quick'),
     sameRow: Math.abs(
-      ($('a4Reset').getBoundingClientRect().top + $('a4Reset').getBoundingClientRect().bottom) / 2
+      (sr.querySelector('.a4-quick').getBoundingClientRect().top + sr.querySelector('.a4-quick').getBoundingClientRect().bottom) / 2
       - ($('a4SheetMinus').getBoundingClientRect().top + $('a4SheetMinus').getBoundingClientRect().bottom) / 2
     ) <= 3,
   };
@@ -277,9 +292,9 @@ def main():
     text: $('a4Status')?.textContent.trim(),
     sheet: $('a4SheetVal')?.textContent.trim(),
   };
-  $('a4Reset').click();
+  sr.querySelector('.mini-chip[data-a4="440"]').click();
   await sleep(160);
-  state.a4Reset = { hidden: !!$('a4Status')?.hidden, sheet: $('a4SheetVal')?.textContent.trim() };
+  state.a4Back = { hidden: !!$('a4Status')?.hidden, sheet: $('a4SheetVal')?.textContent.trim() };
   $('closeSettings').click();
   await sleep(260);
 
@@ -311,6 +326,7 @@ def main():
   state.customEditor = {
     open: !$('customEditor')?.hidden,
     selects: sr.querySelectorAll('#customNotes select').length,
+    noteButtons: sr.querySelectorAll('#customNotes .note-field-btn').length,
   };
 
   // 原生返回：编辑器先退回设置主页，再关闭整个调音设置
@@ -331,9 +347,32 @@ def main():
   $('customEntry').click();
   await sleep(160);
 
-  const nameInput = $('customName');
-  nameInput.value = '重复 E';
-  sr.querySelectorAll('#customNotes select').forEach(sel => { sel.value = 'E2'; });
+  // 音高选择器：应用内底部弹层，先验证返回层级，再逐弦选 E2
+  $('customNote0').click();
+  await sleep(180);
+  state.notePicker = {
+    open: $('notePickerMask')?.classList.contains('show'),
+    title: $('notePickerTitle')?.textContent.trim(),
+    options: $('notePickerList')?.querySelectorAll('.note-option').length,
+    active: $('notePickerList')?.querySelectorAll('.note-option.active').length,
+    selected: $('notePickerList')?.querySelector('.note-option.active')?.textContent.trim(),
+    nativeSelects: sr.querySelectorAll('select').length,
+  };
+  window.dispatchEvent(new Event('gs-back-request'));
+  await sleep(180);
+  state.backFromPicker = {
+    pickerOpen: $('notePickerMask')?.classList.contains('show'),
+    editorOpen: !$('customEditor')?.hidden,
+    settingsOpen: !!sr.querySelector('.settings-mask.show'),
+  };
+
+  $('customName').value = '重复 E';
+  for (let slot = 0; slot < 6; slot++) {
+    $(`customNote${slot}`).click();
+    await sleep(120);
+    $('notePickerList').querySelector('.note-option[data-note="E2"]').click();
+    await sleep(160);
+  }
   $('customSave').click();
   await sleep(320);
   state.custom = {
@@ -362,7 +401,7 @@ def main():
 
         print(json.dumps(out, ensure_ascii=False, indent=2))
 
-        check("版本为 v0.1.21", out["version"] == "v0.1.21", out["version"])
+        check("版本为 v0.1.21a", out["version"] == "v0.1.21a", out["version"])
         check("默认调弦名常驻", out["default"]["name"] == "标准调弦", out["default"]["name"])
         check("A4 440 默认不显示", out["default"]["a4Hidden"] and out["default"]["a4Text"] == "", out["default"])
         check("默认六弦音名", out["default"]["notes"] == ["E", "A", "D", "G", "B", "e"], str(out["default"]["notes"]))
@@ -375,24 +414,33 @@ def main():
         check("设置入口在底部且位于开始调音左侧", out["layout"]["settingsLeftOfStart"] and out["layout"]["actionsSameRow"], f"{out['layout']['settingsRect']} / {out['layout']['startRect']}")
         check("开始调音吸收剩余宽度", out["layout"]["startFlexible"], f"{out['layout']['settingsRect']['width']} / {out['layout']['startRect']['width']}")
         check("读数区弹性吸收高度", out["layout"]["displayFlex"] == "1", out["layout"]["displayFlex"])
+        check("中下部整体上移", out["layout"]["displayHeight"] <= 360, f"display={out['layout']['displayHeight']}")
+        check("底部留出安全区", out["layout"]["bottomGap"] >= 24, f"gap={out['layout']['bottomGap']}")
+        check("自动按钮不折行", out["layout"]["autoLines"] == 1, out["layout"]["autoLines"])
         check("设置面板打开", out["settingsOpen"])
         check("调音设置三分区", out["settingsSections"] == 3, str(out["settingsSections"]))
         check("设置面板 90% / 最大 400", abs(out["sheet"]["width"] - min(400, out["layout"]["width"] * 0.9)) <= 2, f"{out['sheet']['width']} / 源宽 {out['layout']['width']}")
         check("去掉 TUNER SETTINGS 眉标", not out["sheet"]["eyebrow"])
         check("设置面板无横向溢出", not out["sheet"]["overflow"])
+        check("设置弹层补底部安全区", out["sheet"]["paddingBottom"] >= 24, out["sheet"]["paddingBottom"])
         check("预设下拉默认收起", out["presetMenuHidden"])
         check("点击字段展开自绘下拉", out["presetMenu"]["open"] and out["presetMenu"]["expanded"] == "true", str(out["presetMenu"]))
         check("五个预设选项", len(out["presetMenu"]["options"]) == 5 and out["customEntry"], str(out["presetMenu"]["options"]))
         check("返回键先收起预设下拉", out["backFromMenu"]["menuHidden"] and out["backFromMenu"]["settingsOpen"], str(out["backFromMenu"]))
-        check("A4 按钮与恢复同处一行", out["a4Steps"] == 2 and out["a4Row"]["sameRow"] and out["feedbackRows"] == 2, f"a4={out['a4Steps']} fb={out['feedbackRows']} {out['a4Row']}")
+        check("A4 去掉恢复 440", out["a4Steps"] == 2 and not out["a4Row"]["hasReset"] and out["a4Row"]["hasQuick"], f"a4={out['a4Steps']} {out['a4Row']}")
+        check("A4 快捷档与步进同处一行", out["a4Row"]["sameRow"], str(out["a4Row"]))
+        check("调音设置仍为两个反馈开关", out["feedbackRows"] == 2, str(out["feedbackRows"]))
+        check("开关尺寸与节拍器统一", out["switchSize"]["w"] == 44 and out["switchSize"]["h"] == 26, str(out["switchSize"]))
         check("Drop D 切换生效", out["dropD"]["name"] == "Drop D" and out["dropD"]["notes"] == ["D", "A", "D", "G", "B", "e"] and out["dropD"]["saved"] == "drop-d", str(out["dropD"]))
         check("A4 442 偏离时无圆点文案", not out["a4Off"]["hidden"] and out["a4Off"]["text"] == "A4 442" and out["a4Off"]["sheet"] == "442", str(out["a4Off"]))
-        check("A4 恢复 440 后隐藏", out["a4Reset"]["hidden"] and out["a4Reset"]["sheet"] == "440", str(out["a4Reset"]))
+        check("A4 440 快捷档可恢复", out["a4Back"]["hidden"] and out["a4Back"]["sheet"] == "440", str(out["a4Back"]))
         check("点弦选中 slot 5", out["stringClick"]["active"] and out["stringClick"]["slot"] == 5, str(out["stringClick"]))
         check("点弦进入标准音试听", "第1弦" in out["stringClick"]["status"], out["stringClick"]["status"])
         check("试听约 1 秒后自动收束", not out["stringClick"]["after"]["playing"] and not out["stringClick"]["after"]["isPlayingRef"], str(out["stringClick"]["after"]))
         check("点弦后仍无单独标准音按钮", not out["stringClick"]["hasRefButton"])
-        check("自定义编辑器六弦选择器", out["customEditor"]["open"] and out["customEditor"]["selects"] == 6, str(out["customEditor"]))
+        check("自定义编辑器为六个自绘音高按钮", out["customEditor"]["open"] and out["customEditor"]["noteButtons"] == 6 and out["customEditor"]["selects"] == 0, str(out["customEditor"]))
+        check("音高选择器为应用内弹层", out["notePicker"]["open"] and out["notePicker"]["title"] == "第6弦音高" and out["notePicker"]["options"] == 39 and out["notePicker"]["active"] == 1, str(out["notePicker"]))
+        check("返回键先关音高选择器", not out["backFromPicker"]["pickerOpen"] and out["backFromPicker"]["editorOpen"] and out["backFromPicker"]["settingsOpen"], str(out["backFromPicker"]))
         check("返回键先退出自定义编辑器", out["backFromEditor"]["editorHidden"] and out["backFromEditor"]["settingsOpen"], str(out["backFromEditor"]))
         check("再按返回键关闭调音设置", not out["backFromSettings"]["settingsOpen"] and out["backFromSettings"]["hidden"], str(out["backFromSettings"]))
         check("自定义重复音高按 slot 建目标", out["custom"]["name"] == "重复 E" and out["custom"]["targets"] == ["E2"] * 6 and out["custom"]["notes"] == ["E"] * 6, str(out["custom"]))
@@ -408,6 +456,9 @@ def main():
         cdp.ev("document.querySelector('guitar-tuner')?.shadowRoot?.getElementById('customEntry')?.click(); true")
         time.sleep(0.25)
         print(" ", cdp.shot("tuner_custom"))
+        cdp.ev("document.querySelector('guitar-tuner')?.shadowRoot?.getElementById('customNote0')?.click(); true")
+        time.sleep(0.25)
+        print(" ", cdp.shot("tuner_note_picker"))
 
         print(f"\n宽度 {WIDTH} / {THEME}：{'通过' if not FAILS else '失败 ' + str(len(FAILS))}")
         if FAILS:
