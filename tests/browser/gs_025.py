@@ -249,7 +249,7 @@ def main():
 })()
 """)
 
-        assert out["version"] == "v0.1.21c", out
+        assert out["version"] == "v0.1.21d", out
         assert out["canvas"]["w"] > 200, out
         for bpm, deg in out["anchors"]:
             assert abs(out["at"][str(bpm)] - bpm) <= 1, (bpm, out["at"], out)

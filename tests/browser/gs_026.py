@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==========================================
 # tests/browser/gs_026.py
-# 0.1.21c 浏览器回归：调音器底部安全区、A4 快捷档、统一开关与自绘音高选择器
+# 0.1.21d 浏览器回归：调音器底部安全区、A4 快捷档、统一开关与自绘音高选择器
 #
 # 用法（仓库根目录）：
 #   python tests/browser/gs_026.py
@@ -212,16 +212,27 @@ def main():
       startRect: (() => { const r = $('btnToggle').getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }; })(),
       displayHeight: Math.round(sr.querySelector('.display-area').getBoundingClientRect().height),
       bottomGap: Math.round(window.innerHeight - $('btnToggle').getBoundingClientRect().bottom),
-      hint: (() => {
-        const btn = $('btnToggle').getBoundingClientRect();
-        const hint = $('statusText').getBoundingClientRect();
+      titleToNote: Math.round($('noteName').getBoundingClientRect().top - $('tuningName').getBoundingClientRect().bottom),
+      live: (() => {
+        const status = $('statusText').getBoundingClientRect();
+        const freq = $('freqVal').getBoundingClientRect();
+        const meter = sr.querySelector('.meter-wrap').getBoundingClientRect();
         return {
           text: $('statusText').textContent.trim(),
-          gap: Math.round(hint.top - btn.bottom),
-          belowButton: hint.top >= btn.bottom,
+          gapAfterFreq: Math.round(status.top - freq.bottom),
+          aboveMeter: status.bottom <= meter.top,
           align: getComputedStyle($('statusText')).textAlign,
-          centerOffset: Math.round(Math.abs((hint.left + hint.width / 2) - (container.getBoundingClientRect().left + container.clientWidth / 2))),
-          bottomGap: Math.round(window.innerHeight - hint.bottom),
+          centerOffset: Math.round(Math.abs((status.left + status.width / 2) - (container.getBoundingClientRect().left + container.clientWidth / 2))),
+          height: Math.round(status.height),
+        };
+      })(),
+      spacing: (() => {
+        const cents = sr.querySelector('.cents-wrap').getBoundingClientRect();
+        const strings = sr.querySelector('.strings-row').getBoundingClientRect();
+        const start = $('btnToggle').getBoundingClientRect();
+        return {
+          centsToStrings: Math.round(strings.top - cents.bottom),
+          stringsToActions: Math.round(start.top - strings.bottom),
         };
       })(),
       meter: (() => {
@@ -427,7 +438,7 @@ def main():
 
         print(json.dumps(out, ensure_ascii=False, indent=2))
 
-        check("版本为 v0.1.21c", out["version"] == "v0.1.21c", out["version"])
+        check("版本为 v0.1.21d", out["version"] == "v0.1.21d", out["version"])
         check("默认调弦名常驻", out["default"]["name"] == "标准调弦", out["default"]["name"])
         check("A4 440 默认不显示", out["default"]["a4Hidden"] and out["default"]["a4Text"] == "", out["default"])
         check("默认六弦音名", out["default"]["notes"] == ["E", "A", "D", "G", "B", "e"], str(out["default"]["notes"]))
@@ -435,16 +446,17 @@ def main():
         check("主按钮文案为开始调音", out["default"]["buttonText"] == "开始调音", out["default"]["buttonText"])
         check("移除单独标准音按钮", not out["default"]["hasRefButton"])
         check("主界面无横向溢出", not out["layout"]["containerOverflow"], f"{out['layout']['width']}/{out['layout']['scrollWidth']}")
-        check("顶部标题下移离开导航", 22 <= out["layout"]["headOffset"] <= 34, f"offset={out['layout']['headOffset']} pad={out['layout']['topPadding']}")
+        check("顶部标题下压贴近大读数", 44 <= out["layout"]["headOffset"] <= 54 and -12 <= out["layout"]["titleToNote"] <= -4, f"offset={out['layout']['headOffset']} titleToNote={out['layout']['titleToNote']}")
         check("调弦名放大到 19px", out["layout"]["headFont"] == "19px", out["layout"]["headFont"])
         check("设置按钮与节拍器同尺寸", out["layout"]["settingsRect"]["width"] == 72 and out["layout"]["settingsRect"]["height"] == 44 and out["layout"]["actions"]["settingsText"] == "设置", f"{out['layout']['settingsRect']} / {out['layout']['actions']['settingsText']}")
         check("设置按钮位于开始调音左侧", out["layout"]["settingsLeftOfStart"] and out["layout"]["actionsSameRow"], f"{out['layout']['settingsRect']} / {out['layout']['startRect']}")
         check("开始调音缩窄并水平居中", out["layout"]["startRect"]["width"] <= 150 and out["layout"]["actions"]["startCenterOffset"] <= 2, f"{out['layout']['startRect']} / 偏移 {out['layout']['actions']['startCenterOffset']}")
-        check("读数区固定高度", 160 <= out["layout"]["displayHeight"] <= 242, out["layout"]["displayHeight"])
+        check("读数区固定高度", 150 <= out["layout"]["displayHeight"] <= 222, out["layout"]["displayHeight"])
         check("仪表盘回到视觉中心", out["layout"]["meterCenterOffset"] <= 12, f"仪表中心 {out['layout']['meter']['center']} / 屏幕中心 {out['layout']['screenCenter']}")
-        check("按钮组上移靠近节拍器", 74 <= out["layout"]["bottomGap"] <= 84, f"gap={out['layout']['bottomGap']}")
-        check("提示文案位于开始按钮下方", out["layout"]["hint"]["belowButton"] and 4 <= out["layout"]["hint"]["gap"] <= 8 and out["layout"]["hint"]["text"] == "首次使用请允许麦克风", str(out["layout"]["hint"]))
-        check("提示文案水平居中且不贴底", out["layout"]["hint"]["align"] == "center" and out["layout"]["hint"]["centerOffset"] <= 2 and 48 <= out["layout"]["hint"]["bottomGap"] <= 58, str(out["layout"]["hint"]))
+        check("按钮组紧跟弦位行", 11 <= out["layout"]["spacing"]["stringsToActions"] <= 13 and out["layout"]["bottomGap"] >= 150, f"间距={out['layout']['spacing']['stringsToActions']} 底距={out['layout']['bottomGap']}")
+        check("按钮组与音分到弦位间距一致", abs(out["layout"]["spacing"]["stringsToActions"] - out["layout"]["spacing"]["centsToStrings"]) <= 1, str(out["layout"]["spacing"]))
+        check("删除静态提示文案", out["layout"]["live"]["text"] == "", str(out["layout"]["live"]))
+        check("实时反馈位于频率与仪表之间", 6 <= out["layout"]["live"]["gapAfterFreq"] <= 10 and out["layout"]["live"]["aboveMeter"] and out["layout"]["live"]["align"] == "center" and out["layout"]["live"]["centerOffset"] <= 2, str(out["layout"]["live"]))
         check("自动按钮不折行", out["layout"]["autoLines"] == 1, out["layout"]["autoLines"])
         check("设置面板打开", out["settingsOpen"])
         check("调音设置三分区", out["settingsSections"] == 3, str(out["settingsSections"]))
