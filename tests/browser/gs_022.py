@@ -218,6 +218,55 @@ def main():
   shelf.scrollTop = 0;
   await sleep(150);
 
+  // 0.1.25 书架文件名禁选与长按批量管理
+  out.shelfLongPress = {};
+  const shelfInitialCard = shelf.querySelector('.score-card');
+  out.shelfLongPress.userSelect = getComputedStyle(shelfInitialCard).userSelect;
+  out.shelfLongPress.titleSelect = getComputedStyle(shelfInitialCard.querySelector('.score-name')).userSelect;
+  const menuEvent = new Event('contextmenu', { bubbles: true, cancelable: true });
+  shelfInitialCard.dispatchEvent(menuEvent);
+  out.shelfLongPress.contextPrevented = menuEvent.defaultPrevented;
+
+  const shelfTargetId = shelfInitialCard.dataset.scoreId;
+  const firePointer = (target, type, x = 30, y = 40) => target.dispatchEvent(new PointerEvent(type, {
+    bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch', isPrimary: true,
+    button: 0, clientX: x, clientY: y
+  }));
+  const releasePointer = () => firePointer(shelf, 'pointerup');
+  const enterManageByHold = async (card) => {
+    firePointer(card, 'pointerdown');
+    await sleep(560);
+  };
+
+  await enterManageByHold(shelfInitialCard);
+  let heldCard = shelf.querySelector(`.score-card[data-score-id="${shelfTargetId}"]`);
+  out.shelfLongPress.manageAfterHold = reader.manageMode;
+  out.shelfLongPress.selectedAfterHold = !!heldCard && heldCard.classList.contains('selected');
+  out.shelfLongPress.batchCount = $('batchCount').textContent;
+  out.shelfLongPress.readerOpened = reader.currentScoreId !== null;
+  releasePointer();
+  heldCard.click();
+  await sleep(20);
+  out.shelfLongPress.selectedAfterReleaseClick = heldCard.classList.contains('selected');
+  $('btnManage').click();
+  await sleep(30);
+  out.shelfLongPress.exitCleared = !reader.manageMode && reader.selectedIds.size === 0;
+
+  const moveCard = shelf.querySelector('.score-card');
+  firePointer(moveCard, 'pointerdown');
+  firePointer(moveCard, 'pointermove', 60, 80);
+  await sleep(560);
+  releasePointer();
+  out.shelfLongPress.moveCancelled = !reader.manageMode;
+
+  const scrollCard = shelf.querySelector('.score-card');
+  firePointer(scrollCard, 'pointerdown');
+  shelf.dispatchEvent(new Event('scroll'));
+  await sleep(560);
+  releasePointer();
+  out.shelfLongPress.scrollCancelled = !reader.manageMode;
+  out.shelfLongPress.inputSelectable = getComputedStyle($('searchInp')).userSelect !== 'none';
+
   const textCard = Array.from(reader.shadowRoot.querySelectorAll('.score-card'))
     .find((card) => card.querySelector('.score-name')?.textContent === '小星星.txt');
   textCard.click();
@@ -447,6 +496,18 @@ def main():
         if 341 <= WIDTH <= 380:
             assert out["shelfDensity"]["coverWidth"] == 72, out
             assert abs(out["shelfDensity"]["titleSize"] - 12.5) < 0.2, out
+        assert out["shelfLongPress"]["userSelect"] == "none", out
+        assert out["shelfLongPress"]["titleSelect"] == "none", out
+        assert out["shelfLongPress"]["contextPrevented"] is True, out
+        assert out["shelfLongPress"]["manageAfterHold"] is True, out
+        assert out["shelfLongPress"]["selectedAfterHold"] is True, out
+        assert out["shelfLongPress"]["batchCount"] == "已选 1 份", out
+        assert out["shelfLongPress"]["readerOpened"] is False, out
+        assert out["shelfLongPress"]["selectedAfterReleaseClick"] is True, out
+        assert out["shelfLongPress"]["exitCleared"] is True, out
+        assert out["shelfLongPress"]["moveCancelled"] is True, out
+        assert out["shelfLongPress"]["scrollCancelled"] is True, out
+        assert out["shelfLongPress"]["inputSelectable"] is True, out
         assert out["textRender"]["title"] == "小星星", out
         assert "主歌" in out["textRender"]["sections"], out
         assert out["textRender"]["chordTokens"] >= 4, out

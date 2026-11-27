@@ -104,7 +104,7 @@ const readerCSS = `
     .shelf-view { grid-template-columns: minmax(0, 1fr); }
   }
   .shelf-view.managing { padding-bottom: 118px; }
-  .score-card { box-sizing: border-box; min-height: 148px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; padding: 8px; cursor: pointer; display: flex; flex-direction: row; align-items: flex-start; gap: 8px; position: relative; transition: 0.2s; overflow: hidden; }
+  .score-card { box-sizing: border-box; min-height: 148px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; padding: 8px; cursor: pointer; display: flex; flex-direction: row; align-items: flex-start; gap: 8px; position: relative; transition: 0.2s; overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .score-card:hover { background: var(--surface-hover); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(var(--shadow-rgb),.24); }
   .score-card.selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary), 0 0 0 3px rgba(var(--primary-rgb), .12); }
   .score-cover {
@@ -720,6 +720,9 @@ class SheetReader extends HTMLElement {
     this.sortMode = 'newest';
     this.manageMode = false;
     this.selectedIds = new Set();
+    this.shelfLongPressTimer = null;
+    this.shelfPressContext = null;
+    this.suppressShelfClick = false;
     this.tagModalState = null;
     
     this.mmBpm = 120;
@@ -818,6 +821,13 @@ class SheetReader extends HTMLElement {
     if (this.cancelZenKeyHold) window.removeEventListener('blur', this.cancelZenKeyHold);
     if (this.textHighlightRaf) { cancelAnimationFrame(this.textHighlightRaf); this.textHighlightRaf = null; }
     clearTimeout(this.zenHoldTimer);
+    if (this.shelfLongPressTimer) { clearTimeout(this.shelfLongPressTimer); this.shelfLongPressTimer = null; }
+    this.shelfPressContext = null;
+    if (this.releaseShelfSuppress) {
+      window.removeEventListener('pointerup', this.releaseShelfSuppress, true);
+      window.removeEventListener('pointercancel', this.releaseShelfSuppress, true);
+      this.releaseShelfSuppress = null;
+    }
     if (this.autoSaveTimer) { clearInterval(this.autoSaveTimer); this.autoSaveTimer = null; }
     if (this.handleTabChange) window.removeEventListener('app-tab-changed', this.handleTabChange);
     if (this.handleMetronomeSettings) window.removeEventListener('metronome-settings', this.handleMetronomeSettings);
@@ -837,6 +847,8 @@ class SheetReader extends HTMLElement {
   }
 
   initLogic() {
+    const SHELF_LONG_PRESS_MS = 500;
+    const SHELF_LONG_PRESS_MOVE = 10;
     const $ = (id) => this.shadowRoot.getElementById(id);
     
     const btnBack = $('btnBack');
@@ -973,6 +985,27 @@ class SheetReader extends HTMLElement {
       }
     };
     this.setManageMode = setManageMode;
+
+    const cancelShelfLongPress = () => {
+      if (this.shelfLongPressTimer) {
+        clearTimeout(this.shelfLongPressTimer);
+        this.shelfLongPressTimer = null;
+      }
+      this.shelfPressContext = null;
+    };
+    this.cancelShelfLongPress = cancelShelfLongPress;
+
+    // 长按进入管理后，松手仍可能产生 click；保留一次抑制，下一 tick 自动解除。
+    this.releaseShelfSuppress = () => {
+      if (!this.suppressShelfClick) return;
+      setTimeout(() => { this.suppressShelfClick = false; }, 0);
+    };
+    window.addEventListener('pointerup', this.releaseShelfSuppress, true);
+    window.addEventListener('pointercancel', this.releaseShelfSuppress, true);
+    shelfView.addEventListener('scroll', cancelShelfLongPress, { passive: true });
+    shelfView.addEventListener('contextmenu', (e) => {
+      if (e.target.closest && e.target.closest('.score-card')) e.preventDefault();
+    });
 
     const toggleSelected = (id) => {
       if (this.selectedIds.has(id)) this.selectedIds.delete(id);
@@ -1176,6 +1209,7 @@ class SheetReader extends HTMLElement {
         return 0;
       });
 
+      cancelShelfLongPress();
       shelfView.classList.toggle('managing', this.manageMode);
       updateBatchBar();
 
@@ -1230,7 +1264,37 @@ class SheetReader extends HTMLElement {
           </div>
         `;
 
+        const scoreId = score.id;
+        card.addEventListener('pointerdown', (e) => {
+          if (this.manageMode) return;
+          if (!e.isPrimary || e.button !== 0) return;
+          if (e.target.closest && e.target.closest('.card-edit-btn')) return;
+          cancelShelfLongPress();
+          this.shelfPressContext = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+          this.shelfLongPressTimer = setTimeout(() => {
+            this.shelfLongPressTimer = null;
+            this.shelfPressContext = null;
+            this.suppressShelfClick = true;
+            this.selectedIds.add(scoreId);
+            setManageMode(true);
+          }, SHELF_LONG_PRESS_MS);
+        });
+        card.addEventListener('pointermove', (e) => {
+          const ctx = this.shelfPressContext;
+          if (!ctx || ctx.pointerId !== e.pointerId) return;
+          if (Math.hypot(e.clientX - ctx.x, e.clientY - ctx.y) > SHELF_LONG_PRESS_MOVE) {
+            cancelShelfLongPress();
+          }
+        });
+        card.addEventListener('pointerup', cancelShelfLongPress);
+        card.addEventListener('pointercancel', cancelShelfLongPress);
+        card.addEventListener('pointerleave', cancelShelfLongPress);
+
         card.onclick = () => {
+          if (this.suppressShelfClick) {
+            this.suppressShelfClick = false;
+            return;
+          }
           if (this.manageMode) {
             toggleSelected(score.id);
             return;
