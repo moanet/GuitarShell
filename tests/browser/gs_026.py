@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==========================================
 # tests/browser/gs_026.py
-# 0.1.21b 浏览器回归：调音器底部安全区、A4 快捷档、统一开关与自绘音高选择器
+# 0.1.21c 浏览器回归：调音器底部安全区、A4 快捷档、统一开关与自绘音高选择器
 #
 # 用法（仓库根目录）：
 #   python tests/browser/gs_026.py
@@ -213,16 +213,15 @@ def main():
       displayHeight: Math.round(sr.querySelector('.display-area').getBoundingClientRect().height),
       bottomGap: Math.round(window.innerHeight - $('btnToggle').getBoundingClientRect().bottom),
       hint: (() => {
-        const name = $('tuningName').getBoundingClientRect();
+        const btn = $('btnToggle').getBoundingClientRect();
         const hint = $('statusText').getBoundingClientRect();
-        const note = $('noteName').getBoundingClientRect();
-        const freq = $('freqVal').getBoundingClientRect();
         return {
-          gap: Math.round(hint.top - name.bottom),
-          aboveNote: hint.top < note.top,
-          aboveFreq: hint.top < freq.top,
+          text: $('statusText').textContent.trim(),
+          gap: Math.round(hint.top - btn.bottom),
+          belowButton: hint.top >= btn.bottom,
           align: getComputedStyle($('statusText')).textAlign,
           centerOffset: Math.round(Math.abs((hint.left + hint.width / 2) - (container.getBoundingClientRect().left + container.clientWidth / 2))),
+          bottomGap: Math.round(window.innerHeight - hint.bottom),
         };
       })(),
       meter: (() => {
@@ -428,7 +427,7 @@ def main():
 
         print(json.dumps(out, ensure_ascii=False, indent=2))
 
-        check("版本为 v0.1.21b", out["version"] == "v0.1.21b", out["version"])
+        check("版本为 v0.1.21c", out["version"] == "v0.1.21c", out["version"])
         check("默认调弦名常驻", out["default"]["name"] == "标准调弦", out["default"]["name"])
         check("A4 440 默认不显示", out["default"]["a4Hidden"] and out["default"]["a4Text"] == "", out["default"])
         check("默认六弦音名", out["default"]["notes"] == ["E", "A", "D", "G", "B", "e"], str(out["default"]["notes"]))
@@ -436,16 +435,16 @@ def main():
         check("主按钮文案为开始调音", out["default"]["buttonText"] == "开始调音", out["default"]["buttonText"])
         check("移除单独标准音按钮", not out["default"]["hasRefButton"])
         check("主界面无横向溢出", not out["layout"]["containerOverflow"], f"{out['layout']['width']}/{out['layout']['scrollWidth']}")
-        check("主界面从顶部起排", out["layout"]["headOffset"] <= out["layout"]["topPadding"] + 8, f"offset={out['layout']['headOffset']} pad={out['layout']['topPadding']}")
+        check("顶部标题下移离开导航", 22 <= out["layout"]["headOffset"] <= 34, f"offset={out['layout']['headOffset']} pad={out['layout']['topPadding']}")
         check("调弦名放大到 19px", out["layout"]["headFont"] == "19px", out["layout"]["headFont"])
-        check("提示文字贴在调弦名下方", out["layout"]["hint"]["gap"] <= 10 and out["layout"]["hint"]["aboveNote"] and out["layout"]["hint"]["aboveFreq"], str(out["layout"]["hint"]))
-        check("提示文字水平居中", out["layout"]["hint"]["align"] == "center" and out["layout"]["hint"]["centerOffset"] <= 2, str(out["layout"]["hint"]))
         check("设置按钮与节拍器同尺寸", out["layout"]["settingsRect"]["width"] == 72 and out["layout"]["settingsRect"]["height"] == 44 and out["layout"]["actions"]["settingsText"] == "设置", f"{out['layout']['settingsRect']} / {out['layout']['actions']['settingsText']}")
         check("设置按钮位于开始调音左侧", out["layout"]["settingsLeftOfStart"] and out["layout"]["actionsSameRow"], f"{out['layout']['settingsRect']} / {out['layout']['startRect']}")
         check("开始调音缩窄并水平居中", out["layout"]["startRect"]["width"] <= 150 and out["layout"]["actions"]["startCenterOffset"] <= 2, f"{out['layout']['startRect']} / 偏移 {out['layout']['actions']['startCenterOffset']}")
-        check("读数区固定高度", 160 <= out["layout"]["displayHeight"] <= 236, out["layout"]["displayHeight"])
+        check("读数区固定高度", 160 <= out["layout"]["displayHeight"] <= 242, out["layout"]["displayHeight"])
         check("仪表盘回到视觉中心", out["layout"]["meterCenterOffset"] <= 12, f"仪表中心 {out['layout']['meter']['center']} / 屏幕中心 {out['layout']['screenCenter']}")
-        check("底部留出安全区", 24 <= out["layout"]["bottomGap"] <= 40, f"gap={out['layout']['bottomGap']}")
+        check("按钮组上移靠近节拍器", 74 <= out["layout"]["bottomGap"] <= 84, f"gap={out['layout']['bottomGap']}")
+        check("提示文案位于开始按钮下方", out["layout"]["hint"]["belowButton"] and 4 <= out["layout"]["hint"]["gap"] <= 8 and out["layout"]["hint"]["text"] == "首次使用请允许麦克风", str(out["layout"]["hint"]))
+        check("提示文案水平居中且不贴底", out["layout"]["hint"]["align"] == "center" and out["layout"]["hint"]["centerOffset"] <= 2 and 48 <= out["layout"]["hint"]["bottomGap"] <= 58, str(out["layout"]["hint"]))
         check("自动按钮不折行", out["layout"]["autoLines"] == 1, out["layout"]["autoLines"])
         check("设置面板打开", out["settingsOpen"])
         check("调音设置三分区", out["settingsSections"] == 3, str(out["settingsSections"]))

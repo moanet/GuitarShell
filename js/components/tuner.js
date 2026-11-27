@@ -62,11 +62,11 @@ const tunerCSS = `
   .container { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; padding: 16px 20px; gap: 20px; box-sizing: border-box; }
   
   /* 提示与音符显示 */
-  .display-area { flex: 0 0 auto; height: clamp(160px, calc(50vh - 214px), 236px); min-height: 0; max-height: none; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+  .display-area { flex: 0 0 auto; height: clamp(160px, calc(50vh - 208px), 242px); min-height: 0; max-height: none; text-align: center; display: flex; flex-direction: column; justify-content: center; }
   .note-name { font-size: 72px; font-weight: bold; color: var(--heading); line-height: 1; transition: color 0.2s; text-shadow: 0 8px 28px rgba(var(--shadow-rgb),.35); }
   .note-name.in-tune { color: var(--success); text-shadow: 0 0 24px rgba(var(--success-rgb), 0.48); }
   .freq-val { font-size: 14px; color: var(--muted); margin-top: 8px; letter-spacing: 2px; }
-  .status-text { width: 100%; text-align: center; font-size: 14px; color: var(--accent-text); margin: 0; height: 19px; font-weight: 700; line-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status-text { width: 100%; text-align: center; font-size: 14px; color: var(--muted); margin: 0; height: 19px; font-weight: 700; line-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* 仪表盘 */
   .meter-wrap { position: relative; width: 100%; height: 80px; background: linear-gradient(180deg, var(--bg1), var(--surface-deep)); border-radius: 18px; border: 1px solid var(--line); overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(var(--secondary-rgb),.04); }
@@ -131,12 +131,13 @@ const tunerCSS = `
 
   /* 0.1.21：顶部状态、底部动作行与调音设置 */
   :host { position: relative; }
-  .container { flex: 1 1 auto; padding: 10px 20px max(28px, env(safe-area-inset-bottom, 0px)); gap: 12px; }
-  .head-block { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 5px; padding: 0 2px; flex: none; }
+  .container { flex: 1 1 auto; padding: 28px 20px max(53px, calc(28px + env(safe-area-inset-bottom, 0px))); gap: 12px; }
+  .head-block { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 0; padding: 0 2px; flex: none; }
   .tuning-head { width: 100%; display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: none; }
   .tuning-head .tuning-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; font-weight: 700; color: var(--heading); line-height: 1.25; }
   .tuning-a4 { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; }
-  .action-row { position: relative; width: 100%; max-width: 460px; height: 46px; display: flex; align-items: center; justify-content: center; flex: none; margin-top: auto; }
+  .action-block { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 6px; flex: none; margin-top: auto; }
+  .action-row { position: relative; width: 100%; height: 46px; display: flex; align-items: center; justify-content: center; flex: none; }
   .settings-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 72px; height: 44px; border-radius: 14px; border: 1px solid var(--line-warm); background: var(--surface-raised); color: var(--accent-text); display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.6px; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
   .settings-btn span { white-space: nowrap; }
   .settings-btn:active { transform: translateY(-50%) scale(0.95); background: rgba(var(--primary-rgb), 0.10); }
@@ -245,7 +246,6 @@ const tunerHTML = `
         <span class="tuning-name" id="tuningName">标准调弦</span>
         <span class="tuning-a4" id="a4Status" hidden></span>
       </div>
-      <div class="status-text" id="statusText">点击“开始调音”并允许麦克风</div>
     </div>
 
     <div class="display-area">
@@ -286,11 +286,14 @@ const tunerHTML = `
       <button class="string-btn" data-slot="5" type="button"><span class="string-note">e</span><span class="string-num">1</span></button>
     </div>
 
-    <div class="action-row">
-      <button class="settings-btn" id="openSettings" type="button" aria-haspopup="dialog" aria-controls="settingsMask">
-        ${icon('settings', 15)}<span>设置</span>
-      </button>
-      <button class="btn-toggle start" id="btnToggle">${icon('mic', 18)} 开始调音</button>
+    <div class="action-block">
+      <div class="action-row">
+        <button class="settings-btn" id="openSettings" type="button" aria-haspopup="dialog" aria-controls="settingsMask">
+          ${icon('settings', 15)}<span>设置</span>
+        </button>
+        <button class="btn-toggle start" id="btnToggle">${icon('mic', 18)} 开始调音</button>
+      </div>
+      <div class="status-text" id="statusText">首次使用请允许麦克风</div>
     </div>
   </div>
 
@@ -903,7 +906,7 @@ class GuitarTuner extends HTMLElement {
   restoreAfterRef() {
     const statusText = this.shadowRoot && this.shadowRoot.getElementById('statusText');
     if (statusText) {
-      statusText.textContent = this.isListening ? '拨动琴弦...' : '点击“开始调音”并允许麦克风';
+      statusText.textContent = this.isListening ? '拨动琴弦...' : '首次使用请允许麦克风';
       statusText.style.color = this.isListening ? 'var(--accent)' : 'var(--muted)';
     }
     this.lastAnalysisAt = 0;
@@ -1082,7 +1085,7 @@ class GuitarTuner extends HTMLElement {
       btnToggle.className = 'btn-toggle start';
     }
     if (statusText) {
-      statusText.textContent = '点击“开始调音”并允许麦克风';
+      statusText.textContent = '首次使用请允许麦克风';
       statusText.style.color = 'var(--muted)';
     }
     if (noteName) {
