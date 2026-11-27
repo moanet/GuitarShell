@@ -167,7 +167,7 @@ const params = new URLSearchParams(location.search);
 const isLocalDevHost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
 const devStamp = isLocalDevHost ? (params.get('dev') || '') : '';
 const devMode = Boolean(devStamp);
-const devShort = devMode && devStamp !== '1' ? ` · dev ${devStamp.slice(-4)}` : '';
+const devShort = devMode ? (devStamp === '1' ? ' · dev' : ` · dev ${devStamp.slice(-4)}`) : '';
 const devSuffix = devMode ? devShort : '';
 
 // 线上 sw.js 里写的版本号（带时间戳绕开 CDN 缓存，只看内容不看响应头）
@@ -196,7 +196,9 @@ const paintBadge = (liveVersion) => {
   } else {
     badge.textContent = currentLabel;
     badge.classList.remove('has-update');
-    badge.title = devMode ? `开发模式 · ${devStamp} · 不注册离线缓存` : '点按检查线上版本';
+    badge.title = devMode
+      ? (devStamp === '1' ? '开发模式 · ?dev=1 · 不注册离线缓存' : `开发模式 · ${devStamp} · 不注册离线缓存`)
+      : '点按检查线上版本';
   }
 };
 
