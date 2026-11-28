@@ -23,7 +23,6 @@ GuitarShell/
 │  │  ├─ share-preview.js        今日练习卡片预览与保存 / 分享
 │  │  ├─ share-bg-crop.js        自定义背景 3:4 裁切
 │  │  └─ app-dialog.js           统一确认弹窗
-│  ├─ sheet/                     制谱引擎 M1–M3 本地草案（未接入界面）
 │  ├─ services/
 │  │  ├─ db.js                   IndexedDB：乐谱、练习记录、标签、阅读进度
 │  │  ├─ backup.js               完整备份 / 恢复 / 清空
@@ -45,7 +44,6 @@ GuitarShell/
 │  ├─ build-www.mjs              生成可部署的 www
 │  └─ check.mjs                  版本、语法、SW 缓存一致性检查
 ├─ tests/browser/                gs_015–gs_023 浏览器回归与 README
-├─ tests/sheet-m*.test.mjs       制谱引擎 M1–M3 本地单元测试
 ├─ android/
 │  ├─ app/src/main/java/com/guitarshell/
 │  │  ├─ MainActivity.java
@@ -72,7 +70,7 @@ GuitarShell/
 │  ├─ posters/                   发布海报
 │  ├─ qr_code/                   二维码素材
 │  ├─ palette/                   本地调色板预览（Git 忽略）
-│  ├─ Sheet Music Engine/        制谱引擎规范草案（本地参考，Git 忽略）
+│  ├─ Sheet Music Engine/        制谱引擎实验区（本地参考，Git 忽略；lab/engine 为代码、测试与页面源）
 │  └─ BRAND.md                   品牌规范
 ├─ README.md                     项目说明、功能、同步方法与目录结构
 ├─ CHANGELOG.md                  逐版本交付、测试与决策记录
