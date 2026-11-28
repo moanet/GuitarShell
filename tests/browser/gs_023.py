@@ -128,7 +128,7 @@ TEST_JS = r"""
   const bgLib = await import('/js/services/share-card.js');
 
   const cardHash = (c) => {
-    const data = c.getContext('2d').getImageData(0, 0, 1080, 1440).data;
+    const data = c.getContext('2d').getImageData(0, 0, 1080, 1920).data;
     let hash = 0;
     for (let i = 0; i < data.length; i += 337) hash = (hash * 31 + data[i]) % 2147483647;
     return hash;
@@ -383,7 +383,7 @@ TEST_JS = r"""
   const sourceBlob = await new Promise((resolve) => sourceCanvas.toBlob(resolve, 'image/jpeg', 0.9));
   const sourceFile = new File([sourceBlob], 'wide-test.jpg', { type: 'image/jpeg' });
   const processed = await bgStore.processCustomBackground(sourceFile);
-  check('自定义背景输出 1080×1440', processed.width === 1080 && processed.height === 1440, `${processed.width}×${processed.height}`);
+  check('自定义背景输出 1080×1920', processed.width === 1080 && processed.height === 1920, `${processed.width}×${processed.height}`);
   check('自定义背景输出 JPEG 且 ≤900 KB', processed.mime === 'image/jpeg' && processed.bytes <= 900 * 1024, `${processed.mime}/${processed.bytes}`);
   const pixelCanvas = document.createElement('canvas');
   pixelCanvas.width = 1;
@@ -413,7 +413,7 @@ TEST_JS = r"""
 
   const orphanBg = await db.dbService.addAsset({
     kind: 'share-bg', blob: processed.blob, mime: 'image/jpeg',
-    width: 1080, height: 1440, bytes: processed.bytes
+    width: 1080, height: 1920, bytes: processed.bytes
   });
   const bgOrphans = await stats.findOrphanAssets();
   check('无指针自定义背景被判孤儿', bgOrphans.some(a => a.id === orphanBg), `orphans=${bgOrphans.length}`);
@@ -445,7 +445,7 @@ TEST_JS = r"""
   check('预览浮层打开', !!preview, '');
   if (!preview) throw new Error('练习卡片预览未打开');
   const canvas = preview.shadowRoot.getElementById('cardCanvas');
-  check('卡片尺寸 1080×1440', canvas.width === 1080 && canvas.height === 1440, `${canvas.width}×${canvas.height}`);
+  check('卡片尺寸 1080×1920', canvas.width === 1080 && canvas.height === 1920, `${canvas.width}×${canvas.height}`);
   check('默认背景为深胡桃木', canvas.dataset.background === 'walnut', canvas.dataset.background);
   const swatches = preview.shadowRoot.getElementById('swatches');
   check('背景色板共 8 个', swatches && swatches.querySelectorAll('.swatch').length === 8, swatches ? `${swatches.querySelectorAll('.swatch').length}` : 'missing');
@@ -489,7 +489,7 @@ TEST_JS = r"""
   check('自定义背景裁切页打开', !!crop, '');
   const cropFrame = crop && crop.shadowRoot.getElementById('cropFrame');
   const cropRect = cropFrame.getBoundingClientRect();
-  check('裁切取景框为 3:4', Math.abs(cropRect.width / cropRect.height - 0.75) < 0.02, `${cropRect.width}×${cropRect.height}`);
+  check('裁切取景框为 9:16', Math.abs(cropRect.width / cropRect.height - 9 / 16) < 0.02, `${cropRect.width}×${cropRect.height}`);
   const cropCanvas = crop.shadowRoot.getElementById('cropCanvas');
   check('裁切页初始 1.0×', crop.dataset.zoom === '1.00', crop.dataset.zoom);
   const firePointer = (type, id, x, y) => {
@@ -624,21 +624,21 @@ TEST_JS = r"""
     for (let i = 0; i < data.length; i += 61) hash = (hash * 31 + data[i]) % 2147483647;
     return hash;
   };
-  const nameHashBefore = regionHash(canvas, 880, 220);
-  const footerHashBefore = regionHash(canvas, 1240, 200);
+  const nameHashBefore = regionHash(canvas, 1230, 140);
+  const footerHashBefore = regionHash(canvas, 1680, 160);
   const quoteBefore = canvas.dataset.quoteId;
 
   const emptyCard = document.createElement('canvas');
   await bgLib.drawShareCard(emptyCard, preview.summary, { quote: null, background: 'felt' });
-  check('页脚格言已绘制', regionHash(emptyCard, 1240, 200) !== footerHashBefore, '');
+  check('页脚格言已绘制', regionHash(emptyCard, 1680, 160) !== footerHashBefore, '');
 
   const chk = preview.shadowRoot.getElementById('chkName');
   chk.checked = true;
   chk.onchange();
   await waitFor(() => canvas.dataset.showName === '1');
   await sleep(220);
-  const nameHashAfter = regionHash(canvas, 880, 220);
-  const footerHashAfter = regionHash(canvas, 1240, 200);
+  const nameHashAfter = regionHash(canvas, 1230, 140);
+  const footerHashAfter = regionHash(canvas, 1680, 160);
   check('打开开关后显示曲名', canvas.dataset.showName === '1' && nameHashBefore !== nameHashAfter, `${nameHashBefore} → ${nameHashAfter}`);
   check('格言 id 不随曲名开关变化', canvas.dataset.quoteId === quoteBefore, `${quoteBefore} → ${canvas.dataset.quoteId}`);
   check('页脚格言不随曲名开关变化', footerHashBefore === footerHashAfter, `${footerHashBefore} / ${footerHashAfter}`);
