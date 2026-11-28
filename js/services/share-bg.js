@@ -24,7 +24,7 @@ export const BG_DIM_DEFAULT = 30;
 export const BG_SOURCE_MAX_BYTES = 20 * 1024 * 1024;
 export const BG_STORED_MAX_BYTES = 900 * 1024;
 export const BG_WIDTH = 1080;
-export const BG_HEIGHT = 1440;
+export const BG_HEIGHT = 1920;
 
 const QUALITY_STEPS = [0.82, 0.72, 0.62];
 const ASSET_KIND = 'share-bg';
@@ -183,7 +183,7 @@ function canvasToJpeg(canvas, quality) {
   });
 }
 
-/** 把已经画好的 1080×1440 canvas 压成 ≤900 KB 的 JPEG */
+/** 把已经画好的 1080×1920 canvas 压成 ≤900 KB 的 JPEG */
 export async function encodeBackgroundCanvas(canvas, sourceName = '') {
   let blob = null;
   for (const quality of QUALITY_STEPS) {
@@ -204,7 +204,7 @@ export async function encodeBackgroundCanvas(canvas, sourceName = '') {
 }
 
 /**
- * 把用户图片中心裁成 3:4，压成 1080×1440 JPEG。
+ * 把用户图片中心裁成 9:16，压成 1080×1920 JPEG。
  * 这是没有进入裁切页时的自动回退；裁切页走 encodeBackgroundCanvas。
  */
 export async function processCustomBackground(file) {
@@ -302,7 +302,7 @@ async function createAsset(processed) {
   });
 }
 
-/** 裁切页已经压好 1080×1440 JPEG，这里只负责落库和槽位指针 */
+/** 裁切页已经压好 1080×1920 JPEG，这里只负责落库和槽位指针 */
 export async function saveCustomBackgroundAsset(processed, slotId = CUSTOM_BG_ID) {
   if (!processed || !(processed.blob instanceof Blob)) {
     throw asError('没有可保存的图片', 'BG_EMPTY');

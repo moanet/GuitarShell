@@ -1,13 +1,15 @@
 // ==========================================
 // js/services/share-card.js
-// 0.1.14a 练习卡片：今日统计 + 1080×1440 参数化背景卡片 + 页脚题记
+// 0.1.27 练习卡片：今日统计 + 1080×1920 参数化背景卡片 + 页脚题记
 // 纯本地 Canvas，不请求远程模板、不上传任何数据
 // ==========================================
 
 import { pickQuote } from './quotes.js';
 
 const CARD_W = 1080;
-const CARD_H = 1440;
+const CARD_H = 1920;
+const FOOTER_LINE_Y = 1660;
+const QUOTE_BASELINE = 1756;
 const FONT_STACK = '"PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Segoe UI", sans-serif';
 const QUOTE_FONT_STACK = '"Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif';
 
@@ -393,9 +395,19 @@ function drawCustomBackground(ctx, image, dimPercent) {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, CARD_W, CARD_H);
   if (image) {
+    // 旧 3:4 自定义背景按 cover 居中裁切到 9:16，不拉伸原图
+    const iw = Number(image.naturalWidth) || Number(image.width) || 0;
+    const ih = Number(image.naturalHeight) || Number(image.height) || 0;
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(image, 0, 0, CARD_W, CARD_H);
+    if (iw > 0 && ih > 0) {
+      const scale = Math.max(CARD_W / iw, CARD_H / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      ctx.drawImage(image, (CARD_W - dw) / 2, (CARD_H - dh) / 2, dw, dh);
+    } else {
+      ctx.drawImage(image, 0, 0, CARD_W, CARD_H);
+    }
   }
 
   ctx.fillStyle = `rgba(0,0,0,${dim})`;
@@ -446,7 +458,7 @@ function drawHeader(ctx, logo, date, p) {
 }
 
 /** 页脚蜗牛：细线壳与触角，身体只留外侧曲线与头部弧线 */
-function drawFooterSnail(ctx, p) {
+function drawFooterSnail(ctx, p, baseline) {
   const ink = withAlpha(p.accent, p.light ? 0.62 : 0.55);
   ctx.save();
   ctx.strokeStyle = ink;
@@ -457,7 +469,7 @@ function drawFooterSnail(ctx, p) {
   // 用 24×24 的细线蜗牛轮廓，按横线左端等比放大
   const s = 4;
   ctx.save();
-  ctx.translate(392, 1158);
+  ctx.translate(392, baseline - 84);
   ctx.scale(s, s);
   ctx.lineWidth = 1 / s;
 
@@ -491,7 +503,7 @@ function drawTodayBlock(ctx, summary, p) {
   ctx.textAlign = 'left';
   setFont(ctx, 32, 500, 2);
   ctx.fillStyle = p.muted;
-  ctx.fillText('今日练习时长', 96, 420);
+  ctx.fillText('今日练习时长', 96, 520);
 
   const text = String(summary.minutes);
   let size = 190;
@@ -501,7 +513,7 @@ function drawTodayBlock(ctx, summary, p) {
     setFont(ctx, size, 800);
   }
   ctx.fillStyle = p.strong;
-  const baseline = 620;
+  const baseline = 800;
   ctx.fillText(text, 96, baseline);
 
   setFont(ctx, size, 800);
@@ -548,8 +560,8 @@ function drawStatBlock(ctx, x, labelBaseline, label, value, suffix, p) {
 }
 
 function drawStatsBlock(ctx, summary, p) {
-  drawStatBlock(ctx, 750, 540, '今日打卡', summary.count || 0, '次', p);
-  drawStatBlock(ctx, 750, 706, '连续打卡', summary.streak || 0, '天', p);
+  drawStatBlock(ctx, 750, 700, '今日打卡', summary.count || 0, '次', p);
+  drawStatBlock(ctx, 750, 880, '连续打卡', summary.streak || 0, '天', p);
 }
 
 function drawName(ctx, summary, showName, p) {
@@ -558,7 +570,7 @@ function drawName(ctx, summary, showName, p) {
   ctx.textAlign = 'left';
   setFont(ctx, 32, 500, 2);
   ctx.fillStyle = p.muted;
-  ctx.fillText('今日主练', 96, 900);
+  ctx.fillText('今日主练', 96, 1240);
 
   let name = summary.topName;
   setFont(ctx, 50, 700);
@@ -567,7 +579,7 @@ function drawName(ctx, summary, showName, p) {
   }
   if (name !== summary.topName) name = `${name}…`;
   ctx.fillStyle = p.strong;
-  ctx.fillText(name, 96, 974);
+  ctx.fillText(name, 96, 1320);
 }
 
 function stripTrailingStop(text) {
@@ -578,11 +590,11 @@ function drawFooter(ctx, quote, p) {
   ctx.strokeStyle = p.lineSoft;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(400, 1242);
-  ctx.lineTo(984, 1242);
+  ctx.moveTo(400, FOOTER_LINE_Y);
+  ctx.lineTo(984, FOOTER_LINE_Y);
   ctx.stroke();
 
-  drawFooterSnail(ctx, p);
+  drawFooterSnail(ctx, p, FOOTER_LINE_Y);
 
   const text = stripTrailingStop(quote && quote.text);
   if (!text) return;
@@ -600,11 +612,11 @@ function drawFooter(ctx, quote, p) {
 
   ctx.textAlign = 'right';
   ctx.fillStyle = p.quote;
-  ctx.fillText(fitted, 984, 1338);
+  ctx.fillText(fitted, 984, QUOTE_BASELINE);
 }
 
 /**
- * 把今日摘要画到 canvas；调用方负责 canvas.width/height = 1080/1440
+ * 把今日摘要画到 canvas；调用方负责 canvas.width/height = 1080/1920
  */
 export async function drawShareCard(canvas, summary, options = {}) {
   const showName = Boolean(options.showName);

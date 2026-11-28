@@ -1,6 +1,6 @@
 // ==========================================
 // js/components/share-preview.js
-// 0.1.14b 练习卡片预览浮层：预览 / 曲名开关 / 六套预设 + 自定义背景 / 分享或保存
+// 0.1.27 练习卡片预览浮层：9:16 预览 / 曲名开关 / 六套预设 + 自定义背景 / 分享或保存
 // 浮层挂在 document.body，注册 ui-layer，返回键与遮罩可关闭
 // ==========================================
 
@@ -43,15 +43,16 @@ const previewCSS = `
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     padding: max(16px, env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
     background: rgba(var(--shadow-rgb), .72); backdrop-filter: blur(3px);
-    opacity: 0; transition: opacity .18s ease;
+    opacity: 0; transition: opacity .18s ease; box-sizing: border-box;
   }
   .mask.show { opacity: 1; }
   .sheet {
-    width: min(92vw, 400px); max-height: 100%; overflow-y: auto;
+    width: min(100%, 400px); max-height: 100%; overflow-y: auto;
     background: var(--surface-raised); border: 1px solid var(--line-warm); border-radius: 20px;
-    box-shadow: 0 24px 64px var(--shadow-color); padding: 16px;
+    box-shadow: 0 24px 64px var(--shadow-color); padding: 16px; box-sizing: border-box;
     display: flex; flex-direction: column; gap: 12px;
   }
+  .sheet > * { flex: 0 0 auto; }
   .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .title { font-size: 15px; font-weight: 700; color: var(--heading); letter-spacing: .5px; }
   .close {
@@ -142,7 +143,7 @@ const previewHTML = `
         <span class="title">练习卡片</span>
         <button class="close" id="btnClose" type="button" aria-label="关闭">×</button>
       </div>
-      <div class="preview"><canvas id="cardCanvas" width="1080" height="1440"></canvas></div>
+      <div class="preview"><canvas id="cardCanvas" width="1080" height="1920"></canvas></div>
       <div class="row">
         <label class="switch">
           <input type="checkbox" id="chkName">
