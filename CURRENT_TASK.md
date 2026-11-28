@@ -1,6 +1,6 @@
 # CURRENT_TASK — 0.1.28 全站回归与测试包
 
-> 状态：U1–U5 已完成；全站浏览器回归通过；首版 `0.1.28` 测试包的两轮真机反馈均已修复，第三轮测试包已构建并安装，等待用户复测。
+> 状态：U1–U5 已完成；首版与两轮真机反馈均已修复；用户已确认第三轮测试包可作为终稿，进入 `0.1.28` 发布流程。
 > 开发分支：`dev`；稳定分支：`main`；基线：`0.1.27` / `versionCode 137`。
 > 前序：U5 全局外壳已完成，任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u5-shell.md](docs/archive/CURRENT_TASK-0.1.28-ui-u5-shell.md)。
 > 规范契约：[docs/UI_DESIGN_SPEC.md](docs/UI_DESIGN_SPEC.md) `v1.1`；版本规则：[docs/VERSIONING.md](docs/VERSIONING.md)。
@@ -60,8 +60,9 @@
 - 修复后回归：`gs_028` 360/320、深/浅四组合全部通过；`npm run check` 通过，`python -m compileall -q tests/browser` 通过。
 - 版本号仍为 `0.1.28` / `138`；修复提交 `c345f36`、`2a9115f`；第三轮测试包 `dist/GuitarShell-0.1.28.apk`，`4,484,171` 字节，SHA-256 `12686EC41611F0497FF244230500E3182327962D1D556FDB67EF6211DAFA0E31`；已用 `adb install -r` 装入真机 `ca14b16`，启动显示 `v0.1.28`。
 - 真机复核：书架排序为按钮下方应用内下拉，返回键可关闭；标签与管理同一水平线；阅读器工具栏与阅读区同底、按钮 40 视觉、文字同色；记录区三处标题四字对齐，分享按钮与趋势行同色；分享卡弹窗一屏完整显示，预览约 430px 高。
-- 下一步：等待用户复测；通过后再创建 `v0.1.28` tag 与 Release。
-- **当前没有 0.1.28 tag 或 Release。**
+- 2026-11-28：用户确认第三轮测试包可作为终稿；记录区四字标题、分享按钮 32 / 范围分段 30、同行底色规则已补入 `docs/UI_DESIGN_SPEC.md` 5.4 与例外表；`docs/VERSIONING.md` 增加“验收前只用 dev 包、不得提前占用正式版本号”的门禁。
+- 下一步：按 `docs/VERSIONING.md` 从 `main` 干净提交构建 release APK、创建 draft Release、上传并发布 `v0.1.28`。
+- **发布前没有 0.1.28 tag 或 Release；发布完成后回填 tag / Release ID。**
 
 ## 8. 后续任务
 
