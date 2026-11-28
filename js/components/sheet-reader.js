@@ -36,6 +36,11 @@ const readerCSS = `
     padding-top: calc(20px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
+  :host(.reader-fullscreen.single-page-fullscreen) .content-container {
+    min-height: 100%;
+    justify-content: center;
+  }
+  :host(.reader-fullscreen.single-page-fullscreen) .page-box { margin-bottom: 0; }
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host, * { -webkit-tap-highlight-color: transparent !important; }
   
@@ -2437,7 +2442,7 @@ class SheetReader extends HTMLElement {
 
       // 统一渲染：PDF 与图片共用同一个滚动容器，父级才能拿到真实 scrollTop
       zoomControls.style.display = 'flex';
-      container.style.padding = '20px 0'; container.style.height = ''; container.style.position = 'static';
+      container.style.removeProperty('padding'); container.style.height = ''; container.style.position = 'static';
 
       if (isPdf) {
         try { await renderPDFLazy(fileBlob); } catch (err) { await showAlert(err.message, { title: '无法打开乐谱' }); }
@@ -2455,6 +2460,7 @@ class SheetReader extends HTMLElement {
           img.onerror = () => resolve();
         });
       }
+      this.updateSinglePageFullscreen();
 
       // 恢复阅读进度：按「页码 + 页内比例」，换缩放/换屏宽都不会偏
       const savedPage = fresh ? (fresh.lastReadPage || 0) : 0;
@@ -2910,12 +2916,34 @@ class SheetReader extends HTMLElement {
     };
     window.addEventListener('blur', this.cancelZenKeyHold);
 
+    // 仅单页 PDF / 单张图片在全屏时需要垂直居中；文本谱由自身版式控制
+    this.updateSinglePageFullscreen = () => {
+      const single = this.fullscreen
+        && this.totalPages === 1
+        && this.currentFormat
+        && this.currentFormat !== SCORE_FORMAT.TEXT;
+      this.classList.toggle('single-page-fullscreen', !!single);
+    };
+
     // 全屏：CSS 先覆盖整个视口（兼容 WebView），再尽量申请浏览器原生全屏隐藏地址栏 / 状态栏
     this.setReaderFullscreen = (on) => {
       const next = !!on;
-      if (this.fullscreen === next) return;
+      if (this.fullscreen === next) {
+        if (!next) {
+          untrackLayer('reader-fullscreen');
+          this.classList.remove('single-page-fullscreen');
+        }
+        return;
+      }
       this.fullscreen = next;
       this.classList.toggle('reader-fullscreen', next);
+      this.updateSinglePageFullscreen();
+
+      if (next) {
+        trackLayer('reader-fullscreen', () => this.setReaderFullscreen(false), { blocksNavigation: true });
+      } else {
+        untrackLayer('reader-fullscreen');
+      }
 
       const btn = $('btnFullscreen');
       if (btn) {
