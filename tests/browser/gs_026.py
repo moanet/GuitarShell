@@ -276,7 +276,9 @@ def main():
     width: Math.round($('settingsSheet').getBoundingClientRect().width),
     eyebrow: !!sr.querySelector('.sheet-eyebrow'),
     overflow: $('settingsSheet').scrollWidth > $('settingsSheet').clientWidth + 1,
-    paddingBottom: parseFloat(getComputedStyle($('settingsSheet')).paddingBottom),
+    doneHeight: Math.round($('settingsDone').getBoundingClientRect().height),
+    doneText: $('settingsDone')?.textContent.trim(),
+    hasClose: !!$('closeSettings'),
   };
   state.presetMenuHidden = $('presetMenu')?.hidden;
   $('presetField').click();
@@ -332,7 +334,7 @@ def main():
   sr.querySelector('.mini-chip[data-a4="440"]').click();
   await sleep(160);
   state.a4Back = { hidden: !!$('a4Status')?.hidden, sheet: $('a4SheetVal')?.textContent.trim() };
-  $('closeSettings').click();
+  $('settingsDone').click();
   await sleep(260);
 
   // 点弦：选中 slot 5 并进入试听；不再有单独标准音按钮
@@ -425,7 +427,7 @@ def main():
   await sleep(220);
   sr.querySelector('.preset-option[data-preset="standard"]').click();
   await sleep(180);
-  $('closeSettings').click();
+  $('settingsDone').click();
   await sleep(260);
   state.backToStandard = {
     name: $('tuningName')?.textContent.trim(),
@@ -438,7 +440,7 @@ def main():
 
         print(json.dumps(out, ensure_ascii=False, indent=2))
 
-        check("版本为 v0.1.21d", out["version"] == "v0.1.21d", out["version"])
+        check("版本为 v0.1.27", out["version"] == "v0.1.27", out["version"])
         check("默认调弦名常驻", out["default"]["name"] == "标准调弦", out["default"]["name"])
         check("A4 440 默认不显示", out["default"]["a4Hidden"] and out["default"]["a4Text"] == "", out["default"])
         check("默认六弦音名", out["default"]["notes"] == ["E", "A", "D", "G", "B", "e"], str(out["default"]["notes"]))
@@ -463,7 +465,8 @@ def main():
         check("设置面板 90% / 最大 400", abs(out["sheet"]["width"] - min(400, out["layout"]["width"] * 0.9)) <= 2, f"{out['sheet']['width']} / 源宽 {out['layout']['width']}")
         check("去掉 TUNER SETTINGS 眉标", not out["sheet"]["eyebrow"])
         check("设置面板无横向溢出", not out["sheet"]["overflow"])
-        check("设置弹层补底部安全区", out["sheet"]["paddingBottom"] >= 24, out["sheet"]["paddingBottom"])
+        check("调音设置去掉右上角 X", not out["sheet"]["hasClose"])
+        check("设置弹层底部完成为 46", out["sheet"]["doneHeight"] == 46 and out["sheet"]["doneText"] == "完成", str(out["sheet"]))
         check("预设下拉默认收起", out["presetMenuHidden"])
         check("点击字段展开自绘下拉", out["presetMenu"]["open"] and out["presetMenu"]["expanded"] == "true", str(out["presetMenu"]))
         check("五个预设选项", len(out["presetMenu"]["options"]) == 5 and out["customEntry"], str(out["presetMenu"]["options"]))

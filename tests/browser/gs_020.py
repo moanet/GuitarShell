@@ -208,6 +208,9 @@ def main():
     enabled: $('timerOn').checked
   };
 
+  // 0.1.27 起倒计时预设/自定义分钟不再自动启用；先勾选再操作，与产品口径一致
+  $('timerOn').click();
+  await sleep(80);
   timerChips.find(b => b.textContent.trim() === '10').click();
   await sleep(80);
   out.timer.afterClick10 = {
@@ -225,6 +228,8 @@ def main():
     armed: timerChips.filter(b => b.classList.contains('armed')).map(b => b.textContent.trim())
   };
 
+  $('timerOn').click();
+  await sleep(80);
   $('timerMin').value = '7';
   $('timerMin').dispatchEvent(new Event('change', { bubbles: true }));
   await sleep(80);
@@ -366,7 +371,7 @@ def main():
   const mr = document.querySelector('guitar-metronome').shadowRoot;
   const content = mr.getElementById('settingsContent');
   const before = content.scrollTop;
-  mr.getElementById('btnCloseSettings').click();
+  mr.getElementById('btnDoneSettings').click();
   await sleep(180);
   mr.getElementById('btnSettings').click();
   await sleep(220);

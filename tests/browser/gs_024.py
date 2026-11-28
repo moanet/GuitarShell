@@ -246,13 +246,15 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
   const metro = document.querySelector('guitar-metronome');
   out.metronome = {
     settingsBtnSvg: !!metro?.shadowRoot?.getElementById('btnSettings')?.querySelector('svg'),
+    settingsClose: !!metro?.shadowRoot?.getElementById('btnCloseSettings'),
+    settingsDone: metro?.shadowRoot?.getElementById('btnDoneSettings')?.textContent.trim(),
     cardIcoSvg: metro?.shadowRoot?.querySelectorAll('.card-ico svg').length || 0,
     stepSvg: ['knobMinus', 'knobPlus'].filter((id) => metro?.shadowRoot?.getElementById(id)?.querySelector('svg')).length,
     emoji: emojiHits(metro),
   };
   metro?.shadowRoot?.getElementById('btnSettings')?.click();
   await sleep(200);
-  metro?.shadowRoot?.getElementById('btnCloseSettings')?.click();
+  metro?.shadowRoot?.getElementById('btnDoneSettings')?.click();
   await sleep(200);
 
   document.querySelector('.tab-btn[data-target="view-tuner"]').click();
@@ -261,7 +263,8 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
   const tuner = document.querySelector('guitar-tuner');
   out.tuner = {
     settingsSvg: !!tuner?.shadowRoot?.getElementById('openSettings')?.querySelector('svg'),
-    closeSvg: !!tuner?.shadowRoot?.getElementById('closeSettings')?.querySelector('svg'),
+    settingsClose: !!tuner?.shadowRoot?.getElementById('closeSettings'),
+    settingsDone: tuner?.shadowRoot?.getElementById('settingsDone')?.textContent.trim(),
     toggleSvg: !!tuner?.shadowRoot?.getElementById('btnToggle')?.querySelector('svg'),
     stepSvg: ['a4SheetMinus', 'a4SheetPlus'].filter((id) => tuner?.shadowRoot?.getElementById(id)?.querySelector('svg')).length,
     stringNums: tuner?.shadowRoot?.querySelectorAll('.string-num').length || 0,
@@ -315,8 +318,10 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
         check("顶部设置为 SVG", out["global"]["settingsChipSvg"])
         check("书架无 Emoji", r["emoji"]["count"] == 0, str(r["emoji"]["chars"]))
         check("节拍器图标齐全", out["metronome"]["settingsBtnSvg"] and out["metronome"]["cardIcoSvg"] == 5 and out["metronome"]["stepSvg"] == 2, f"card={out['metronome']['cardIcoSvg']} step={out['metronome']['stepSvg']}")
+        check("节拍器设置去掉右上角 X", not out["metronome"]["settingsClose"] and out["metronome"]["settingsDone"] == "完成", str(out["metronome"]))
         check("节拍器无 Emoji", out["metronome"]["emoji"]["count"] == 0, str(out["metronome"]["emoji"]["chars"]))
-        check("调音器图标齐全", out["tuner"]["settingsSvg"] and out["tuner"]["closeSvg"] and out["tuner"]["toggleSvg"] and out["tuner"]["stepSvg"] == 2 and out["tuner"]["stringNums"] == 6, f"close={out['tuner']['closeSvg']} step={out['tuner']['stepSvg']} nums={out['tuner']['stringNums']}")
+        check("调音器图标齐全", out["tuner"]["settingsSvg"] and out["tuner"]["toggleSvg"] and out["tuner"]["stepSvg"] == 2 and out["tuner"]["stringNums"] == 6, f"step={out['tuner']['stepSvg']} nums={out['tuner']['stringNums']}")
+        check("调音设置去掉右上角 X 并保留底部完成", not out["tuner"]["settingsClose"] and out["tuner"]["settingsDone"] == "完成", str(out["tuner"]))
         check("调音器无 Emoji", out["tuner"]["emoji"]["count"] == 0, str(out["tuner"]["emoji"]["chars"]))
         check("练习记录图标齐全", out["log"]["submitSvg"] and out["log"]["trendSvg"] and out["log"]["shareSvg"])
         check("练习记录条目图标渲染", out["log"]["logCards"] >= 1 and out["log"]["detailSvg"] == 3, f"cards={out['log']['logCards']} icons={out['log']['detailSvg']}")
@@ -340,7 +345,7 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
         cdp.ev("document.querySelector('guitar-metronome')?.shadowRoot?.getElementById('btnSettings')?.click(); true")
         time.sleep(0.25)
         print(" ", cdp.shot("metronome_settings"))
-        cdp.ev("document.querySelector('guitar-metronome')?.shadowRoot?.getElementById('btnCloseSettings')?.click(); true")
+        cdp.ev("document.querySelector('guitar-metronome')?.shadowRoot?.getElementById('btnDoneSettings')?.click(); true")
         cdp.ev("document.querySelector('.tab-btn[data-target=\"view-tuner\"]').click(); true")
         time.sleep(0.3)
         print(" ", cdp.shot("tuner"))
