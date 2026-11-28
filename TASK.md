@@ -15,11 +15,11 @@
 | 最终 APK | `dist/GuitarShell-0.1.27.apk`，`4,481,910` 字节 |
 | APK SHA-256 | `69E820B5D1158D9E34BDAE210F41E4EB6EAF89D453F3785B053964C266EC0EA0` |
 | 已覆盖构建 | `0.1.26` / `versionCode 136`，`dist/GuitarShell-0.1.26-release.apk`，`4,558,301` 字节；`0.1.25` 已随 `0.1.26` 发布 |
-| 待发布构建 | 无 |
+| 待发布构建 | `0.1.28` 测试包 `dist/GuitarShell-0.1.28.apk`，`4,483,231` 字节；已装真机，等待用户测试 |
 | Android 包 | `com.guitarshell`，`minSdk 22` / `targetSdk 34` |
 | 签名证书 SHA-256 | `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E` |
 | 验证基线 | Web 360 主基线 + 320 边界回归；真机 `ca14b16`（Android 13+） |
-| 当前阶段 | `0.1.27` 已发布并归档；UI 规范 `v1.1` 的 U1 调音器、U2 书架、U3 记录、U4 阅读器、U5 全局外壳均已完成并提交 `dev`；下一步全站回归、构建 `0.1.28` 测试包，发布等待用户真机测试通过，详见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [推广计划](docs/UI_UNIFICATION_PLAN.md) |
+| 当前阶段 | `0.1.27` 已发布并归档；UI 规范 `v1.1` U1–U5 已完成；`0.1.28` 测试包已构建并装入真机，等待用户测试，发布闸门未开，详见 [CURRENT_TASK.md](CURRENT_TASK.md) |
 | 历史入口 | `0.1.0` / `0.1.1` 见 [docs/archive](docs/archive)；其余版本见 [CHANGELOG.md](CHANGELOG.md) |
 | 并入关系 | `0.1.12a` → `v0.1.12b`；`0.1.13` → `v0.1.14c`；`0.1.22` / `0.1.23` → `v0.1.24`；`0.1.25` → `v0.1.26`；`0.1.15` / `0.1.16` / `0.1.17` / `0.1.18` / `0.1.19` / `0.1.20` / `0.1.21d` / `0.1.24` / `0.1.26` / `0.1.27` 独立发布 |
 
