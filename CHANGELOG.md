@@ -61,7 +61,14 @@
 - 浅色主题回归通过（668×891）：预览 `.sheet 400×859`、canvas `349×620`、保存按钮 `y=824` 可见；裁切面板 `420×715`、取景框 `300×533`（比例 `0.5625`），确认按钮可见。
 - 真机回归通过（Android 13+，1080×2400）：dev APK `0.1.26-dev.20261128-1425` / `versionCode 136`，包名 `com.guitarshell`，签名证书 SHA-256 与稳定版一致。节拍器与调音器设置底部 sheet 可下滑关闭；节拍器 sheet 系统返回关闭且不退出页面；阅读全屏第一次返回回到谱面、第二次返回书架；单张横向图片全屏后垂直居中；分享卡预览 9:16，显示曲名开关可切换，系统返回关闭浮层；保存到相册的实际 PNG 为 `1080×1920`、`712,443 bytes`。
 - 用户确认保留“默认不显示曲名”，不再压缩该留白。
-- 深夜 / 浅色主题下 320 宽设置面板配色正常；`npm run check` 通过：`v0.1.26，42 个 JS 文件，SW 缓存与版本一致`。
+- 深夜 / 浅色主题下 320 宽设置面板配色正常；发布前 `npm run check` 通过：`v0.1.27，42 个 JS 文件，SW 缓存与版本一致`。
+
+**发布**
+
+- 提交 `a451e89 release: 0.1.27` 推送 `main`；tag `v0.1.27` 指向 `a451e89`。
+- GitHub Release `v0.1.27`：ID `461378259`，asset ID `803650485`，`https://github.com/moanet/GuitarShell/releases/tag/v0.1.27`。
+- 资产 `GuitarShell-0.1.27.apk`，`4,481,910` 字节，SHA-256 `69E820B5D1158D9E34BDAE210F41E4EB6EAF89D453F3785B053964C266EC0EA0`；`aapt` 校验 `com.guitarshell`、`versionCode 137` / `versionName 0.1.27`、`minSdk 22` / `targetSdk 34`，`apksigner` v1 / v2 签名有效，证书 SHA-256 为 `ca6d27b23e55e5009b6e27c3918ed08c87ce4ed2aec7fff65e3c2f461715ac4e`。GitHub asset digest 与本地一致。
+- 当前任务归档：[docs/archive/CURRENT_TASK-0.1.27.md](docs/archive/CURRENT_TASK-0.1.27.md)。
 
 ## 0.1.26 — 练习记录页表单折叠（合并 0.1.25 发布，2026-11-27）
 
