@@ -8,6 +8,9 @@
 
 export const APP_VERSION = '0.1.26';
 
+// 构建时注入：稳定版为空；dev 构建为完整 dev versionName（如 0.1.26-dev.20261127-2334）
+export const BUILD_STAMP = '';
+
 // 备份载荷的 schema 版本：字段增删 / 语义变化时才升，与 APP_VERSION 解耦
 export const BACKUP_SCHEMA = 3;
 

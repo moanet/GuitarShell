@@ -1,7 +1,7 @@
 // ==========================================
 // js/components/share-bg-crop.js
-// 0.1.14b 自定义背景轻量裁切页：3:4 取景、拖动定位、双指缩放、双击居中
-// 只做平移和缩放，确认后导出 1080×1440 JPEG
+// 0.1.27 自定义背景轻量裁切页：9:16 取景、拖动定位、双指缩放、双击居中
+// 只做平移和缩放，确认后导出 1080×1920 JPEG
 // ==========================================
 
 import {
@@ -15,6 +15,8 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 
 const cropCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   :host {
     position: fixed; inset: 0; z-index: 1470; display: block;
     font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif;
@@ -24,15 +26,16 @@ const cropCSS = `
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     padding: max(14px, env(safe-area-inset-top, 0px)) 14px calc(14px + env(safe-area-inset-bottom, 0px));
     background: rgba(var(--shadow-rgb), .82); backdrop-filter: blur(4px);
-    opacity: 0; transition: opacity .16s ease;
+    opacity: 0; transition: opacity .16s ease; box-sizing: border-box;
   }
   .mask.show { opacity: 1; }
   .panel {
-    width: min(94vw, 420px); max-height: 100%; overflow-y: auto;
+    width: min(100%, 420px); max-height: 100%; overflow-y: auto; box-sizing: border-box;
     background: var(--surface-raised); border: 1px solid var(--line-warm); border-radius: 18px;
     box-shadow: 0 24px 64px var(--shadow-color); padding: 14px;
     display: flex; flex-direction: column; gap: 10px;
   }
+  .panel > * { flex: 0 0 auto; }
   .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .title { font-size: 15px; font-weight: 700; color: var(--heading); letter-spacing: .5px; }
   .close {
@@ -41,7 +44,7 @@ const cropCSS = `
     display: grid; place-items: center; font-family: inherit;
   }
   .frame {
-    width: min(100%, 300px); aspect-ratio: 3 / 4; margin: 0 auto; position: relative;
+    width: min(100%, 300px); aspect-ratio: 9 / 16; margin: 0 auto; position: relative;
     background: #000; border-radius: 12px; overflow: hidden; touch-action: none;
     border: 1px solid rgba(var(--primary-rgb), .28); box-sizing: border-box;
   }

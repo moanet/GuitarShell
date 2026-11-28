@@ -6,6 +6,11 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+def gsDevVersionName = project.findProperty('gsDevVersionName')
+def gsDevVersionCode = project.findProperty('gsDevVersionCode')
+def baseVersionName = "0.1.26"
+def baseVersionCode = 136
+
 android {
     namespace "com.guitarshell"
     compileSdk rootProject.ext.compileSdkVersion
@@ -13,8 +18,8 @@ android {
         applicationId "com.guitarshell"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 136
-        versionName "0.1.26"
+        versionCode gsDevVersionCode ? gsDevVersionCode.toInteger() : baseVersionCode
+        versionName gsDevVersionName ?: baseVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

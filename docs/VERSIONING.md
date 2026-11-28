@@ -26,6 +26,7 @@
   ```
 
 - 放在 `dist/dev/`。
+- 使用 `npm run apk:dev` 构建；脚本自动计算时间、commit、dirty 状态，写入上述文件名，并把 Android `versionName` 设为 `<上一稳定版本号>-dev.<YYYYMMDD-HHmm>`，`versionCode` 沿用上一稳定快照。
 - 不占用稳定版本号，不修改 `package.json` / `version.js` / `sw.js` 的稳定版本字段，不打 tag，不发 Release。
 - 工作区有未提交改动时，文件名必须带 `-dirty`。
 - `-dirty` 构建只能作为开发包，不能成为稳定快照。
@@ -41,6 +42,7 @@
 
 - 打 tag `v<版本号>`，创建 GitHub Release。
 - Release 标题只用 `v<版本号>`，不加副标题。
+- 使用 `npm run apk:release` 构建时，脚本输出 `dist/GuitarShell-<版本号>.apk`。
 
 ### 2.2 一个版本号只对应一个 APK
 
@@ -65,7 +67,7 @@
   然后在顶部新开一个空的 `## [Unreleased]`。
 
 - 历史标题保留原格式，例如 `## 0.1.26 — 日期`，不做全量迁移。
-- `0.1.27` 开发任务启动前，不要向 `0.1.26` 段追加功能改动；启动时先建空 `[Unreleased]`。
+- `0.1.26` 收尾时已建立空的 `## [Unreleased]`；`0.1.27` 开发期间直接在其中记录，不要向 `0.1.26` 段追加功能改动。
 
 ## 3. Android 构建标识
 
@@ -78,6 +80,7 @@
 
 - 开发包的 `versionName` 只是 Android 系统标识，不是新版本号；不得写成 `0.1.27a`。
 - 开发包不递增 `versionCode`，多个开发包共用上一稳定快照的 `versionCode`，靠 `versionName` 时间戳区分。
+- 开发包内部通过构建时注入的 `BUILD_STAMP` 显示 dev 标识：顶部徽标只显示 `dev HHmm`，关于页显示完整 `v<上一稳定版本号>-dev.<YYYYMMDD-HHmm>`；稳定构建的 `BUILD_STAMP` 必须为空。
 - 稳定快照的 `versionCode` 必须大于上一稳定快照；发版时写入并提交，构建阶段不再自动递增。
 - 不额外维护构建计数器。
 
@@ -182,12 +185,12 @@
   5. 发布后把 `main` 合回 `dev`，作为下一轮基线。
 - tag 只指向 `main` 上的版本提交，不指向 `dev` 的普通提交。
 - 如果 GitHub Pages 绑定 `main`，推 `main` 就等于更新线上网页；开发轮次不要推 `main`。
-- 现有 CI 只在 `push main` 和 PR 时运行；单独推 `dev` 不触发，需本地 `npm run check` 或开 `dev → main` 的 PR。
+- 现有 CI 在 `push main`、`push dev` 和 PR 时运行；推 `dev` 也会跑静态检查。
 
 ## 9. 下一版本
 
 - 下一稳定快照默认目标：`0.1.27` / `versionCode 137`。
-- `0.1.27` 开发任务启动时，先在 CHANGELOG 顶部建立空的 `## [Unreleased]`。
+- `0.1.27` 的空 `## [Unreleased]` 已在 `0.1.26` 收尾时建立；开发任务启动后直接在其中记录。
 - 在 `0.1.27` 正式切段前，不向 `0.1.26` 段追加功能改动。
 
 ## 10. 禁止事项

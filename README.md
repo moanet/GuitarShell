@@ -143,11 +143,9 @@ Guitar Shell
 │  ├─ main.js                  入口、Tab 切换、组件加载、SW 注册
 │  ├─ components/              书架读谱、节拍器、调音器、练习记录、设置、分享预览、背景裁切、通用弹窗
 │  ├─ services/                IndexedDB、备份、WebDAV、分享卡、缓存、存储统计、主题、音频、版本
-│  ├─ sheet/                   制谱引擎 M1–M3 草案（未接入界面）
 │  └─ lib/                     PDF.js、pdf-lib、拼音字典
 ├─ scripts/                    build-www.mjs、build-apk.mjs、check.mjs
 ├─ tests/browser/              gs_015–gs_025 浏览器回归
-├─ tests/sheet-m*.test.mjs     制谱引擎本地单元测试
 ├─ android/                    Capacitor Android 壳与原生插件
 ├─ www/                        构建产物（Git 忽略）
 ├─ proxy/                      Node / Cloudflare WebDAV 代理
@@ -157,6 +155,7 @@ Guitar Shell
 │  ├─ archive/                 历史迭代简报
 │  ├─ RELEASE_CHECKLIST.md     发版冒烟、测试矩阵与发布门禁
 │  ├─ icon/ · posters/ · qr_code/  品牌与发布素材
+│  ├─ Sheet Music Engine/      制谱引擎实验（gitignore；lab/engine 为代码、测试与页面源）
 │  └─ BRAND.md                 品牌规范
 ├─ 项目目录结构.txt              项目目录速览
 ├─ CHANGELOG.md                逐版本迭代记录

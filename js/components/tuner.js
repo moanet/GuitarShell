@@ -23,6 +23,7 @@ import {
 } from '../services/tunings.js';
 import { icon } from '../services/icons.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
+import { bindSheetSwipe } from '../services/sheet-swipe.js';
 
 // 提示音本身会被麦克风收进去：叮响的 0.32s 加上扬声器/采集尾音，
 // 这期间暂停 YIN，避免把提示音的低阶谐波当成琴声，把指针拽向右侧。
@@ -56,6 +57,8 @@ const REFERENCE_LEVELS = {
 };
 
 const tunerCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host { display: flex; flex-direction: column; height: 100%; width: 100%; background: linear-gradient(180deg, var(--bg2), var(--bg0)); color: var(--txt); overflow: hidden; font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif; align-items: center; justify-content: flex-start; }
   
@@ -154,9 +157,11 @@ const tunerCSS = `
 
   .settings-mask { position: absolute; inset: 0; z-index: 500; display: flex; align-items: flex-end; justify-content: center; background: rgba(var(--shadow-rgb), 0.66); opacity: 0; pointer-events: none; transition: opacity 0.18s; }
   .settings-mask.show { opacity: 1; pointer-events: auto; }
-  .settings-sheet { width: 90%; max-width: 400px; max-height: 90%; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px max(24px, calc(14px + env(safe-area-inset-bottom, 0px))); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; }
+  .settings-sheet { width: 90%; max-width: 400px; max-height: 90%; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 8px 14px max(24px, calc(14px + env(safe-area-inset-bottom, 0px))); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; will-change: transform; }
   .settings-mask.show .settings-sheet { transform: translateY(0); }
-  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .settings-sheet.sheet-dragging { transition: none; user-select: none; -webkit-user-select: none; }
+  .sheet-grabber { flex: none; width: 44px; height: 4px; margin: 0 auto 2px; border-radius: 999px; background: var(--line-strong); opacity: 0.75; touch-action: none; }
+  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; touch-action: none; }
   .sheet-title { margin: 0; font-size: 18px; color: var(--heading); }
   .icon-btn { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-hover); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
   .settings-page { display: flex; flex-direction: column; gap: 12px; }
@@ -296,7 +301,8 @@ const tunerHTML = `
 
   <div class="settings-mask" id="settingsMask" hidden aria-hidden="true">
     <div class="settings-sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-      <div class="sheet-head">
+      <div class="sheet-grabber" id="settingsGrabber" aria-hidden="true"></div>
+      <div class="sheet-head" id="settingsHead">
         <div>
           <h2 class="sheet-title" id="settingsTitle">调音设置</h2>
         </div>
@@ -1030,6 +1036,10 @@ class GuitarTuner extends HTMLElement {
       this._settingsBackdropOff();
       this._settingsBackdropOff = null;
     }
+    if (this._settingsSwipeOff) {
+      this._settingsSwipeOff();
+      this._settingsSwipeOff = null;
+    }
     if (this._settingsLayerOff) {
       this._settingsLayerOff();
       this._settingsLayerOff = null;
@@ -1144,6 +1154,20 @@ class GuitarTuner extends HTMLElement {
     if (closeSettings) closeSettings.onclick = () => this.closeSettings();
     if (settingsMask) {
       this._settingsBackdropOff = bindBackdrop(settingsMask, () => this.closeSettings());
+    }
+    if (settingsSheet) {
+      this._settingsSwipeOff = bindSheetSwipe({
+        sheet: settingsSheet,
+        scrollEl: settingsSheet,
+        grabEls: [$('settingsGrabber'), $('settingsHead')],
+        isBlocked: () => {
+          if (!this.shadowRoot) return true;
+          if (this._presetMenuOpen) return true;
+          const editor = this.shadowRoot.getElementById('customEditor');
+          return !!(editor && !editor.hidden);
+        },
+        onClose: () => this.closeSettings()
+      });
     }
     const notePickerMask = $('notePickerMask');
     const closeNotePickerBtn = $('closeNotePicker');

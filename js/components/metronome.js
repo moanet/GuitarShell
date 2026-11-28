@@ -6,11 +6,14 @@ import { analyzeAudioBuffer, decodeAudioBuffer } from '../services/audio-analysi
 import { wakeLock } from '../services/wakelock.js';
 import { showConfirm } from './app-dialog.js';
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
+import { bindSheetSwipe } from '../services/sheet-swipe.js';
 import { themeColor, onThemeChange } from '../services/theme.js';
 import { dbService } from '../services/db.js';
 import { icon } from '../services/icons.js';
 
 const metronomeCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   :host {
     display: flex;
     flex-direction: column;
@@ -95,21 +98,28 @@ const metronomeCSS = `
 
   .settings-mask {
     position: absolute; inset: 0; background: rgba(var(--shadow-rgb),.6); backdrop-filter: blur(4px);
-    display: none; align-items: center; justify-content: center; z-index: 100;
+    display: flex; align-items: flex-end; justify-content: center; z-index: 100;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
   }
-  .settings-mask.show { display: flex; }
+  .settings-mask.show { opacity: 1; pointer-events: auto; }
   .settings-panel {
-    background: var(--bg1); border: 1px solid var(--line); border-radius: 16px;
-    width: 90%; max-width: 400px; max-height: calc(100% - 24px); padding: 0;
-    display: flex; flex-direction: column; overflow: hidden;
-    box-shadow: 0 10px 30px rgba(var(--shadow-rgb),.5);
+    background: var(--bg1); border: 1px solid var(--line); border-bottom: none;
+    border-radius: 18px 18px 0 0;
+    width: 90%; max-width: 400px; max-height: 80vh; max-height: 80dvh;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;
+    box-shadow: 0 -10px 30px rgba(var(--shadow-rgb),.5);
+    transform: translateY(100%); transition: transform .22s ease; will-change: transform;
   }
-  .settings-head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px 12px; border-bottom:1px solid var(--line); background:var(--bg1); }
+  .settings-mask.show .settings-panel { transform: translateY(0); }
+  .settings-panel.sheet-dragging { transition: none; user-select: none; -webkit-user-select: none; }
+  .settings-grabber { flex: 0 0 auto; width: 44px; height: 4px; margin: 8px auto 0; border-radius: 999px; background: var(--line-strong); opacity: .75; touch-action: none; }
+  .settings-head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px 12px; border-bottom:1px solid var(--line); background:var(--bg1); touch-action: none; }
   .settings-title-wrap { min-width:0; }
   .settings-panel h3 { margin: 0; font-size: 16px; color: var(--heading); text-align: left; letter-spacing: .5px; }
   .settings-sub { margin-top:3px; font-size:10px; color:var(--muted); }
-  .settings-close { flex:0 0 auto; padding:8px 16px; border-radius:10px; border:1px solid var(--primary); background:rgba(var(--primary-rgb),.18); color:var(--heading); font-size:13px; font-weight:700; cursor:pointer; }
-  .settings-close:active { transform:scale(.96); }
+  .icon-btn { width:32px; height:32px; flex:none; padding:0; border-radius:50%; border:1px solid var(--line); background:var(--surface-hover); color:var(--muted); display:grid; place-items:center; cursor:pointer; }
+  .icon-btn:active { transform:scale(.96); }
   .settings-content { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
   .settings-card {
     display: flex; flex-direction: column; gap: 12px;
@@ -230,7 +240,9 @@ const metronomeCSS = `
   }
   .timer-chip.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
   .timer-chip.on:not(.armed) { opacity: .55; }
+  .timer-chip:disabled { opacity: .4; cursor: not-allowed; }
   .timer-custom { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+  .timer-custom.is-disabled { opacity: .5; }
   .timer-custom input {
     width: 64px; padding: 6px; border-radius: 8px; border: 1px solid var(--line-strong);
     background: var(--surface-raised); color: var(--heading); font-size: 12px;
@@ -348,13 +360,14 @@ const metronomeHTML = `
 </div>
 
 <div class="settings-mask" id="settingsMask">
-  <div class="settings-panel">
-    <div class="settings-head">
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-grabber" id="settingsGrabber" aria-hidden="true"></div>
+    <div class="settings-head" id="settingsHead">
       <div class="settings-title-wrap">
         <h3>节拍器设置</h3>
         <div class="settings-sub">修改即时生效</div>
       </div>
-      <button class="settings-close" id="btnCloseSettings">完成</button>
+      <button class="icon-btn" id="btnCloseSettings" type="button" aria-label="关闭节拍器设置">${icon('close', 18)}</button>
     </div>
     <div class="settings-content" id="settingsContent">
     <section class="settings-card">
@@ -401,7 +414,9 @@ const metronomeHTML = `
       <div class="card-head"><span class="card-ico">${icon('trending', 16)}</span><h4>高级练习</h4></div>
       <div class="settings-group">
         <div class="settings-label">Swing 摇摆 <span id="swingVal">0%</span></div>
-        <input type="range" id="swingRange" class="range" min="0" max="100" step="1" value="0">
+        <label class="check-row"><input type="checkbox" id="swingOn"> 启用 Swing</label>
+        <input type="range" id="swingRange" class="range" min="0" max="100" step="1" value="0" disabled aria-label="Swing 摇摆比例">
+        <span class="label-hint" id="swingHint">勾选后生效，数值会保留</span>
       </div>
       <div class="settings-group">
         <label class="check-row"><input type="checkbox" id="rampOn"> 变速练习（到目标后保持 N 小节再停）</label>
@@ -499,6 +514,7 @@ class GuitarMetronome extends HTMLElement {
 
     // C4 练习工具状态
     this.swing = 0;
+    this.swingEnabled = false;
     this.flashEnabled = true;
     this.ramp = { enabled: false, start: 120, target: 160, step: 5, every: 2 };
     this.timer = { enabled: false, minutes: 15 };
@@ -561,6 +577,8 @@ class GuitarMetronome extends HTMLElement {
   disconnectedCallback() {
     this.stop();
     if (this._settingsLayerOff) { this._settingsLayerOff(); this._settingsLayerOff = null; }
+    if (this._settingsSwipeOff) { this._settingsSwipeOff(); this._settingsSwipeOff = null; }
+    if (this._fitSettingsPanel) { window.removeEventListener('resize', this._fitSettingsPanel); this._fitSettingsPanel = null; }
     // 移除监听
     window.removeEventListener('bpm-changed', this.handleGlobalBpmChange);
     window.removeEventListener('app-tab-changed', this.handleTabChange);
@@ -588,6 +606,9 @@ class GuitarMetronome extends HTMLElement {
     const tapHint    = $('tapHint');
     
     const settingsMask = $('settingsMask');
+    const settingsPanel = $('settingsPanel');
+    const settingsHead = $('settingsHead');
+    const settingsGrabber = $('settingsGrabber');
     const btnSettings = $('btnSettings');
     const btnCloseSettings = $('btnCloseSettings');
     const settingsContent = $('settingsContent');
@@ -598,10 +619,13 @@ class GuitarMetronome extends HTMLElement {
     const accentGrid = $('accentGrid');
     const swingRange = $('swingRange');
     const swingVal = $('swingVal');
+    const swingOn = $('swingOn');
+    const swingHint = $('swingHint');
     const practiceHud = $('practiceHud');
     const rampOn = $('rampOn'), rampStart = $('rampStart'), rampTarget = $('rampTarget');
     const rampStep = $('rampStep'), rampEvery = $('rampEvery');
     const timerOn = $('timerOn'), timerMin = $('timerMin'), timerPresets = $('timerPresets');
+    const timerCustom = timerMin.closest('.timer-custom');
     const patternList = $('patternList'), patternName = $('patternName'), patternSave = $('patternSave');
     const followAudioFile = $('followAudioFile');
     const followAudioPick = $('followAudioPick'), followAudioClear = $('followAudioClear');
@@ -616,6 +640,20 @@ class GuitarMetronome extends HTMLElement {
     const meterGuess = $('meterGuess');
     const flashSwitch = $('flashSwitch');
     const vibrationSwitch = $('vibrationSwitch');
+
+    // Swing 启用与数值分开：关闭时保留滑杆值，但引擎实际收到 0
+    const swingAmount = () => (this.swingEnabled ? this.swing : 0);
+    const paintSwingUI = () => {
+      const audioFollow = this.audioMode === 'follow';
+      swingRange.value = this.swing;
+      swingVal.textContent = this.swing + '%';
+      swingOn.checked = this.swingEnabled;
+      swingOn.disabled = audioFollow;
+      swingRange.disabled = audioFollow || !this.swingEnabled;
+      swingHint.textContent = audioFollow
+        ? '音频跟练期间关闭'
+        : (this.swingEnabled ? '拖动即生效' : '勾选后生效，数值会保留');
+    };
 
     const showToast = (msg) => {
       const el = document.createElement('div');
@@ -710,7 +748,7 @@ class GuitarMetronome extends HTMLElement {
       const data = {
         bpm: this.bpm, tsNum: this.timeSigNum, tsDen: this.timeSigDen,
         subId: this.currentSubId, timbre: this.currentTimbre,
-        accents: this.accents.slice(), swing: this.swing,
+        accents: this.accents.slice(), swing: this.swing, swingEnabled: this.swingEnabled,
         ramp: { ...this.ramp }, timer: { ...this.timer },
         flash: this.flashEnabled,
         patterns: this.patterns.map(p => ({
@@ -735,7 +773,7 @@ class GuitarMetronome extends HTMLElement {
         detail: {
           timbre: this.currentTimbre,
           accents: this.accents.slice(),
-          swing: this.swing
+          swing: swingAmount()
         }
       }));
     };
@@ -751,6 +789,8 @@ class GuitarMetronome extends HTMLElement {
           if (d.subId && SUBDIVISIONS.some(s => s.id === d.subId)) this.currentSubId = d.subId;
           if (d.timbre && TIMBRES.some(t => t.id === d.timbre)) this.currentTimbre = d.timbre;
           if (Number.isFinite(d.swing)) this.swing = Math.min(100, Math.max(0, Math.round(d.swing)));
+          // 旧存档没有 swingEnabled：数值保留，启用状态默认关闭
+          if (typeof d.swingEnabled === 'boolean') this.swingEnabled = d.swingEnabled;
           if (Array.isArray(d.accents)) {
             const valid = ['accent', 'sub', 'beat', 'mute'];
             this.accents = Array.from({ length: this.timeSigNum }, (_, i) => {
@@ -1033,7 +1073,7 @@ class GuitarMetronome extends HTMLElement {
 
       practiceHud.classList.remove('two-line');
       const parts = [];
-      if (this.swing > 0) parts.push(`Swing ${this.swing}%`);
+      if (this.swingEnabled && this.swing > 0) parts.push(`Swing ${this.swing}%`);
       if (this.ramp.enabled) {
         let txt = `变速 ${this.ramp.start}→${this.ramp.target} · 每${this.ramp.every}小节`;
         if (this.rampHolding && this.bpm === this.ramp.target) {
@@ -1161,8 +1201,7 @@ class GuitarMetronome extends HTMLElement {
       drawKnob();
       buildDots();
       updateHud();
-      swingRange.value = this.swing;
-      swingVal.textContent = this.swing + '%';
+      paintSwingUI();
       saveSettings();
     };
 
@@ -1181,9 +1220,9 @@ class GuitarMetronome extends HTMLElement {
     };
 
     const disableSwingForAudio = () => {
-      this.swing = 0;
-      swingRange.value = 0;
-      swingVal.textContent = '0%';
+      // 跟练期间强制关闭，但保留滑杆数值，退出跟练后可再勾选恢复
+      this.swingEnabled = false;
+      paintSwingUI();
       if (this.metronomeHandle) this.metronomeHandle.setSwing(0);
       broadcastSettings();
     };
@@ -1238,7 +1277,7 @@ class GuitarMetronome extends HTMLElement {
       // 跟练关闭变速 + Swing；测速关闭变速（否则开始会从起始 BPM 重爬）
       [rampOn, rampStart, rampTarget, rampStep, rampEvery]
         .forEach(el => { el.disabled = isFollow || isTempo; });
-      swingRange.disabled = isFollow;
+      paintSwingUI();
 
       if (isFollow) {
         audioModeHint.textContent = hasBuffer
@@ -1595,7 +1634,7 @@ class GuitarMetronome extends HTMLElement {
         slots: this.currentSlots,
         accents: this.accents,
         timbre: this.currentTimbre,
-        swing: this.swing,
+        swing: swingAmount(),
         onBeat: (ev) => {
           this.queue.push(ev);
           this.vibrateFor(ev.beat);
@@ -1779,22 +1818,24 @@ class GuitarMetronome extends HTMLElement {
     };
 
     const updateTimerPresetUI = () => {
+      const editable = this.timer.enabled;
+      timerPresets.classList.toggle('is-disabled', !editable);
+      timerMin.disabled = !editable;
+      if (timerCustom) timerCustom.classList.toggle('is-disabled', !editable);
       timerPresets.querySelectorAll('.timer-chip').forEach(b => {
         const selected = Number(b.dataset.min) === this.timer.minutes;
+        b.disabled = !editable;
         b.classList.toggle('on', selected);
         b.classList.toggle('armed', selected && this.timer.enabled);
       });
     };
 
-    const setTimerMinutes = (minutes, { syncInput = true, enable = true, restart = false } = {}) => {
+    const setTimerMinutes = (minutes, { syncInput = true, restart = false } = {}) => {
       const next = Math.min(180, Math.max(1, parseInt(minutes, 10) || 15));
       const changed = next !== this.timer.minutes;
       const wasEnabled = this.timer.enabled;
       this.timer.minutes = next;
-      if (enable) {
-        this.timer.enabled = true;
-        timerOn.checked = true;
-      }
+      // 只改分钟，不碰 timerOn：是否启用只由复选框决定，避免点预设就误开倒计时
       if (syncInput) timerMin.value = this.timer.minutes;
       updateTimerPresetUI();
       saveSettings();
@@ -1903,8 +1944,7 @@ class GuitarMetronome extends HTMLElement {
         tsNumInput.value = this.timeSigNum;
         tsDenInput.value = this.timeSigDen;
       }
-      swingRange.value = this.swing;
-      swingVal.textContent = this.swing + '%';
+      paintSwingUI();
       rampOn.checked = this.ramp.enabled;
       rampStart.value = this.ramp.start;
       rampTarget.value = this.ramp.target;
@@ -1935,11 +1975,24 @@ class GuitarMetronome extends HTMLElement {
       });
     });
 
-    // Swing：拖动即生效（二连音后半拍位置 0.5 → 0.75）
+    // Swing：勾选后才生效；拖动滑杆即时改变（二连音后半拍位置 0.5 → 0.75）
     swingRange.oninput = () => {
       this.swing = Math.min(100, Math.max(0, parseInt(swingRange.value, 10) || 0));
       swingVal.textContent = this.swing + '%';
-      if (this.metronomeHandle) this.metronomeHandle.setSwing(this.swing);
+      if (this.swingEnabled) {
+        if (this.metronomeHandle) this.metronomeHandle.setSwing(this.swing);
+        broadcastSettings();
+      }
+      updateHud();
+      saveSettings();
+    };
+
+    swingOn.onchange = () => {
+      this.swingEnabled = swingOn.checked;
+      // 首次勾选且数值还是 0 时给一个可感知的起点
+      if (this.swingEnabled && this.swing === 0) this.swing = 25;
+      paintSwingUI();
+      if (this.metronomeHandle) this.metronomeHandle.setSwing(swingAmount());
       updateHud();
       saveSettings();
       broadcastSettings();
@@ -1994,9 +2047,21 @@ class GuitarMetronome extends HTMLElement {
       if (this._settingsLayerOff) { this._settingsLayerOff(); this._settingsLayerOff = null; }
       settingsMask.classList.remove('show');
     };
+    // 顶部最多到拍点闪动模块上沿，再留 6px；矮屏仍保证面板可用高度
+    const fitSettingsPanel = () => {
+      if (!settingsMask.classList.contains('show') || !dotsWrap) return;
+      const blockTop = dotsWrap.getBoundingClientRect().top;
+      if (!blockTop) return;
+      const topLimit = Math.max(120, blockTop - 6);
+      const height = Math.min(window.innerHeight - 8, Math.max(240, window.innerHeight - topLimit));
+      settingsPanel.style.maxHeight = `${Math.round(height)}px`;
+    };
+    this._fitSettingsPanel = fitSettingsPanel;
+    window.addEventListener('resize', fitSettingsPanel);
     btnSettings.onclick = () => {
       renderSettings();
       settingsMask.classList.add('show');
+      fitSettingsPanel();
       if (settingsContent) settingsContent.scrollTop = 0;
       if (!this._settingsLayerOff) {
         this._settingsLayerOff = registerLayer({
@@ -2007,6 +2072,12 @@ class GuitarMetronome extends HTMLElement {
     };
     btnCloseSettings.onclick = closeSettings;
     bindBackdrop(settingsMask, closeSettings);
+    this._settingsSwipeOff = bindSheetSwipe({
+      sheet: settingsPanel,
+      scrollEl: settingsContent,
+      grabEls: [settingsGrabber, settingsHead],
+      onClose: closeSettings
+    });
 
     playBtn.onclick = () => this.isRunning ? this.stop() : this.start();
     

@@ -33,6 +33,7 @@ const ASSETS_TO_CACHE = [
   './js/services/tag-utils.js',
   './js/services/pdf-split.js',
   './js/services/ui-layer.js',
+  './js/services/sheet-swipe.js',
   './js/services/gallery-picker.js',
   // 自定义调准音效：音频放进 assets/ 后取消下一行注释，并同步 audio.js 的 CUSTOM_CHIME_URL
   // './assets/tuner-ding.mp3',
