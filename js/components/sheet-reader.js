@@ -217,7 +217,8 @@ const readerCSS = `
   .empty-action.secondary:hover { background: rgba(var(--primary-rgb), 0.10); }
   .zoom-controls { position: absolute; bottom: calc(30px + env(safe-area-inset-bottom, 0px)); right: calc(20px + env(safe-area-inset-right, 0px)); display: none; flex-direction: column; gap: 8px; z-index: 20; transition: opacity 0.25s ease; }
   .zoom-controls.faded { opacity: 0.15; }
-  .zoom-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(var(--bg1-rgb), 0.92); border: 1px solid var(--line-warm); color: var(--accent-text); font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .zoom-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(var(--bg1-rgb), 0.92); border: 1px solid var(--line-warm); color: var(--accent-text); font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 0; }
+  .zoom-btn svg { display: block; }
   .zoom-btn.lock-btn { font-size: 18px; }
 
   /* 文本谱：等宽、保留空格，当前行轻高亮 */
@@ -285,7 +286,7 @@ const readerCSS = `
     position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--primary);
     transform: scaleX(0); transform-origin: left center; opacity: .9;
   }
-  .zen-unlock.holding .zen-progress { transform: scaleX(1); transition: transform 1.5s linear; }
+  .zen-unlock.holding .zen-progress { transform: scaleX(1); transition: transform 1s linear; }
 
   .mini-metronome { position: absolute; bottom: 30px; left: 20px; display: none; flex-direction: column; align-items: center; z-index: 20; }
   .mm-panel { background: rgba(var(--bg1-rgb), 0.95); backdrop-filter: blur(8px); border: 1px solid var(--line-warm); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.3s ease; }
@@ -574,7 +575,7 @@ const readerHTML = `
   <div class="zen-lock" id="zenLock" role="dialog" aria-modal="true" aria-label="禅定模式已锁定">
     <div class="zen-panel" id="zenPanel" aria-hidden="true">
       <span class="zen-title">禅定模式</span>
-      <button class="zen-unlock" id="zenUnlock" type="button" aria-label="长按 1.5 秒解锁">长按 1.5 秒解锁<span class="zen-progress"></span></button>
+      <button class="zen-unlock" id="zenUnlock" type="button" aria-label="长按 1 秒解锁">长按 1 秒解锁<span class="zen-progress"></span></button>
     </div>
   </div>
 
@@ -755,6 +756,7 @@ class SheetReader extends HTMLElement {
     this.coverUrls = new Map();
     this.coverSeq = 0;
     this.zenLocked = false;
+    this.zenPrevFullscreen = false;
     this.zenHoldTimer = null;
     this.zenHoldSource = '';
     this.zenTapStart = null;
@@ -2823,8 +2825,8 @@ class SheetReader extends HTMLElement {
       if (!zoomControls.classList.contains('faded')) setZoomFaded(true);
     };
 
-    // 禅定模式：透明阅读锁；轻点浮出解锁条，连续长按 1.5 秒解锁
-    const ZEN_HOLD_MS = 1500;
+    // 禅定模式：透明阅读锁；轻点浮出解锁条，连续长按 1 秒解锁
+    const ZEN_HOLD_MS = 1000;
     const revealZenControls = () => {
       if (!this.zenLocked) return;
       zenLock.classList.add('revealed');
@@ -2866,11 +2868,17 @@ class SheetReader extends HTMLElement {
       this.classList.toggle('zen-active', next);
       zenLock.classList.toggle('show', next);
       if (next) {
+        // 禅定默认进入全屏；先记住进入前的状态，解锁时只恢复被禅定带出来的全屏
+        this.zenPrevFullscreen = this.classList.contains('reader-fullscreen');
+        if (!this.zenPrevFullscreen) this.setReaderFullscreen(true);
         trackLayer('zen-lock', () => {}, { blocksNavigation: true });
         wakeLock.acquire('reader');
         if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       } else {
         untrackLayer('zen-lock');
+        const restoreFullscreen = !this.zenPrevFullscreen;
+        this.zenPrevFullscreen = false;
+        if (restoreFullscreen && this.classList.contains('reader-fullscreen')) this.setReaderFullscreen(false);
         if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       }
     };
@@ -2947,7 +2955,7 @@ class SheetReader extends HTMLElement {
 
       const btn = $('btnFullscreen');
       if (btn) {
-        btn.textContent = next ? '⤡' : '⤢';
+        btn.innerHTML = icon(next ? 'minimize' : 'maximize', 18);
         btn.title = next ? '退出全屏' : '全屏';
         btn.setAttribute('aria-label', next ? '退出全屏' : '进入全屏');
       }
