@@ -35,6 +35,8 @@ const themeChoicesHTML = THEME_OPTIONS.map((option) => `
 `).join('');
 
 const settingsCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host, * { box-sizing: border-box; -webkit-tap-highlight-color: transparent !important; }
   :host {

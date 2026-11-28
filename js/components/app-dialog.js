@@ -7,6 +7,8 @@
 import { registerLayer, bindBackdrop } from '../services/ui-layer.js';
 
 const dialogCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   :host {
     position: fixed; inset: 0; z-index: 1400; display: block;
     font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif;

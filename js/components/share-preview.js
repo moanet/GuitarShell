@@ -32,6 +32,8 @@ function writeShareBg(id) {
 }
 
 const previewCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   :host {
     position: fixed; inset: 0; z-index: 1450; display: block;
     font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif;

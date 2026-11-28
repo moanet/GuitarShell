@@ -57,6 +57,8 @@ const REFERENCE_LEVELS = {
 };
 
 const tunerCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host { display: flex; flex-direction: column; height: 100%; width: 100%; background: linear-gradient(180deg, var(--bg2), var(--bg0)); color: var(--txt); overflow: hidden; font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif; align-items: center; justify-content: flex-start; }
   

@@ -167,6 +167,9 @@ html, body {
   color: var(--txt);
   font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* 布局 */

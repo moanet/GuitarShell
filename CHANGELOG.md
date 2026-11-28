@@ -24,6 +24,7 @@
 
 **变更**
 
+- 全局界面文字默认不可选中：`html / body` 与 8 个组件的 Shadow DOM 统一 `user-select:none`、`-webkit-touch-callout:none`，拖动或长按不再误选页面文字；`input / textarea / select / contenteditable` 保留 `user-select:text`，输入框仍可正常选字、复制与粘贴。
 - 倒计时未勾选时禁用预设分钟按钮与自定义分钟输入框（降透明度、不可点击）；勾选后才能调整，减少误触开启。
 - `sheet-reader.js` 的 mini 节拍器按 `swingEnabled === true` 读取 Swing，关闭时向引擎传 `0`。
 - `sw.js` 缓存清单新增 `./js/services/sheet-swipe.js`。
@@ -36,6 +37,7 @@
 - 调音器 sheet 360 宽 `324×453`、320 宽 `288×451`；人为撑高内容后，`scrollTop=150` 时从内容区下滑不关闭且 `scrollTop` 不变，回顶后可关闭；把手长拖关闭，220ms 后 `hidden=true`；编辑页 / 预设下拉打开时拖把手不关闭。
 - 节拍器把手长拖关闭、短拖 `40px` 回弹；内容 `scrollTop=300` 时从内容区下滑不接管。
 - Swing 默认关闭、勾选后 `25%`、取消保留 `25` 且 HUD 隐藏、再勾选恢复 `25`；倒计时点“10 分钟”和自定义 7 分钟均不改复选框，手动勾选后 HUD 显示“Swing 25% · 倒计时 7分”。
+- 全局禁选已核对：`html / body` 与 `guitar-sheet-reader / metronome / tuner / practice-log / settings` 的文本 `user-select` 均为 `none`；各组件内 `input / select` 为 `text`，练习记录输入框可正常 `setSelectionRange` 选字。
 - 深夜 / 浅色主题下 320 宽设置面板配色正常；`npm run check` 通过：`v0.1.26，42 个 JS 文件，SW 缓存与版本一致`。
 
 ## 0.1.26 — 练习记录页表单折叠（合并 0.1.25 发布，2026-11-27）

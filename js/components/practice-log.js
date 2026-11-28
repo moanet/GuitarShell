@@ -9,6 +9,8 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
 }[ch]));
 
 const logCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host { display: flex; flex-direction: column; height: 100%; width: 100%; background: var(--bg0); color: var(--txt); overflow: hidden; font-family: -apple-system, sans-serif; }
   .stats-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; margin: 10px 4px 0; padding: 10px 4px 2px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }

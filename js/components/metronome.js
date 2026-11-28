@@ -12,6 +12,8 @@ import { dbService } from '../services/db.js';
 import { icon } from '../services/icons.js';
 
 const metronomeCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   :host {
     display: flex;
     flex-direction: column;

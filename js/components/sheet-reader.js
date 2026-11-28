@@ -23,6 +23,8 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
 }[ch]));
 
 const readerCSS = `
+  :host { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   :host { display: flex; flex-direction: column; height: 100%; width: 100%; background: var(--bg0); color: var(--txt); overflow: hidden; position: relative; }
   :host(.reader-fullscreen) {
     position: fixed; inset: 0; z-index: 1000;
