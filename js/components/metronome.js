@@ -35,23 +35,24 @@ const metronomeCSS = `
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
     overflow: hidden;
   }
 
   .info-bar { flex:0 0 auto;margin-top:0; display:flex;gap:1px; background:var(--line);border:1px solid var(--line);border-radius:16px; overflow:hidden; }
-  .info-cell { flex:1 1 0;min-width:0;padding:9px 6px; background:var(--surface-deep);text-align:center; }
-  .info-k { font-size:10px;color:var(--muted);letter-spacing:1px; margin-bottom:3px; }
-  .info-v { font-size:18px;font-weight:700;color: var(--heading); font-variant-numeric:tabular-nums; white-space:nowrap;overflow:hidden;text-overflow:ellipsis; line-height:1.1; }
-  .info-v small{font-size:10px;font-weight:500;opacity:.55;margin-left:2px}
-  .info-v.v-sm{font-size:13.5px;padding-top:2px}
+  .info-cell { flex:1 1 0;min-width:0;padding:8px 6px; background:var(--surface-deep);text-align:center; }
+  .info-k { font-size:11px;color:var(--muted);letter-spacing:1px; margin-bottom:4px; }
+  .info-v { font-size:16px;font-weight:700;color: var(--heading); font-variant-numeric:tabular-nums; white-space:nowrap;overflow:hidden;text-overflow:ellipsis; line-height:1.1; }
+  .info-v small{font-size:10px;font-weight:500;color:var(--muted);margin-left:2px}
+  .info-v.v-sm{font-size:16px;padding-top:0;}
 
-  .beat-block { flex:0 0 auto; width:fit-content; max-width:100%; margin:14px auto 6px; display:flex; flex-direction:column; align-items:center; gap:4px; }
-  .dots { flex:0 0 auto;display:flex;flex-wrap:wrap;gap:var(--dot-gap,7px); justify-content:center;align-items:center; min-height:26px;margin:0; }
+  .beat-block { flex:0 0 auto; width:fit-content; max-width:100%; margin:12px auto 4px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .dots { flex:0 0 auto;display:flex;flex-wrap:wrap;gap:var(--dot-gap,8px); justify-content:center;align-items:center; min-height:26px;margin:0; }
   .beat-strip {
     position:relative; width:100%; height:var(--strip-height,24px); border-radius:999px; overflow:hidden;
-    background:rgba(var(--primary-rgb),.10); visibility:hidden;
+    background:transparent; visibility:hidden;
   }
+  .beat-strip.has-progress { background:rgba(var(--primary-rgb),.10); }
   .beat-strip.show { visibility:visible; }
   .strip-track { position:absolute; left:0; right:0; height:100%; display:none; }
   .strip-track.show { display:block; }
@@ -74,26 +75,27 @@ const metronomeCSS = `
   .dot.on.m-beat{background:var(--primary);border-color:var(--primary);box-shadow:0 0 20px rgba(var(--primary-rgb),.5)}
   .dot.on.m-sub{background:var(--heading);border-color:var(--heading);box-shadow:0 0 20px rgba(var(--heading-rgb),.30)}
 
-  .knob-wrap { flex:1 1 auto;min-height:200px;margin:4px 0 2px; display:flex;align-items:center;justify-content:center; position:relative; touch-action: none; }
+  .knob-wrap { flex:1 1 auto;min-height:200px;margin:4px 0 0; display:flex;align-items:center;justify-content:center; position:relative; touch-action: none; }
   .knob-wrap canvas { display:block;touch-action:none;cursor:grab; }
   .knob-center { position:absolute;inset:0; display:flex;flex-direction:column; align-items:center;justify-content:center; pointer-events:none; gap:2px; }
   .knob-row { display:flex;align-items:center;gap:4px; pointer-events:auto; }
   
-  .knob-step { width:28px;height:28px;border-radius:50%; border:1px solid var(--line-strong);background:var(--surface-raised);color:var(--muted); font-size:16px;cursor:pointer; display:flex;align-items:center;justify-content:center; padding:0; touch-action:none; user-select:none; -webkit-touch-callout:none; }
+  .knob-step { position:relative; width:28px;height:28px;border-radius:50%; border:1px solid var(--line-strong);background:var(--surface-raised);color:var(--muted); font-size:16px;cursor:pointer; display:flex;align-items:center;justify-content:center; padding:0; touch-action:none; user-select:none; -webkit-touch-callout:none; box-sizing:border-box; }
+  .knob-step::before { content:''; position:absolute; inset:-8px; border-radius:50%; }
   .knob-step:active{transform:scale(.9);background:rgba(var(--primary-rgb),.18)}
   
   .knob-num { width:64px;border:none;outline:none;background:transparent; text-align:center; font-size:34px;font-weight:700;color: var(--heading); font-variant-numeric:tabular-nums;padding:0; caret-color:var(--primary); pointer-events:auto; touch-action: manipulation; }
-  .knob-unit { font-size:9px;letter-spacing:4px;color:var(--muted); margin-top:2px; }
+  .knob-unit { font-size:10px;letter-spacing:2px;color:var(--muted); margin-top:2px; }
   
-  .play-in-knob { margin-top:10px; padding:0 28px; min-width:140px; height:46px; border-radius:16px; border:1px solid rgba(var(--secondary-rgb),.10); cursor:pointer; font-size:14px; font-weight:800; letter-spacing:5px; color:var(--on-primary); background:linear-gradient(180deg,var(--accent),var(--primary)); box-shadow:0 6px 18px rgba(var(--primary-rgb),.26); pointer-events:auto; }
-  .play-in-knob.running { color:var(--on-danger); background:var(--danger); box-shadow:0 6px 18px rgba(var(--danger-rgb),.26); }
+  .play-in-knob { margin-top:10px; padding:0 28px; min-width:140px; height:46px; border-radius:16px; border:1px solid rgba(var(--secondary-rgb),.10); cursor:pointer; font-size:16px; font-weight:700; letter-spacing:5px; color:var(--on-primary); background:linear-gradient(180deg,var(--accent),var(--primary)); box-shadow:0 6px 16px rgba(var(--primary-rgb),.18); pointer-events:auto; }
+  .play-in-knob.running { color:var(--on-danger); background:var(--danger); box-shadow:0 6px 16px rgba(var(--danger-rgb),.18); }
 
-  .bottom-area { flex:0 0 auto; display:flex; flex-direction:column; gap:0; padding-top:0; margin-top:10px; margin-bottom:64px; }
-  .bottom-row { display:flex; align-items:center; justify-content:space-between; gap:8px; height:44px; padding:0 8px; flex:0 0 auto; }
+  .bottom-area { flex:0 0 auto; display:flex; flex-direction:column; gap:0; padding-top:0; margin-top:12px; margin-bottom:28px; }
+  .bottom-row { display:flex; align-items:center; justify-content:space-between; gap:8px; height:44px; padding:0; flex:0 0 auto; }
   .tap-btn, .bottom-settings { width:72px; height:44px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto; }
-  .tap-btn { border:1px solid var(--line-warm); background:linear-gradient(180deg,var(--tap-a),var(--tap-b)); color: var(--accent-text); }
+  .tap-btn { border:1px solid var(--line-warm); background:linear-gradient(180deg,var(--tap-a),var(--tap-b)); color: var(--accent-text); font-size:14px; }
   .tap-btn:active, .tap-btn.pulse { transform:scale(.95); background:rgba(var(--primary-rgb),.28); }
-  .bottom-settings { border:1px solid var(--line-warm); background:var(--surface-raised); color:var(--accent-text); font-size:13px; font-weight:800; letter-spacing:.6px; gap:4px; flex-direction:row; }
+  .bottom-settings { border:1px solid var(--line-warm); background:var(--surface-raised); color:var(--accent-text); font-size:14px; font-weight:700; letter-spacing:.6px; gap:4px; flex-direction:row; }
   .bottom-settings:active { transform:scale(.95); background:rgba(var(--primary-rgb),.10); }
 
   .settings-mask {
@@ -106,7 +108,7 @@ const metronomeCSS = `
     background: var(--bg1); border: 1px solid var(--line); border-bottom: none;
     border-radius: 18px 18px 0 0;
     width: 90%; max-width: 400px; max-height: 80vh; max-height: 80dvh;
-    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    padding: 0;
     display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;
     box-shadow: 0 -10px 30px rgba(var(--shadow-rgb),.5);
     transform: translateY(100%); transition: transform .22s ease; will-change: transform;
@@ -114,13 +116,23 @@ const metronomeCSS = `
   .settings-mask.show .settings-panel { transform: translateY(0); }
   .settings-panel.sheet-dragging { transition: none; user-select: none; -webkit-user-select: none; }
   .settings-grabber { flex: 0 0 auto; width: 44px; height: 4px; margin: 8px auto 0; border-radius: 999px; background: var(--line-strong); opacity: .75; touch-action: none; }
-  .settings-head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px 12px; border-bottom:1px solid var(--line); background:var(--bg1); touch-action: none; }
+  .settings-head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--bg1); touch-action: none; }
   .settings-title-wrap { min-width:0; }
   .settings-panel h3 { margin: 0; font-size: 16px; color: var(--heading); text-align: left; letter-spacing: .5px; }
-  .settings-sub { margin-top:3px; font-size:10px; color:var(--muted); }
-  .icon-btn { width:32px; height:32px; flex:none; padding:0; border-radius:50%; border:1px solid var(--line); background:var(--surface-hover); color:var(--muted); display:grid; place-items:center; cursor:pointer; }
-  .icon-btn:active { transform:scale(.96); }
-  .settings-content { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
+  .settings-sub { margin-top:3px; font-size:11px; line-height:1.3; color:var(--muted); }
+  .settings-done:focus-visible { outline:2px solid var(--accent) !important; outline-offset:2px !important; }
+  .settings-panel button:focus-visible,
+  .settings-panel .switch:focus-visible,
+  .settings-panel input:focus-visible,
+  .settings-panel select:focus-visible { outline:2px solid var(--accent) !important; outline-offset:2px !important; }
+  .settings-content { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .settings-footer { flex:0 0 auto; padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top:1px solid var(--line); background:var(--bg1); }
+  .settings-done {
+    width:100%; height:46px; border-radius:14px; border:1px solid var(--line-strong);
+    background:var(--surface-raised); color:var(--heading); font-size:14px; font-weight:700;
+    cursor:pointer; letter-spacing:.5px;
+  }
+  .settings-done:active { transform:scale(.98); background:var(--surface-hover); }
   .settings-card {
     display: flex; flex-direction: column; gap: 12px;
     background: var(--card-bg); border: 1px solid var(--line); border-radius: 16px;
@@ -132,72 +144,73 @@ const metronomeCSS = `
     display: grid; place-items: center;
     background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 13px;
   }
-  .settings-card h4 { margin: 0; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
+  .settings-card h4 { margin: 0; font-size: 14px; font-weight: 700; color: var(--heading); letter-spacing: .4px; }
   .settings-group { display: flex; flex-direction: column; gap: 8px; }
-  .settings-label { font-size: 12px; color: var(--muted); }
-  .label-hint { display: block; margin-top: 3px; font-size: 10px; line-height: 1.4; color: var(--muted); opacity: .82; }
+  .settings-label { font-size: 14px; color: var(--muted); }
+  .label-hint { display: block; margin-top: 4px; font-size: 11px; line-height: 1.4; color: var(--muted); opacity: .9; }
   
   .ts-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-  .ts-btn { padding: 8px 0; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 13px; }
+  .ts-btn { height: 36px; padding: 0 4px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 14px; box-sizing: border-box; }
   .ts-btn.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
 
   .ts-custom { display: flex; align-items: center; gap: 6px; }
   .ts-custom input {
-    width: 0; flex: 1 1 0; min-width: 0; padding: 7px 6px; border-radius: 8px;
-    border: 1px solid var(--line-strong); background: var(--surface-raised);
-    color: var(--heading); font-size: 13px; text-align: center; outline: none;
+    width: 0; flex: 1 1 0; min-width: 0; height: 44px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line-strong); background: var(--surface-raised); box-sizing: border-box;
+    color: var(--heading); font-size: 14px; text-align: center; outline: none;
   }
   .ts-custom input:focus { border-color: var(--primary); }
-  .ts-custom .ts-sep { flex: 0 0 auto; color: var(--muted); font-size: 13px; }
+  .ts-custom .ts-sep { flex: 0 0 auto; color: var(--muted); font-size: 14px; }
   .ts-custom .ts-apply {
-    flex: 0 0 auto; padding: 8px 12px; border-radius: 9px; border: 1px solid var(--primary);
-    background: rgba(var(--primary-rgb),.18); color: var(--heading); font-size: 12px; cursor: pointer;
+    flex: 0 0 auto; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--primary);
+    background: rgba(var(--primary-rgb),.18); color: var(--heading); font-size: 14px; cursor: pointer; box-sizing: border-box;
   }
 
   .sub-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .sub-btn {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-    padding: 6px 2px 7px; border-radius: 10px; border: 1px solid var(--line-strong);
-    background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 11.5px;
+    min-height: 44px; padding: 4px 2px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 11px; box-sizing: border-box;
   }
   .sub-btn .sub-name { line-height: 1.25; }
-  .sub-btn .sub-desc { font-size: 8.5px; line-height: 1.25; opacity: .68; white-space: nowrap; }
+  .sub-btn .sub-desc { font-size: 10px; line-height: 1.25; opacity: 1; white-space: nowrap; }
   .sub-btn.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
   .sub-btn.on .sub-desc { color: var(--accent-text); opacity: .9; }
 
   .timbre-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .timbre-btn { padding: 8px 0; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 12px; }
+  .timbre-btn { height: 36px; padding: 0 4px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--muted); cursor: pointer; font-size: 14px; box-sizing: border-box; }
   .timbre-btn.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
 
   /* B 批：节奏型 / 音频跟练 / 震动 */
   .pattern-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 142px; overflow-y: auto; overscroll-behavior: contain; }
   .pattern-chip {
-    display: flex; align-items: center; gap: 6px; max-width: 100%;
-    padding: 7px 8px; border-radius: 9px; border: 1px solid var(--line-strong);
-    background: var(--surface-raised); color: var(--heading); font-size: 12px;
+    display: flex; align-items: center; gap: 6px; max-width: 100%; min-height: 44px;
+    padding: 8px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--heading); font-size: 14px; box-sizing: border-box;
   }
   .pattern-chip .p-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; cursor: pointer; }
   .pattern-chip .p-name { max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pattern-chip .p-meta { font-size: 9px; color: var(--muted); }
+  .pattern-chip .p-meta { font-size: 10px; color: var(--muted); }
   .pattern-chip .p-del {
-    flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: none;
+    position: relative; flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; border: none;
     background: transparent; color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer;
   }
+  .pattern-chip .p-del::before { content:''; position:absolute; inset:-12px; border-radius:50%; }
   .pattern-chip .p-del:hover { color: var(--danger, #e5484d); background: rgba(var(--shadow-rgb),.12); }
   .pattern-save-row { display: flex; gap: 6px; }
   .pattern-name {
-    flex: 1 1 0; min-width: 0; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line-strong);
-    background: var(--surface-raised); color: var(--heading); font-size: 12px; outline: none;
+    flex: 1 1 0; min-width: 0; height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--heading); font-size: 14px; outline: none; box-sizing: border-box;
   }
   .pattern-name:focus { border-color: var(--primary); }
   .pattern-save {
-    flex: 0 0 auto; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--primary);
-    background: rgba(var(--primary-rgb),.18); color: var(--heading); font-size: 11px; cursor: pointer;
+    flex: 0 0 auto; height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--primary);
+    background: rgba(var(--primary-rgb),.18); color: var(--heading); font-size: 14px; cursor: pointer; box-sizing: border-box;
   }
   .follow-row { display: flex; gap: 6px; }
   .follow-btn {
-    flex: 1 1 0; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line-strong);
-    background: var(--surface-raised); color: var(--heading); font-size: 12px; cursor: pointer;
+    flex: 1 1 0; height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--heading); font-size: 14px; cursor: pointer; box-sizing: border-box;
   }
   .follow-btn.ghost { border-color: var(--line-strong); color: var(--muted); }
   .follow-info {
@@ -206,26 +219,26 @@ const metronomeCSS = `
     overflow: hidden; text-overflow: ellipsis;
   }
   .follow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .follow-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--muted); }
+  .follow-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
   .follow-grid input, .follow-grid select {
-    width: 100%; padding: 6px; border-radius: 8px; border: 1px solid var(--line-strong);
-    background: var(--surface-raised); color: var(--heading); font-size: 12px; outline: none;
+    width: 100%; height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--heading); font-size: 14px; outline: none; box-sizing: border-box;
   }
   .follow-grid input:focus, .follow-grid select:focus { border-color: var(--primary); }
-  .follow-hint { font-size: 10px; color: var(--muted); line-height: 1.4; }
+  .follow-hint { font-size: 11px; color: var(--muted); line-height: 1.4; }
   .meter-guess { color: var(--heading); }
-  .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); padding: 2px 0; }
-  .switch-row + .switch-row { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 2px; }
+  .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; font-size: 14px; color: var(--muted); padding: 4px 0; box-sizing: border-box; cursor: pointer; }
+  .switch-row + .switch-row { border-top: 1px solid var(--line); margin-top: 0; }
   .switch-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .switch-name { font-size: 13px; color: var(--txt-soft); }
-  .switch-desc { font-size: 9.5px; line-height: 1.35; color: var(--muted); }
+  .switch-name { font-size: 14px; color: var(--txt-soft); }
+  .switch-desc { font-size: 11px; line-height: 1.35; color: var(--muted); }
   .switch {
-    position: relative; flex: 0 0 auto; width: 42px; height: 24px; border-radius: 999px;
+    position: relative; flex: 0 0 auto; width: 44px; height: 26px; border-radius: 999px;
     border: 1px solid var(--line-strong); background: var(--surface-raised); cursor: pointer;
-    transition: background .15s, border-color .15s;
+    box-sizing: border-box; transition: background .15s, border-color .15s;
   }
   .switch::after {
-    content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%;
+    content: ''; position: absolute; left: 3px; top: 2px; width: 20px; height: 20px; border-radius: 50%;
     background: var(--muted); transition: left .15s, background .15s;
   }
   .switch.on { border-color: var(--primary); background: rgba(var(--primary-rgb),.24); }
@@ -234,18 +247,18 @@ const metronomeCSS = `
   /* 定时快捷档：一行 6 个，下面保留自定义输入 */
   .timer-presets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
   .timer-chip {
-    min-width: 0; padding: 7px 0; border-radius: 9px; border: 1px solid var(--line-strong);
+    min-width: 0; height: 36px; padding: 0 2px; border-radius: 10px; border: 1px solid var(--line-strong);
     background: var(--surface-raised); color: var(--muted); cursor: pointer;
-    font-size: 12px; line-height: 1.2; font-variant-numeric: tabular-nums;
+    font-size: 14px; line-height: 1.2; font-variant-numeric: tabular-nums; box-sizing: border-box;
   }
   .timer-chip.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
   .timer-chip.on:not(.armed) { opacity: .55; }
   .timer-chip:disabled { opacity: .4; cursor: not-allowed; }
-  .timer-custom { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+  .timer-custom { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
   .timer-custom.is-disabled { opacity: .5; }
   .timer-custom input {
-    width: 64px; padding: 6px; border-radius: 8px; border: 1px solid var(--line-strong);
-    background: var(--surface-raised); color: var(--heading); font-size: 12px;
+    width: 64px; height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--heading); font-size: 14px; box-sizing: border-box;
     text-align: center; outline: none;
   }
   .timer-custom input:focus { border-color: var(--primary); }
@@ -255,7 +268,7 @@ const metronomeCSS = `
     /* 永远占住同一块高度：开关 Swing / 变速 / 倒计时时，圆形旋钮不缩放、不位移 */
     display: flex; align-items: center; justify-content: center;
     height: 42px; box-sizing: border-box;
-    margin-top: 8px; padding: 4px 8px; border-radius: 9px;
+    margin-top: 8px; padding: 4px 8px; border-radius: 8px;
     background: transparent; border: 0;
     color: var(--accent-text); font-size: 10px; line-height: 1.35; text-align: center;
     overflow: hidden; opacity: 0; visibility: hidden; pointer-events: none;
@@ -268,28 +281,28 @@ const metronomeCSS = `
   }
   .hud-line { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hud-line.file { font-size: 10px; }
-  .hud-line.meta { font-size: 9px; opacity: .9; }
+  .hud-line.meta { font-size: 10px; opacity: .9; }
   .audio-mode-row { display: flex; align-items: center; gap: 16px; flex-wrap: nowrap; }
-  .audio-mode-row .check-row { font-size: 12px; }
-  .audio-mode-hint { font-size: 10px; line-height: 1.4; color: var(--muted); }
+  .audio-mode-row .check-row { font-size: 14px; }
+  .audio-mode-hint { font-size: 11px; line-height: 1.4; color: var(--muted); }
   .settings-panel input:disabled, .settings-panel select:disabled {
     opacity: .45; cursor: not-allowed;
   }
   .accent-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   .accent-btn {
-    padding: 7px 2px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised);
-    color: var(--muted); font-size: 11px; cursor: pointer; white-space: nowrap;
+    height: 36px; padding: 0 2px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised);
+    color: var(--muted); font-size: 11px; cursor: pointer; white-space: nowrap; box-sizing: border-box;
   }
   .accent-btn.t-accent { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.20); }
   .accent-btn.t-sub { border-color: var(--accent); color: var(--accent-text); background: rgba(var(--accent-rgb),.14); }
   .accent-btn.t-mute { border-color: var(--line-strong); color: var(--muted); background: var(--surface-deep); }
-  .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
-  .check-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+  .check-row { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; color: var(--muted); cursor: pointer; box-sizing: border-box; }
+  .check-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
   .num-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-  .num-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--muted); }
+  .num-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
   .num-grid input {
-    width: 100%; padding: 6px; border-radius: 8px; border: 1px solid var(--line-strong);
-    background: var(--surface-raised); color: var(--heading); font-size: 12px; outline: none;
+    width: 100%; height: 44px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong);
+    background: var(--surface-raised); color: var(--heading); font-size: 14px; outline: none; box-sizing: border-box;
   }
   .num-grid input:focus { border-color: var(--primary); }
   .range { width: 100%; accent-color: var(--primary); }
@@ -352,8 +365,8 @@ const metronomeHTML = `
     <div class="bottom-row">
       <button class="bottom-settings" id="btnSettings">${icon('settings', 14)} 设置</button>
       <button class="tap-btn" id="tapBtn">
-        <span style="font-size:14px;font-weight:800;letter-spacing:1.5px;">TAP</span>
-        <span id="tapHint" style="font-size:8.5px;opacity:.65;">测速</span>
+        <span style="font-size:14px;font-weight:700;letter-spacing:1.5px;">TAP</span>
+        <span id="tapHint" style="font-size:10px;opacity:.85;">测速</span>
       </button>
     </div>
   </div>
@@ -367,7 +380,6 @@ const metronomeHTML = `
         <h3>节拍器设置</h3>
         <div class="settings-sub">修改即时生效</div>
       </div>
-      <button class="icon-btn" id="btnCloseSettings" type="button" aria-label="关闭节拍器设置">${icon('close', 18)}</button>
     </div>
     <div class="settings-content" id="settingsContent">
     <section class="settings-card">
@@ -484,6 +496,9 @@ const metronomeHTML = `
         <div class="follow-hint">跟练：开始播放音频；测速：只分析并调整 BPM，开始不播放音频。分析结果仅供参考，可用 TAP 或手动修正。</div>
       </div>
     </section>
+    </div>
+    <div class="settings-footer">
+      <button class="settings-done" id="btnDoneSettings" type="button">完成</button>
     </div>
   </div>
 </div>
@@ -610,7 +625,7 @@ class GuitarMetronome extends HTMLElement {
     const settingsHead = $('settingsHead');
     const settingsGrabber = $('settingsGrabber');
     const btnSettings = $('btnSettings');
-    const btnCloseSettings = $('btnCloseSettings');
+    const btnDoneSettings = $('btnDoneSettings');
     const settingsContent = $('settingsContent');
     const tsGrid = $('tsGrid');
     const tsNumInput = $('tsNumInput'), tsDenInput = $('tsDenInput'), tsApply = $('tsApply');
@@ -867,6 +882,7 @@ class GuitarMetronome extends HTMLElement {
       const dual = this.timer.enabled && this.ramp.enabled;
       beatStrip.classList.toggle('show', show);
       beatStrip.classList.toggle('dual', dual);
+      beatStrip.classList.toggle('has-progress', this.timer.enabled || this.ramp.enabled);
       stripTimerTrack.classList.toggle('show', this.timer.enabled);
       stripRampTrack.classList.toggle('show', this.ramp.enabled);
     };
@@ -1589,6 +1605,15 @@ class GuitarMetronome extends HTMLElement {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleVibration(); }
     };
 
+    // 整行可点：点标题/描述也能切换，开关本体不重复触发
+    settingsContent.querySelectorAll('.switch-row').forEach((row) => {
+      row.addEventListener('click', (e) => {
+        const sw = row.querySelector('.switch');
+        if (!sw || e.target === sw || sw.contains(e.target)) return;
+        sw.click();
+      });
+    });
+
     updateFollowAudioUI();
     updateVibrationUI();
     updateFlashUI();
@@ -2070,7 +2095,7 @@ class GuitarMetronome extends HTMLElement {
         });
       }
     };
-    btnCloseSettings.onclick = closeSettings;
+    btnDoneSettings.onclick = closeSettings;
     bindBackdrop(settingsMask, closeSettings);
     this._settingsSwipeOff = bindSheetSwipe({
       sheet: settingsPanel,
@@ -2086,6 +2111,33 @@ class GuitarMetronome extends HTMLElement {
       if (isFinite(v)) this.setBpm(v, false); // 来自用户输入
     });
     bpmInput.addEventListener('blur', () => bpmInput.value = this.bpm);
+
+    // Android 返回键只收键盘、不派发 blur：用可视视口高度变化补一次失焦，
+    // 避免原生文本手柄停在 BPM 标签上；点按输入框以外也主动失焦。
+    let bpmHadKeyboard = false;
+    const releaseBpmFocusOnKeyboardClose = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const keyboardOpen = vv.height < window.innerHeight - 80;
+      if (document.activeElement !== bpmInput) {
+        bpmHadKeyboard = false;
+        return;
+      }
+      if (keyboardOpen) {
+        bpmHadKeyboard = true;
+      } else if (bpmHadKeyboard) {
+        bpmHadKeyboard = false;
+        bpmInput.blur();
+      }
+    };
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', releaseBpmFocusOnKeyboardClose);
+    }
+    this.shadowRoot.addEventListener('pointerdown', (e) => {
+      if (document.activeElement === bpmInput && e.target !== bpmInput) {
+        bpmInput.blur();
+      }
+    }, true);
 
     // BPM +/−：点一下走 1 格；按住 350ms 后连续步进，松手立即停
     const bindHoldStep = (btn, delta) => {

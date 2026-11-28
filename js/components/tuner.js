@@ -157,13 +157,19 @@ const tunerCSS = `
 
   .settings-mask { position: absolute; inset: 0; z-index: 500; display: flex; align-items: flex-end; justify-content: center; background: rgba(var(--shadow-rgb), 0.66); opacity: 0; pointer-events: none; transition: opacity 0.18s; }
   .settings-mask.show { opacity: 1; pointer-events: auto; }
-  .settings-sheet { width: 90%; max-width: 400px; max-height: 90%; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 8px 14px max(24px, calc(14px + env(safe-area-inset-bottom, 0px))); border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; will-change: transform; }
+  .settings-sheet { width: 90%; max-width: 400px; max-height: 90%; overflow: hidden; box-sizing: border-box; display: flex; flex-direction: column; gap: 0; padding: 0; border-radius: 18px 18px 0 0; border: 1px solid var(--line); border-bottom: none; background: linear-gradient(180deg, var(--surface-raised), var(--surface-deep)); box-shadow: 0 -12px 40px rgba(var(--shadow-rgb), 0.32); transform: translateY(100%); transition: transform 0.2s; will-change: transform; }
   .settings-mask.show .settings-sheet { transform: translateY(0); }
   .settings-sheet.sheet-dragging { transition: none; user-select: none; -webkit-user-select: none; }
-  .sheet-grabber { flex: none; width: 44px; height: 4px; margin: 0 auto 2px; border-radius: 999px; background: var(--line-strong); opacity: 0.75; touch-action: none; }
-  .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; touch-action: none; }
-  .sheet-title { margin: 0; font-size: 18px; color: var(--heading); }
+  .sheet-grabber { flex: none; width: 44px; height: 4px; margin: 8px auto 0; border-radius: 999px; background: var(--line-strong); opacity: 0.75; touch-action: none; }
+  .sheet-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--surface-raised); touch-action: none; }
+  .sheet-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--heading); }
+  #settingsTitle:focus, #settingsTitle:focus-visible { outline: none; }
   .icon-btn { width: 32px; height: 32px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-hover); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+  .settings-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .settings-footer { flex: 0 0 auto; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--surface-deep); }
+  .settings-done { width: 100%; height: 46px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--heading); font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; }
+  .settings-done:active { transform: scale(0.98); background: var(--surface-hover); }
+  .settings-done:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
   .settings-page { display: flex; flex-direction: column; gap: 12px; }
   .settings-page[hidden], .settings-mask[hidden], [hidden] { display: none !important; }
   .sheet-section { display: flex; flex-direction: column; gap: 6px; padding: 9px; border-radius: 12px; background: var(--surface-deep); border: 1px solid var(--line); }
@@ -304,11 +310,11 @@ const tunerHTML = `
       <div class="sheet-grabber" id="settingsGrabber" aria-hidden="true"></div>
       <div class="sheet-head" id="settingsHead">
         <div>
-          <h2 class="sheet-title" id="settingsTitle">调音设置</h2>
+          <h2 class="sheet-title" id="settingsTitle" tabindex="-1">调音设置</h2>
         </div>
-        <button class="icon-btn" id="closeSettings" type="button" aria-label="关闭调音设置">${icon('close', 18)}</button>
       </div>
 
+      <div class="settings-content" id="settingsContent">
       <div class="settings-page" id="settingsMain">
         <section class="sheet-section">
           <div class="section-title">${icon('music', 14)} 调弦</div>
@@ -379,6 +385,10 @@ const tunerHTML = `
           <button class="btn-reset" id="customReset" type="button">填入标准调弦</button>
           <button class="btn-save" id="customSave" type="button">保存并使用</button>
         </div>
+      </div>
+      </div>
+      <div class="settings-footer">
+        <button class="settings-done" id="settingsDone" type="button">完成</button>
       </div>
     </div>
   </div>
@@ -667,12 +677,14 @@ class GuitarTuner extends HTMLElement {
     });
     mask.hidden = false;
     mask.setAttribute('aria-hidden', 'false');
+    const content = root.getElementById('settingsContent');
+    if (content) content.scrollTop = 0;
     requestAnimationFrame(() => {
       mask.classList.add('show');
-      const close = root.getElementById('closeSettings');
-      if (close) {
+      const title = root.getElementById('settingsTitle');
+      if (title) {
         // 弹层还在入场动画中，聚焦若触发滚动会把 WebView 视口上推，主界面会闪动
-        try { close.focus({ preventScroll: true }); } catch (err) { close.focus(); }
+        try { title.focus({ preventScroll: true }); } catch (err) { title.focus(); }
       }
     });
   }
@@ -718,6 +730,8 @@ class GuitarTuner extends HTMLElement {
     const editor = this.shadowRoot.getElementById('customEditor');
     if (main) main.hidden = false;
     if (editor) editor.hidden = true;
+    const content = this.shadowRoot.getElementById('settingsContent');
+    if (content) content.scrollTop = 0;
   }
 
   showCustomEditor() {
@@ -733,6 +747,8 @@ class GuitarTuner extends HTMLElement {
     const notes = this.customTuning ? this.customTuning.notes : TUNING_PRESETS[0].notes;
     if (nameInput) nameInput.value = this.customTuning ? this.customTuning.name : '';
     this.buildCustomNoteFields(notes);
+    const content = root.getElementById('settingsContent');
+    if (content) content.scrollTop = 0;
   }
 
   buildCustomNoteFields(notes) {
@@ -1141,7 +1157,8 @@ class GuitarTuner extends HTMLElement {
     const openSettings = $('openSettings');
     const settingsMask = $('settingsMask');
     const settingsSheet = $('settingsSheet');
-    const closeSettings = $('closeSettings');
+    const settingsContent = $('settingsContent');
+    const settingsDone = $('settingsDone');
     const presetField = $('presetField');
     const a4SheetMinus = $('a4SheetMinus');
     const a4SheetPlus = $('a4SheetPlus');
@@ -1151,14 +1168,14 @@ class GuitarTuner extends HTMLElement {
     const customSave = $('customSave');
 
     if (openSettings) openSettings.onclick = () => this.openSettings();
-    if (closeSettings) closeSettings.onclick = () => this.closeSettings();
+    if (settingsDone) settingsDone.onclick = () => this.closeSettings();
     if (settingsMask) {
       this._settingsBackdropOff = bindBackdrop(settingsMask, () => this.closeSettings());
     }
     if (settingsSheet) {
       this._settingsSwipeOff = bindSheetSwipe({
         sheet: settingsSheet,
-        scrollEl: settingsSheet,
+        scrollEl: settingsContent,
         grabEls: [$('settingsGrabber'), $('settingsHead')],
         isBlocked: () => {
           if (!this.shadowRoot) return true;
@@ -1181,8 +1198,8 @@ class GuitarTuner extends HTMLElement {
         this.togglePresetMenu();
       };
     }
-    if (settingsSheet) {
-      settingsSheet.addEventListener('scroll', () => {
+    if (settingsContent) {
+      settingsContent.addEventListener('scroll', () => {
         if (this._presetMenuOpen) this.closePresetMenu();
       }, { passive: true });
     }
