@@ -143,6 +143,17 @@ TEST = r"""
     const trendToggle = $('trendToggle');
     const logList = $('logList');
     const listHead = r.querySelector('.list-head');
+    const listLabel = r.querySelector('.list-head-label');
+    const listIcon = listLabel?.querySelector('svg');
+    const formTitleSafe = r.querySelector('.form-title');
+    const trendTitleSafe = r.querySelector('.trend-title');
+    const textLeft = (el) => {
+      const node = Array.from(el.childNodes).find((n) => n.nodeType === 3 && n.nodeValue.trim());
+      if (!node) return 0;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return range.getBoundingClientRect().left;
+    };
     const cards = Array.from(r.querySelectorAll('.log-card'));
     const visibleText = (root) => {
       const parts = [];
@@ -177,6 +188,10 @@ TEST = r"""
     check('摘要单行', formPeek.getBoundingClientRect().height <= 18, `${formPeek.getBoundingClientRect().height.toFixed(1)}`);
     check('趋势默认仍收起', trendBox.classList.contains('collapsed') && trendToggle.getAttribute('aria-expanded') === 'false', '');
     check('列表标题在趋势之后', Math.abs(listHead.getBoundingClientRect().top - trendBox.getBoundingClientRect().bottom) < 2, `${listHead.getBoundingClientRect().top.toFixed(0)}/${trendBox.getBoundingClientRect().bottom.toFixed(0)}`);
+    check('列表标题有图标', !!listIcon && Math.round(listIcon.getBoundingClientRect().width) === 14, listIcon ? `${listIcon.getBoundingClientRect().width}` : 'none');
+    check('列表标题文字与上方标题左对齐', Math.abs(textLeft(listLabel) - textLeft(formTitleSafe)) <= 1 && Math.abs(textLeft(listLabel) - textLeft(trendTitleSafe)) <= 1, `${textLeft(listLabel).toFixed(1)}/${textLeft(formTitleSafe).toFixed(1)}/${textLeft(trendTitleSafe).toFixed(1)}`);
+    check('三处标题图标同色', getComputedStyle(listIcon).color === getComputedStyle(formTitleSafe).color && getComputedStyle(listIcon).color === getComputedStyle(trendTitleSafe.querySelector('svg')).color, `${getComputedStyle(listIcon).color}/${getComputedStyle(formTitleSafe).color}`);
+    check('列表标题到列表保留 12px 安全区', (listRect.top - listLabel.getBoundingClientRect().bottom) >= 10 && Math.abs(parseFloat(getComputedStyle(listHead).paddingBottom) - 12) <= 1, `${(listRect.top - listLabel.getBoundingClientRect().bottom).toFixed(1)}/${getComputedStyle(listHead).paddingBottom}`);
     check('首条记录明显上移', firstCard && firstCard.top <= 245, firstCard ? firstCard.top.toFixed(1) : 'none');
     check('首屏至少 4 条完整记录', fullyVisible >= 4, `${fullyVisible}/${cards.length}, list=${listRect.top.toFixed(0)}–${listRect.bottom.toFixed(0)}`);
     check('记录数量 6', $('listCount').textContent.trim() === '6 条', $('listCount').textContent.trim());
@@ -198,6 +213,7 @@ TEST = r"""
     check('记录页输入框与主按钮高度', inpName.getBoundingClientRect().height === 44 && inpTime.getBoundingClientRect().height === 44 && btnSubmit.getBoundingClientRect().height === 46, `${inpName.getBoundingClientRect().height}/${btnSubmit.getBoundingClientRect().height}`);
     check('记录页字号收口', getComputedStyle(formTitle).fontSize === '14px' && getComputedStyle(logTitle).fontSize === '14px' && getComputedStyle(logDetail).fontSize === '11px' && getComputedStyle(r.querySelector('.stats-line')).fontSize === '11px' && getComputedStyle(r.querySelector('.stat-val')).fontSize === '14px', `${getComputedStyle(formTitle).fontSize}/${getComputedStyle(logTitle).fontSize}/${getComputedStyle(logDetail).fontSize}`);
     check('记录页操作热区 44', btnDel.getBoundingClientRect().height === 44 && shareBtn.getBoundingClientRect().height === 44 && getComputedStyle(segBtn).minHeight === '44px', `${btnDel.getBoundingClientRect().height}/${shareBtn.getBoundingClientRect().height}/${getComputedStyle(segBtn).minHeight}`);
+    check('分享按钮无额外底色', getComputedStyle(shareBtn).backgroundColor === 'rgba(0, 0, 0, 0)', getComputedStyle(shareBtn).backgroundColor);
 
     inpName.value = '草稿曲目';
     inpTime.value = '12';

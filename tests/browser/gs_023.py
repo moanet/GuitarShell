@@ -445,7 +445,13 @@ TEST_JS = r"""
   check('预览浮层打开', !!preview, '');
   if (!preview) throw new Error('练习卡片预览未打开');
   const canvas = preview.shadowRoot.getElementById('cardCanvas');
+  const previewBox = preview.shadowRoot.querySelector('.preview');
+  const sheetBox = preview.shadowRoot.querySelector('.sheet');
+  const previewRect = previewBox.getBoundingClientRect();
+  const sheetRect = sheetBox.getBoundingClientRect();
   check('卡片尺寸 1080×1920', canvas.width === 1080 && canvas.height === 1920, `${canvas.width}×${canvas.height}`);
+  check('预览高度 420–430', previewRect.height >= 420 && previewRect.height <= 431, previewRect.height.toFixed(1));
+  check('分享弹窗一屏显示', sheetRect.top >= 0 && sheetRect.bottom <= innerHeight + 1 && previewRect.height < innerHeight - 200, `${sheetRect.top.toFixed(1)}–${sheetRect.bottom.toFixed(1)}/${innerHeight}`);
   check('默认背景为深胡桃木', canvas.dataset.background === 'walnut', canvas.dataset.background);
   const swatches = preview.shadowRoot.getElementById('swatches');
   check('背景色板共 8 个', swatches && swatches.querySelectorAll('.swatch').length === 8, swatches ? `${swatches.querySelectorAll('.swatch').length}` : 'missing');

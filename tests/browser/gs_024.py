@@ -223,7 +223,7 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
   const importBtn = $('btnImportMain');
   const folderBtn = $('btnFolderMain');
   const search = $('searchInp');
-  const sort = $('sortSel');
+  const sort = $('sortBtn');
   const cardsBefore = reader.shadowRoot.querySelectorAll('.score-card').length;
 
   search.value = 'gbq';
@@ -234,6 +234,24 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
   search.dispatchEvent(new Event('input', { bubbles: true }));
   await sleep(220);
   const cardsRestored = reader.shadowRoot.querySelectorAll('.score-card').length;
+
+  const sortMenu = $('sortMenu');
+  sort.click();
+  await sleep(120);
+  const sortOpts = Array.from(sortMenu.querySelectorAll('.sort-opt'));
+  const sortMenuOpen = !sortMenu.hidden && sortOpts.length === 3;
+  const nativeSelect = !!reader.shadowRoot.querySelector('select');
+  sortOpts.find((opt) => opt.dataset.sort === 'name').click();
+  await sleep(260);
+  const sortLabelName = $('sortLabel').textContent.trim();
+  const sortMenuClosed = sortMenu.hidden;
+  sort.click();
+  await sleep(100);
+  sortOpts.find((opt) => opt.dataset.sort === 'newest').click();
+  await sleep(220);
+
+  const tagRect = reader.shadowRoot.querySelector('.tag-chip').getBoundingClientRect();
+  const manageRect = reader.shadowRoot.querySelector('.manage-btn').getBoundingClientRect();
 
   out.reader = {
     cardsBefore, cardsFiltered, cardsRestored,
@@ -252,6 +270,9 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
     searchHeight: Math.round(search.getBoundingClientRect().height),
     sortWidth: Math.round(sort.getBoundingClientRect().width),
     sortHeight: Math.round(sort.getBoundingClientRect().height),
+    sortMenuOpen, nativeSelect, sortLabelName, sortMenuClosed,
+    tagTop: tagRect.top,
+    manageTop: manageRect.top,
     filterPadding: getComputedStyle(reader.shadowRoot.querySelector('.filter-bar')).padding,
     shelfPadding: getComputedStyle(reader.shadowRoot.querySelector('.shelf-view')).padding,
     shelfGap: getComputedStyle(reader.shadowRoot.querySelector('.shelf-view')).gap,
@@ -346,6 +367,8 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
         check("文件夹按钮为图标并在 640 下隐藏", r["folderSvg"] and r["folderDisplay"] == "none", f"{r['folderDisplay']}")
         check("搜索占位收口", r["placeholder"] == "搜谱名 / 标签 / 拼音", r["placeholder"])
         check("搜索框与排序不压盖", r["searchWidth"] >= 120 and r["sortWidth"] <= 96, f"search={r['searchWidth']} sort={r['sortWidth']}")
+        check("排序为应用内下拉", not r["nativeSelect"] and r["sortMenuOpen"] and r["sortLabelName"] == "按名称 A-Z" and r["sortMenuClosed"], f"native={r['nativeSelect']} open={r['sortMenuOpen']} label={r['sortLabelName']!r} closed={r['sortMenuClosed']}")
+        check("标签与管理垂直对齐", abs(r["tagTop"] - r["manageTop"]) <= 1, f"tag={r['tagTop']:.1f} manage={r['manageTop']:.1f}")
         check("搜索过滤仍生效并可清空", r["cardsFiltered"] == 0 and r["cardsRestored"] >= 1, f"{r['cardsFiltered']}→{r['cardsRestored']}")
         check("书架卡片编辑与选中为 SVG", r["cardEditSvg"] >= 1, str(r["cardEditSvg"]))
         check("封面格式占位为 SVG", r["coverSvg"] >= 1, str(r["coverSvg"]))

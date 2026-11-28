@@ -44,15 +44,16 @@ const readerCSS = `
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host, * { -webkit-tap-highlight-color: transparent !important; }
   
-  .toolbar { display: none; gap: 6px; padding: 0 12px; background: var(--bg1); border-bottom: 1px solid var(--line); align-items: center; z-index: 10; flex-wrap: nowrap; min-height: 46px; box-sizing: border-box; }
+  .toolbar { display: none; gap: 6px; padding: 3px 12px; background: var(--viewer); border-bottom: 1px solid var(--line); align-items: center; z-index: 10; flex-wrap: nowrap; min-height: 47px; box-sizing: border-box; }
   :host(.reading) .toolbar { display: flex; }
   .tool-btn {
-    flex: 1 1 0; min-width: 0; height: 46px; padding: 0 2px; box-sizing: border-box;
+    position: relative; flex: 1 1 0; min-width: 0; height: 40px; padding: 0 2px; box-sizing: border-box;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
     border: 1px solid var(--line-strong); border-radius: 12px;
-    background: var(--surface-raised); color: var(--txt-soft); box-shadow: none;
+    background: var(--surface-raised); color: var(--txt); box-shadow: none;
     font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
   }
+  .tool-btn::after { content: ''; position: absolute; inset: -2px 0; border-radius: inherit; }
   .tool-btn:active { background: var(--surface-hover); border-color: var(--line-warm); }
   .tool-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
   .tool-btn .ti { width: 18px; height: 18px; display: grid; place-items: center; flex: none; position: relative; pointer-events: none; }
@@ -64,7 +65,6 @@ const readerCSS = `
     font-size: 10px; font-weight: 700; line-height: 14px; text-align: center;
   }
   .tool-btn .tl { font-size: 11px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
-  .tool-btn.accent { color: var(--accent-text); border-color: var(--line-warm); }
 
   .filter-bar { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--surface-deep); border-bottom: 1px solid var(--line); max-width: 1400px; margin: 0 auto; box-sizing: border-box; width: 100%; }
   .search-row { display: flex; gap: 8px; align-items: center; }
@@ -84,14 +84,44 @@ const readerCSS = `
   @media (max-width: 640px) { .import-folder { display: none; } }
   .search-inp { flex: 1; min-width: 0; box-sizing: border-box; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 14px; }
   .search-inp:focus { border-color: var(--primary); }
-  .sort-sel { flex: 0 0 92px; width: 92px; min-width: 0; max-width: 92px; box-sizing: border-box; height: 44px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 14px; }
+  .sort-wrap { flex: 0 0 92px; width: 92px; min-width: 0; max-width: 92px; position: relative; }
+  .sort-btn {
+    width: 100%; height: 44px; padding: 0 8px; box-sizing: border-box;
+    border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised);
+    color: var(--txt); font-size: 14px; font-family: inherit; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 4px;
+  }
+  .sort-btn > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sort-btn .sort-caret { display: grid; place-items: center; color: var(--muted); transform: rotate(90deg); flex: none; }
+  .sort-btn[aria-expanded="true"] { border-color: var(--primary); }
+  .sort-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .sort-menu {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 82;
+    width: 148px; padding: 6px; box-sizing: border-box;
+    display: flex; flex-direction: column; gap: 2px;
+    background: var(--surface-raised); border: 1px solid var(--line-strong); border-radius: 14px;
+    box-shadow: 0 14px 32px var(--shadow-color);
+  }
+  .sort-menu[hidden] { display: none; }
+  .sort-opt {
+    width: 100%; min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px;
+    background: transparent; color: var(--txt); font-size: 14px; font-family: inherit;
+    text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    white-space: nowrap;
+  }
+  .sort-opt.active { background: rgba(var(--primary-rgb), .14); color: var(--heading); font-weight: 700; }
+  .sort-check { visibility: hidden; display: inline-flex; align-items: center; color: var(--accent-text); }
+  .sort-opt.active .sort-check { visibility: visible; }
+  .sort-scrim { position: fixed; inset: 0; z-index: 81; background: transparent; }
+  .sort-scrim[hidden] { display: none; }
   @media (max-width: 380px) {
     .search-row { gap: 6px; }
     .search-inp { font-size: 14px; padding: 0 10px; }
-    .sort-sel { flex-basis: 88px; width: 88px; max-width: 88px; font-size: 14px; padding: 0 6px; }
+    .sort-wrap { flex-basis: 88px; width: 88px; max-width: 88px; }
+    .sort-btn { font-size: 14px; padding: 0 6px; }
   }
   .tag-row { display: flex; gap: 8px; align-items: center; }
-  .tag-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; flex: 1; min-width: 0; }
+  .tag-bar { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; align-items: center; }
   .tag-bar::-webkit-scrollbar { display: none; }
   .tag-chip { height: 44px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-raised); font-size: 14px; cursor: pointer; white-space: nowrap; color: var(--muted); display: inline-flex; align-items: center; }
   .tag-chip.active { background: rgba(var(--primary-rgb), 0.20); border-color: var(--primary); color: var(--heading); }
@@ -102,7 +132,7 @@ const readerCSS = `
     font-weight: 700; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center;
   }
   .manage-btn.active { background: rgba(var(--primary-rgb), .18); border-color: var(--primary); color: var(--accent-text); }
-  .search-inp:disabled, .sort-sel:disabled { opacity: .45; cursor: not-allowed; }
+  .search-inp:disabled, .sort-btn:disabled { opacity: .45; cursor: not-allowed; }
   .import-btn:focus-visible, .import-folder:focus-visible, .tag-chip:focus-visible, .manage-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
   .shelf-view { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; align-content: start; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; max-width: 1400px; margin: 0 auto; box-sizing: border-box; width: 100%; }
@@ -492,7 +522,7 @@ const readerHTML = `
       <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg></span>
       <span class="tl">返回</span>
     </button>
-    <button class="tool-btn accent" id="btnLog" type="button" aria-label="记录本次练习">
+    <button class="tool-btn" id="btnLog" type="button" aria-label="记录本次练习">
       <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
       <span class="tl">打卡</span>
     </button>
@@ -504,7 +534,7 @@ const readerHTML = `
       <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-4-6 4Z"/></svg><span class="tool-badge" id="bookmarkBadge" hidden></span></span>
       <span class="tl">书签</span>
     </button>
-    <button class="tool-btn accent" id="btnSplit" type="button" style="display:none;" aria-label="拆分 PDF 页段">
+    <button class="tool-btn" id="btnSplit" type="button" style="display:none;" aria-label="拆分 PDF 页段">
       <span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1 20 20"/><path d="M8.1 15.9 20 4"/></svg></span>
       <span class="tl">拆分</span>
     </button>
@@ -521,11 +551,17 @@ const readerHTML = `
       <button class="import-btn" id="btnImportMain" type="button" aria-label="导入乐谱" title="导入乐谱">${icon('import', 18)}</button>
       <button class="import-folder" id="btnFolderMain" type="button" title="导入整个文件夹" aria-label="导入整个文件夹">${icon('folder', 18)}</button>
       <input type="text" id="searchInp" class="search-inp" placeholder="搜谱名 / 标签 / 拼音">
-      <select id="sortSel" class="sort-sel">
-        <option value="newest">最新添加</option>
-        <option value="oldest">最旧添加</option>
-        <option value="name">按名称 A-Z</option>
-      </select>
+      <div class="sort-wrap">
+        <button class="sort-btn" id="sortBtn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="sortMenu">
+          <span id="sortLabel">最新添加</span><span class="sort-caret">${icon('chevronRight', 11)}</span>
+        </button>
+        <div class="sort-menu" id="sortMenu" role="listbox" aria-label="排序方式" hidden>
+          <button class="sort-opt active" type="button" role="option" data-sort="newest" aria-selected="true">最新添加<span class="sort-check">${icon('check', 14)}</span></button>
+          <button class="sort-opt" type="button" role="option" data-sort="oldest" aria-selected="false">最旧添加<span class="sort-check">${icon('check', 14)}</span></button>
+          <button class="sort-opt" type="button" role="option" data-sort="name" aria-selected="false">按名称 A-Z<span class="sort-check">${icon('check', 14)}</span></button>
+        </div>
+        <div class="sort-scrim" id="sortScrim" hidden></div>
+      </div>
     </div>
     <div class="tag-row">
       <div class="tag-bar" id="tagBar"></div>
@@ -892,7 +928,10 @@ class SheetReader extends HTMLElement {
     const loading = $('loading');
     const toastEl = $('toast');
     const searchInp = $('searchInp');
-    const sortSel = $('sortSel');
+    const sortBtn = $('sortBtn');
+    const sortLabel = $('sortLabel');
+    const sortMenu = $('sortMenu');
+    const sortScrim = $('sortScrim');
     const tagBar = $('tagBar');
     const btnManage = $('btnManage');
     const batchBar = $('batchBar');
@@ -999,7 +1038,8 @@ class SheetReader extends HTMLElement {
       this.manageMode = !!enabled;
       if (!this.manageMode) this.selectedIds.clear();
       searchInp.disabled = this.manageMode;
-      sortSel.disabled = this.manageMode;
+      sortBtn.disabled = this.manageMode;
+      if (this.manageMode) closeSortMenu();
       tagBar.classList.toggle('disabled', this.manageMode);
       this.renderList();
       if (this.manageMode) {
@@ -1461,14 +1501,53 @@ class SheetReader extends HTMLElement {
       showToast(changed > 0 ? `已更新 ${changed} 份乐谱的标签` : '没有需要变更的标签');
     };
 
+    const sortLabels = { newest: '最新添加', oldest: '最旧添加', name: '按名称 A-Z' };
+    const sortOptions = Array.from(sortMenu.querySelectorAll('.sort-opt'));
+    const closeSortMenu = () => {
+      sortMenu.hidden = true;
+      sortScrim.hidden = true;
+      sortBtn.setAttribute('aria-expanded', 'false');
+      untrackLayer('reader-sort');
+    };
+    const openSortMenu = () => {
+      if (this.manageMode) return;
+      sortMenu.hidden = false;
+      sortScrim.hidden = false;
+      sortBtn.setAttribute('aria-expanded', 'true');
+      trackLayer('reader-sort', closeSortMenu, { blocksNavigation: false });
+    };
+    const setSortMode = (mode) => {
+      if (!sortLabels[mode]) return;
+      this.sortMode = mode;
+      sortLabel.textContent = sortLabels[mode];
+      sortOptions.forEach((opt) => {
+        const active = opt.dataset.sort === mode;
+        opt.classList.toggle('active', active);
+        opt.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      this.renderList();
+    };
+    this.setSortMode = setSortMode;
+    this.closeSortMenu = closeSortMenu;
+
+    sortBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (sortMenu.hidden) openSortMenu(); else closeSortMenu();
+    };
+    sortScrim.onpointerdown = (e) => {
+      e.preventDefault();
+      closeSortMenu();
+    };
+    sortMenu.onclick = (e) => {
+      const opt = e.target.closest('.sort-opt');
+      if (!opt) return;
+      setSortMode(opt.dataset.sort);
+      closeSortMenu();
+    };
+
     searchInp.oninput = (e) => {
       if (this.manageMode) return;
       this.searchKeyword = e.target.value;
-      this.renderList();
-    };
-    sortSel.onchange = (e) => {
-      if (this.manageMode) return;
-      this.sortMode = e.target.value;
       this.renderList();
     };
 

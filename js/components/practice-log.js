@@ -19,7 +19,7 @@ const logCSS = `
   .form-box { padding: 0 16px; background: var(--surface-deep); border-bottom: 1px solid var(--line); flex-shrink: 0; }
   .form-head { width: 100%; min-height: 48px; padding: 0; border: 0; background: transparent; color: inherit; font-family: inherit; display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer; }
   .form-title { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--heading); letter-spacing: .3px; flex-shrink: 0; }
-  .form-title svg { display: block; color: var(--accent-text); }
+  .form-title svg { display: block; color: currentColor; }
   .form-peek { margin-left: auto; min-width: 0; max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
   .form-peek b { color: var(--accent-text); font-weight: 700; }
   .form-chevron { flex: 0 0 auto; width: 16px; display: grid; place-items: center; color: var(--muted); transition: transform .2s; }
@@ -32,9 +32,11 @@ const logCSS = `
   .inp { flex: 1; min-width: 0; box-sizing: border-box; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--txt); font-size: 14px; outline: none; transition: 0.2s; }
   .inp:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(var(--primary-rgb),.12); }
   .btn-submit { width: 100%; height: 46px; padding: 0 18px; background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border: 1px solid rgba(var(--secondary-rgb),.10); border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 6px 16px rgba(var(--primary-rgb),.18); display: flex; align-items: center; justify-content: center; gap: 6px; }
-  .list-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 0; font-size: 14px; font-weight: 700; color: var(--txt); flex-shrink: 0; }
+  .list-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 12px; font-size: 14px; font-weight: 700; color: var(--heading); flex-shrink: 0; }
+  .list-head-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+  .list-head-label svg { display: block; color: currentColor; flex: none; }
   .list-count { font-size: 11px; font-weight: 400; color: var(--muted); }
-  .log-list { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .log-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
   .log-card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
   .log-info { flex: 1; min-width: 0; }
   .log-title { font-size: 14px; font-weight: 700; color: var(--heading); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -54,13 +56,14 @@ const logCSS = `
   .trend-toggle-row { flex: 1; min-width: 0; min-height: 44px; border: none; background: transparent; display: flex; align-items: center; gap: 9px; padding: 0 0 0 16px; cursor: pointer; color: var(--txt); font-family: inherit; text-align: left; }
   .share-btn {
     flex: 0 0 auto; margin-right: 12px; min-height: 44px; padding: 0 12px; border-radius: 14px;
-    border: 1px solid rgba(var(--primary-rgb), .5); background: rgba(var(--primary-rgb), .12);
+    border: 1px solid rgba(var(--primary-rgb), .5); background: transparent;
     color: var(--accent-text); font-size: 14px; font-weight: 700; font-family: inherit;
     white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
   }
   .share-btn:active { filter: brightness(.95); }
   .trend-toggle-row:hover { background: rgba(var(--primary-rgb),.06); }
-  .trend-title { font-size: 14px; font-weight: 700; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; }
+  .trend-title { font-size: 14px; font-weight: 700; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; color: var(--heading); }
+  .trend-title svg { display: block; color: currentColor; }
   .trend-peek { flex: 1; min-width: 0; font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .trend-chevron { font-size: 14px; color: var(--muted); flex-shrink: 0; }
   .trend-box:not(.collapsed) .trend-peek { display: none; }
@@ -103,7 +106,7 @@ const logHTML = `
   <div class="trend-box collapsed" id="trendBox">
     <div class="trend-head">
       <button class="trend-toggle-row" id="trendToggle" type="button" aria-expanded="false">
-        <span class="trend-title">${icon('chart', 15)} 练习趋势</span>
+        <span class="trend-title">${icon('chart', 15)}练习趋势</span>
         <span class="trend-peek" id="trendPeek">近 7 天 · 0 分钟</span>
         <span class="trend-chevron" id="trendChevron">▸</span>
       </button>
@@ -126,7 +129,7 @@ const logHTML = `
       </div>
     </div>
   </div>
-  <div class="list-head"><span>练习记录列表</span><span class="list-count" id="listCount">0 条</span></div>
+  <div class="list-head"><span class="list-head-label">${icon('list', 14)}练习记录列表</span><span class="list-count" id="listCount">0 条</span></div>
   <div class="log-list" id="logList"><div class="empty-tip">还没有打卡记录，开始你的第一次练习吧！</div></div>
   <div class="toast" id="toast"></div>
 `;

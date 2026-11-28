@@ -155,8 +155,10 @@ TEST = r"""
     check('进入阅读态', reader.classList.contains('reading') && cs(toolbar).display === 'flex', reader.className);
     check('工具栏总高 46–48', toolbarRect.height >= 46 && toolbarRect.height <= 48, toolbarRect.height.toFixed(1));
     check('工具栏内边距 12', cs(toolbar).paddingLeft === '12px' && cs(toolbar).paddingRight === '12px', `${cs(toolbar).paddingLeft}/${cs(toolbar).paddingRight}`);
+    check('工具栏与阅读区同底', cs(toolbar).backgroundColor === cs($('viewer')).backgroundColor, `${cs(toolbar).backgroundColor}/${cs($('viewer')).backgroundColor}`);
     check('工具栏与内容无缝衔接', Math.abs(viewerTop - toolbarRect.bottom) <= 1, `${viewerTop.toFixed(1)}/${toolbarRect.bottom.toFixed(1)}`);
-    check('工具栏按钮 46/12', toolRects.length >= 3 && toolRects.every((box) => Math.abs(box.height - 46) <= 1) && toolButtons.every((el) => cs(el).borderRadius === '12px'), toolRects.map((box) => box.height.toFixed(1)).join(','));
+    check('工具栏按钮 40 视觉 / 44 热区', toolRects.length >= 3 && toolRects.every((box) => Math.abs(box.height - 40) <= 1) && toolButtons.every((el) => cs(el).borderRadius === '12px' && cs(el, '::after').content !== 'none' && cs(el, '::after').top === '-2px' && cs(el, '::after').bottom === '-2px'), toolRects.map((box) => box.height.toFixed(1)).join(','));
+    check('工具栏文字统一主文字色', toolButtons.every((el) => cs(el).color === cs(toolButtons[0]).color && !el.classList.contains('accent')), toolButtons.map((el) => cs(el).color).join(','));
     check('工具栏按钮等分且不溢出', toolButtons.every((el, i) => Math.abs(toolRects[i].width - toolRects[0].width) <= 1) && toolbar.scrollWidth <= toolbar.clientWidth + 1, `${toolRects.map((box) => box.width.toFixed(1)).join(',')} / ${toolbar.scrollWidth}/${toolbar.clientWidth}`);
     check('工具栏图标 18 / 标签 11', toolButtons.every((el) => {
       const svg = el.querySelector('.ti svg');

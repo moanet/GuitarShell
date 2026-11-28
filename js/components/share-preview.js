@@ -60,8 +60,14 @@ const previewCSS = `
     background: var(--surface-raised); color: var(--txt); font-size: 18px; cursor: pointer;
     display: grid; place-items: center; font-family: inherit;
   }
-  .preview { border-radius: 14px; overflow: hidden; border: 1px solid rgba(var(--primary-rgb), .22); background: #241B15; }
-  .preview canvas { display: block; width: 100%; height: auto; }
+  .preview {
+    flex: 0 0 auto; align-self: center; max-width: 100%; box-sizing: border-box;
+    height: min(430px, calc(100vh - 300px));
+    height: min(430px, calc(100dvh - 300px));
+    aspect-ratio: 9 / 16;
+    border-radius: 14px; overflow: hidden; border: 1px solid rgba(var(--primary-rgb), .22); background: #241B15;
+  }
+  .preview canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .switch { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; color: var(--txt-soft); cursor: pointer; }
   .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
