@@ -68,18 +68,23 @@ const settingsCSS = `
   .head-copy { flex: 1; min-width: 0; }
   h2 { margin: 0; font-size: 20px; line-height: 1.2; color: var(--heading); letter-spacing: .4px; }
   .close {
+    position: relative;
     flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line-strong);
     background: var(--surface-raised); color: var(--txt); font-size: 19px; line-height: 1; cursor: pointer;
     display: grid; place-items: center;
   }
+  .close::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
   .close:active { background: var(--surface-hover); }
+  .close:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
   .body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 12px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
   .card { background: var(--card-bg); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
   .card-head { display: flex; align-items: center; gap: 8px; min-height: 36px; margin-bottom: 10px; }
   .fold-head {
+    position: relative;
     width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; margin: 0; padding: 0;
     border: 0; background: transparent; color: inherit; font-family: inherit; text-align: left; cursor: pointer;
   }
+  .fold-head::after { content: ''; position: absolute; inset: -2px 0; border-radius: 8px; }
   .card-head .ico, .fold-head .ico { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px; background: rgba(var(--primary-rgb), .14); color: var(--accent-text); font-size: 13px; flex-shrink: 0; }
   h3 { margin: 0; font-size: 13px; font-weight: 700; color: var(--heading); letter-spacing: .4px; white-space: nowrap; flex-shrink: 0; }
   .fold-value {
@@ -110,17 +115,21 @@ const settingsCSS = `
   .fold-card.open .chev { transform: rotate(180deg); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .act {
+    position: relative;
     width: 100%; min-height: 40px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface-raised);
     color: var(--txt); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
   }
+  .act::after { content: ''; position: absolute; inset: -2px 0; border-radius: inherit; }
   .act.primary { background: linear-gradient(180deg, var(--accent), var(--primary)); border-color: rgba(var(--secondary-rgb), .1); color: var(--on-primary); box-shadow: 0 6px 16px rgba(var(--primary-rgb), .18); }
   .act:active { filter: brightness(.96); }
   .act:disabled { opacity: .5; cursor: default; }
   .danger {
+    position: relative;
     width: 100%; min-height: 40px; margin-top: 9px; border-radius: 12px;
     border: 1px solid rgba(var(--danger-rgb), .45); background: rgba(var(--danger-rgb), .12);
     color: var(--danger-text); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
   }
+  .danger::after { content: ''; position: absolute; inset: -2px 0; border-radius: inherit; }
   .danger:active { background: rgba(var(--danger-rgb), .2); }
   .hint { margin: 8px 2px 0; font-size: 10.5px; line-height: 1.55; color: var(--muted); }
   .hint b { color: var(--txt-soft); font-weight: 600; }
@@ -136,7 +145,7 @@ const settingsCSS = `
   .cloud-field { margin-top: 9px; }
   .cloud-field label { display: block; margin: 0 2px 4px; font-size: 10.5px; font-weight: 600; color: var(--muted); }
   .cloud-field input {
-    width: 100%; height: 40px; padding: 0 10px; border-radius: 10px;
+    width: 100%; height: 44px; padding: 0 10px; border-radius: 10px;
     border: 1px solid var(--line-strong); background: var(--surface-raised);
     color: var(--txt); font: inherit; font-size: 12px;
   }
