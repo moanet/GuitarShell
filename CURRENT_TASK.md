@@ -1,12 +1,93 @@
-# CURRENT_TASK
+# CURRENT_TASK — dev 体验批次：节拍器提示条、禅定 / 全屏与 Logo
 
-> 状态：`0.1.27` 已发布并归档；当前没有进行中的版本。
-> 下一版本：未立项，版本号待定；启动时再建立任务书，不预占版本号。
-> 上一版本归档：[docs/archive/CURRENT_TASK-0.1.27.md](docs/archive/CURRENT_TASK-0.1.27.md)。
-> 版本规则：[docs/VERSIONING.md](docs/VERSIONING.md)；发布流程：[docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md)。
+> 状态：`dev` 进行中；未立项版本，未预占版本号。
+> 开发分支：`dev`；稳定分支：`main`。
+> 基线：`0.1.27` / `versionCode 137`（已发布并归档）。
+> 本文件是 dev 批次任务书，不是版本任务书；确认发版时再另立版本任务书。
+> 版本规则：[docs/VERSIONING.md](docs/VERSIONING.md)；日常流程：[docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md)。
 
-## 当前边界
+## 1. 目标
 
-- 不预占下一稳定版本号，不在本文件堆积 backlog。
-- 活跃待办、backlog 与开放风险统一看 [TASK.md](TASK.md)。
-- 新任务启动时，再补目标、非目标、交互、验收与风险。
+按 2026-11-28 讨论的 6 个体验点，在 `dev` 上分批落地，验收通过后再决定是否进入正式版：
+
+1. 节拍器主界面提示条去掉背景填充与边框，保留文字和 42px 占位高度。
+2. BPM 输入弹出键盘时，表盘不被压缩变形，BPM 数字和输入框不被键盘遮挡。
+3. 禅定模式解锁长按时间由 1.5 秒缩短为 1 秒。
+4. 禅定模式自动进入全屏；解锁后恢复进入禅定前的全屏状态。
+5. 全屏按钮图标在圆形按钮中居中，切换全屏不再用文本字符替换 SVG。
+6. 移除全软件 Logo 的外层阴影，至少覆盖顶部品牌栏与关于页。
+
+## 2. 非目标
+
+- 不为本批次 bump 版本号、改 `versionCode`、打 tag 或发 Release。
+- 不把本批次写成下一版的全部内容；版本范围等验收后再定。
+- 不处理字体规范、分享卡字号、记录页 UI、横屏适配等已有 backlog。
+- 不启动全局 UI 统一；如果后续扩大范围，另开任务并重新确认。
+- 不改禅定模式的锁定语义与返回拦截策略。
+- 不为了键盘问题引入新的输入组件库。
+- 不把临时截图、测试脚本或设计稿带进 Git 提交。
+
+## 3. 已锁定交互
+
+| 项 | 决策 |
+| --- | --- |
+| 节拍器提示条 | 主界面表盘下方的 `Swing 25%` / `变速 60→120` / `倒计时` 提示去掉背景和边框，只留文字；42px 高度保留，开关练习项时表盘不跳动。 |
+| 音频跟练两行 | 先保持无框；真机上若两行难分，只加一条极淡分隔线，不恢复外框和填充。 |
+| BPM 键盘 | 先试 `adjustPan`；目标是键盘弹出时表盘尺寸不变、BPM 输入可见。若整页被顶得过高或顶部被裁，再改用 `visualViewport` 位移并锁定表盘像素尺寸。 |
+| 禅定解锁 | 连续长按 1 秒解锁；松手、移出、取消都立即复位，不因缩短时间改成轻点解锁。 |
+| 禅定全屏 | 从普通阅读进入禅定自动全屏，解锁后回到普通阅读；进入前本来就在全屏则解锁后保持全屏。 |
+| 全屏图标 | 普通状态用 `maximize` SVG，全屏状态用 `minimize` SVG；按钮内边距和行高归零，图标在 44px 圆形内居中。 |
+| Logo 阴影 | 顶部品牌栏、关于页以及后续出现的 Logo 都不加外层阴影；保留圆角与尺寸。浅色背景若边缘发虚，只用 1px 描边，不再加阴影。 |
+
+## 4. 分批与状态
+
+### 批次 A：阅读体验（3 / 4 / 5）
+
+| 项 | 主要文件 | 状态 |
+| --- | --- | --- |
+| 禅定 1 秒解锁 | `js/components/sheet-reader.js` | 已完成；浏览器验证 0.75s 未解锁、1.15s 解锁，提前松手保持锁定。 |
+| 禅定自动全屏 | `js/components/sheet-reader.js` | 已完成；普通进入→解锁回普通，原本全屏→解锁仍全屏。 |
+| 全屏图标居中 | `js/components/sheet-reader.js`、`js/services/icons.js` | 已完成；新增 `minimize` SVG，切换不再写 `⤢ / ⤡` 文本。 |
+
+### 批次 B：视觉清理（1 / 6）
+
+| 项 | 主要文件 | 状态 |
+| --- | --- | --- |
+| 节拍器提示条去框 | `js/components/metronome.js` | 已完成；`background: transparent`、`border: 0`，高度仍为 42px。 |
+| 全软件 Logo 去外阴影 | `css/layout.css`、`js/components/settings.js` | 已完成；顶部品牌栏与关于页 `box-shadow` 均为 `none`。 |
+
+### 批次 C：BPM 键盘（2）
+
+| 项 | 主要文件 | 状态 |
+| --- | --- | --- |
+| 键盘不压缩表盘 | `android/app/src/main/AndroidManifest.xml`、`js/components/metronome.js` | 待开始；先做 `adjustPan` 真机实验，再决定是否上 `visualViewport`。 |
+
+## 5. 已完成的验证
+
+- `npm run check`：通过，`0.1.27，42 个 JS 文件，SW 缓存与版本一致`。
+- 浏览器回归：禅定 1 秒阈值、提前松手取消、普通进入自动全屏并恢复、全屏进入解锁保持全屏，均通过。
+- 全屏按钮：`maximize / minimize` SVG 均渲染，图标中心与按钮中心偏差 `dx=0 / dy=0`。
+- 节拍器提示条：计算样式为透明背景、0 边框、42px 高；`Swing 25%` 文本正常显示。
+- Logo：顶部品牌栏与关于页 `box-shadow` 均为 `none`。
+- dev APK：`dist/dev/GuitarShell-dev-20261128-1605-3eeecfa.apk`，`4,482,073` 字节。
+
+## 6. 待验收
+
+- 真机安装 dev APK，重点看禅定 1 秒长按、自动全屏、解锁恢复，以及全屏图标在手机圆圈中的位置。
+- 真机连接后按流程先明确告知开始，验收结束交还设备。
+- BPM 键盘方案必须在真机验证；浏览器模拟键盘不作为通过依据。
+
+## 7. 风险与待确认
+
+- `adjustPan` 可能把整个 WebView 向上推，导致顶部内容被裁；若不理想，改用 `visualViewport` 方案。
+- `visualViewport` 方案需要处理键盘高度变化、页面滚动位置和表盘像素锁定，代码量更大。
+- 禅定自动全屏与 `reader-fullscreen` 层级必须保持“先全屏、后禅定”；返回键仍先由禅定层拦截。
+- 原生浏览器全屏与 Electron / WebView 行为不同；真机以 CSS 全屏为主，不依赖原生 Fullscreen API。
+- 本批次尚未真机验收，不能按正式版标准宣称完成。
+
+## 8. 提交记录
+
+- `5f831aa feat: 禅定 1 秒解锁与自动全屏`
+- `3eeecfa style: 去掉节拍器提示框与 Logo 外阴影`
+- `8e2633b docs: 记录 dev 阅读与视觉改动`
+- `dev` 已推送到 `origin/dev`；未改 `main`，未发 Release。
