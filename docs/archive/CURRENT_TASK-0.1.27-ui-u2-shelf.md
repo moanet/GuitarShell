@@ -1,9 +1,9 @@
 # CURRENT_TASK — UI 规范 v1.1 推广：乐谱书架
 
-> 状态：U2 P1–P3 已完成；书架视觉收口通过 360/320、深/浅四组回归。P4 真机抽验并入最终发版批次。
+> 状态：已完成；U2 书架视觉收口通过 360/320、深/浅四组回归，并随 `0.1.28` 发布；文件名按起始版本 `0.1.27` 保留。
 > 开发分支：`dev`；稳定分支：`main`。
 > 基线：`0.1.27` / `versionCode 137`（已发布并归档）。
-> 前序：U1 调音器主体已完成，任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u1-tuner.md](docs/archive/CURRENT_TASK-0.1.28-ui-u1-tuner.md)。
+> 前序：U1 调音器主体已完成，任务书归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-u1-tuner.md](docs/archive/CURRENT_TASK-0.1.27-ui-u1-tuner.md)。
 > 规范契约：[docs/UI_DESIGN_SPEC.md](docs/UI_DESIGN_SPEC.md) §5.1；版本规则：[docs/VERSIONING.md](docs/VERSIONING.md)。
 
 ## 1. 目标

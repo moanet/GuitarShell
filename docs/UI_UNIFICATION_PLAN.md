@@ -34,10 +34,10 @@ U2–U5 的先后顺序固定为“乐谱 → 记录 → 阅读器 → 全局外
 
 ## 4. 当前
 
-- `U5 全局外壳` 已完成，`gs_030.py` 360/320 深/浅四组通过；任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u5-shell.md](archive/CURRENT_TASK-0.1.28-ui-u5-shell.md)。
-- `U1 调音器主体` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u1-tuner.md](archive/CURRENT_TASK-0.1.28-ui-u1-tuner.md)。
-- `U2 乐谱书架` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u2-shelf.md](archive/CURRENT_TASK-0.1.28-ui-u2-shelf.md)。
-- `U3 练习记录` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u3-practice-log.md](archive/CURRENT_TASK-0.1.28-ui-u3-practice-log.md)。
-- `U4 阅读器` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u4-reader.md](archive/CURRENT_TASK-0.1.28-ui-u4-reader.md)。
+- `U5 全局外壳` 已完成，`gs_030.py` 360/320 深/浅四组通过；任务书归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-u5-shell.md](archive/CURRENT_TASK-0.1.27-ui-u5-shell.md)。
+- `U1 调音器主体` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-u1-tuner.md](archive/CURRENT_TASK-0.1.27-ui-u1-tuner.md)。
+- `U2 乐谱书架` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-u2-shelf.md](archive/CURRENT_TASK-0.1.27-ui-u2-shelf.md)。
+- `U3 练习记录` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-u3-practice-log.md](archive/CURRENT_TASK-0.1.27-ui-u3-practice-log.md)。
+- `U4 阅读器` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-u4-reader.md](archive/CURRENT_TASK-0.1.27-ui-u4-reader.md)。
 - 收尾完成：`0.1.28` 已发布（tag `v0.1.28`，Release `461597757`）；全站回归、版本同步、CHANGELOG 与 `TASK.md` 已更新，`main` / `dev` 已同步。
 - 下一轮：新改动先写 `CURRENT_TASK.md`，在 `dev` 累积；不预占下一稳定版本号。

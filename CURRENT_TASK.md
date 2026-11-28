@@ -2,7 +2,7 @@
 
 > 状态：`0.1.28` 已完成 UI 规范 v1.1 全站推广与两轮真机反馈修复，用户确认终稿并已发布。
 > 开发分支：`dev`；稳定分支：`main`；起始基线：`0.1.27` / `versionCode 137`；当前正式版：`0.1.28` / `138`。
-> 前序：U5 全局外壳已完成，任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u5-shell.md](docs/archive/CURRENT_TASK-0.1.28-ui-u5-shell.md)。
+> 前序：U5 全局外壳已完成，任务书归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-u5-shell.md](docs/archive/CURRENT_TASK-0.1.27-ui-u5-shell.md)。
 > 规范契约：[docs/UI_DESIGN_SPEC.md](docs/UI_DESIGN_SPEC.md) `v1.1`；版本规则：[docs/VERSIONING.md](docs/VERSIONING.md)。
 
 ## 1. 目标

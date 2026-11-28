@@ -37,6 +37,7 @@
 **发布**
 
 - tag `v0.1.28` 指向 `b1158bf`；GitHub Release `461597757`；asset `GuitarShell-0.1.28.apk`，`4,484,172` 字节，SHA-256 `3483C121DB96F5850159CA047118D0E265C6E876685EBDF84A379B911167FFCA`。
+- 任务书归档：UI 规范与 U1–U5 从 [CURRENT_TASK-0.1.27-ui-spec-v1.1.md](docs/archive/CURRENT_TASK-0.1.27-ui-spec-v1.1.md) 开始；dev 体验批次见 [CURRENT_TASK-0.1.27-dev-ui-batch.md](docs/archive/CURRENT_TASK-0.1.27-dev-ui-batch.md)。
 - `main` 已推送；`dev` 已同步到发布收尾提交，下一轮从 `dev` 继续。
 
 ## [0.1.27] — 2026-11-28

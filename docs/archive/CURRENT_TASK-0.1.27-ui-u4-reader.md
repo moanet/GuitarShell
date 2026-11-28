@@ -1,9 +1,9 @@
 # CURRENT_TASK — UI 规范 v1.1 推广：阅读器
 
-> 状态：U4 P1–P3 已完成；阅读器外壳与浮动工具组热区通过 360/320、深/浅四组回归，`gs_022` 360/320 通过。
+> 状态：已完成；U4 阅读器外壳与浮动工具组热区通过 360/320、深/浅四组回归，`gs_022` 360/320 通过，并随 `0.1.28` 发布；文件名按起始版本 `0.1.27` 保留。
 > 开发分支：`dev`；稳定分支：`main`。
 > 基线：`0.1.27` / `versionCode 137`（已发布并归档）。
-> 前序：U3 练习记录已完成，任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u3-practice-log.md](docs/archive/CURRENT_TASK-0.1.28-ui-u3-practice-log.md)。
+> 前序：U3 练习记录已完成，任务书归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-u3-practice-log.md](docs/archive/CURRENT_TASK-0.1.27-ui-u3-practice-log.md)。
 > 规范契约：[docs/UI_DESIGN_SPEC.md](docs/UI_DESIGN_SPEC.md) §3.2 / §5.1；版本规则：[docs/VERSIONING.md](docs/VERSIONING.md)。
 
 ## 1. 目标
