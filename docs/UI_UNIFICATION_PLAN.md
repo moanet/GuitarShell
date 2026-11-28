@@ -1,6 +1,6 @@
 # UI 规范 v1.1 逐页推广计划
 
-> 状态：执行中。`U1 调音器主体`、`U2 乐谱书架`、`U3 练习记录`、`U4 阅读器` 已完成；当前执行 `U5 全局外壳`，后续进入发版。
+> 状态：执行完成。`U1 调音器主体`、`U2 乐谱书架`、`U3 练习记录`、`U4 阅读器`、`U5 全局外壳` 均已完成；后续进入全站回归与 `0.1.28` 测试包。
 > 契约：[docs/UI_DESIGN_SPEC.md](UI_DESIGN_SPEC.md) `v1.1`；基线：`0.1.27` / `versionCode 137`。
 > 原则：一次规划、逐页任务书、逐页审计；不一次性全站换皮，不预占版本号。
 
@@ -12,7 +12,7 @@
 | U2 | 乐谱书架 | §5.1；搜索、筛选、卡片、导入、空态、批量 | 360/320 × 深/浅；书架回归；长按/批量不回归 | 已完成 |
 | U3 | 练习记录 | §5.4；表单、趋势、日志列表、空态 | 360/320 × 深/浅；记录页回归；分享卡不回归 | 已完成 |
 | U4 | 阅读器 | §5.1 阅读器段；五段工具栏、浮动工具组例外 | 360/320；全屏/禅定/返回层级不回归 | 已完成 |
-| U5 | 全局外壳 | D1 / D4 / D7；头部、Tab、版本胶囊、设置抽屉 | 只补触控热区与关键小字；不改头部总高和 Tab 方案；全页抽看 | **当前** |
+| U5 | 全局外壳 | D1 / D4 / D7；头部、Tab、版本胶囊、设置抽屉 | 只补触控热区与关键小字；保持头部总高和 Tab 方案；全页抽看 | 已完成 |
 
 U2–U5 的先后顺序固定为“乐谱 → 记录 → 阅读器 → 全局外壳”；前一块验收通过后再换下一份 `CURRENT_TASK.md`，不并行改多个页面。
 
@@ -34,8 +34,9 @@ U2–U5 的先后顺序固定为“乐谱 → 记录 → 阅读器 → 全局外
 
 ## 4. 当前
 
-- `U4 阅读器` 已完成，P1–P3 与 360/320 深/浅四组回归通过；任务书见 [CURRENT_TASK.md](../CURRENT_TASK.md)。
+- `U5 全局外壳` 已完成，`gs_030.py` 360/320 深/浅四组通过；任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u5-shell.md](archive/CURRENT_TASK-0.1.28-ui-u5-shell.md)。
 - `U1 调音器主体` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u1-tuner.md](archive/CURRENT_TASK-0.1.28-ui-u1-tuner.md)。
 - `U2 乐谱书架` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u2-shelf.md](archive/CURRENT_TASK-0.1.28-ui-u2-shelf.md)。
 - `U3 练习记录` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u3-practice-log.md](archive/CURRENT_TASK-0.1.28-ui-u3-practice-log.md)。
-- 下一页直接切到 U5 全局外壳，不并行改其他页面；不需要再问“下一轮做什么”。
+- `U4 阅读器` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u4-reader.md](archive/CURRENT_TASK-0.1.28-ui-u4-reader.md)。
+- 下一步：全站回归、`CHANGELOG` 与版本号同步，构建 `0.1.28` 测试包；发布等待用户真机测试通过。

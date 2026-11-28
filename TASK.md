@@ -19,7 +19,7 @@
 | Android 包 | `com.guitarshell`，`minSdk 22` / `targetSdk 34` |
 | 签名证书 SHA-256 | `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E` |
 | 验证基线 | Web 360 主基线 + 320 边界回归；真机 `ca14b16`（Android 13+） |
-| 当前阶段 | `0.1.27` 已发布并归档；dev 体验批次 6 项已完成真机验收并归档；UI 规范 `v1.1` 样板与 P9 已提交 `dev`；下一轮按规范逐页推广，先做调音器主体，乐谱/记录/阅读器/全局外壳各自任务书；不预占下一版本号，详见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [推广计划](docs/UI_UNIFICATION_PLAN.md) |
+| 当前阶段 | `0.1.27` 已发布并归档；UI 规范 `v1.1` 的 U1 调音器、U2 书架、U3 记录、U4 阅读器、U5 全局外壳均已完成并提交 `dev`；下一步全站回归、构建 `0.1.28` 测试包，发布等待用户真机测试通过，详见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [推广计划](docs/UI_UNIFICATION_PLAN.md) |
 | 历史入口 | `0.1.0` / `0.1.1` 见 [docs/archive](docs/archive)；其余版本见 [CHANGELOG.md](CHANGELOG.md) |
 | 并入关系 | `0.1.12a` → `v0.1.12b`；`0.1.13` → `v0.1.14c`；`0.1.22` / `0.1.23` → `v0.1.24`；`0.1.25` → `v0.1.26`；`0.1.15` / `0.1.16` / `0.1.17` / `0.1.18` / `0.1.19` / `0.1.20` / `0.1.21d` / `0.1.24` / `0.1.26` / `0.1.27` 独立发布 |
 
@@ -105,11 +105,12 @@
 ## 4. 活跃待办
 
 当前进行中：
-- UI 规范 `v1.1` 逐页推广按 [docs/UI_UNIFICATION_PLAN.md](docs/UI_UNIFICATION_PLAN.md) 固定顺序执行：U1 调音器主体当前，U2 乐谱书架、U3 练习记录、U4 阅读器、U5 全局外壳依次排队。
-- 每页单独任务书、单独审计，不并行改多页；不做一次性全站换皮。
+- UI 规范 `v1.1` 的 U1–U5 已全部完成；下一步跑全站回归、同步版本号并构建 `0.1.28` 测试包。
+- `0.1.28` 发布闸门：必须等用户真机测试通过；测试前不创建 tag、不发 GitHub Release。
 
 已排期（不需要再确认）：
-- U2–U5 的范围、验收与顺序见推广计划；上一轮 UI 规范 `v1.1` 与“设置弹层 + 节拍器”样板 P3–P9 已提交 `dev`，记录归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-spec-v1.1.md](docs/archive/CURRENT_TASK-0.1.27-ui-spec-v1.1.md)。
+- 全站回归覆盖 `gs_015`–`gs_030`；U5 外壳回归为 `gs_030.py`。
+- 发版按 [docs/VERSIONING.md](docs/VERSIONING.md) 同步版本文件，Release 标题只用 `vX.Y.Z`，使用 GitHub API 发布。
 
 已确认：
 - `0.1.19` 已发布：状态条 / 弦位行 / 调音设置 / 预设与自定义。
