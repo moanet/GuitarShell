@@ -8,8 +8,8 @@ if (keystorePropertiesFile.exists()) {
 
 def gsDevVersionName = project.findProperty('gsDevVersionName')
 def gsDevVersionCode = project.findProperty('gsDevVersionCode')
-def baseVersionName = "0.1.26"
-def baseVersionCode = 136
+def baseVersionName = "0.1.27"
+def baseVersionCode = 137
 
 android {
     namespace "com.guitarshell"

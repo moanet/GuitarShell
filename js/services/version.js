@@ -6,7 +6,7 @@
 //   - sw.js                   (APP_VERSION，同时升 CACHE_NAME)
 // ==========================================
 
-export const APP_VERSION = '0.1.26';
+export const APP_VERSION = '0.1.27';
 
 // 构建时注入：稳定版为空；dev 构建为完整 dev versionName（如 0.1.26-dev.20261127-2334）
 export const BUILD_STAMP = '';

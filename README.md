@@ -16,7 +16,7 @@
   <a href="https://moanet.github.io/GuitarShell/">
     <img src="https://img.shields.io/badge/Open-Web%20App-C7863F" alt="打开网页版">
   </a>
-  <img src="https://img.shields.io/badge/version-0.1.26-8A8075" alt="当前版本 0.1.26">
+  <img src="https://img.shields.io/badge/version-0.1.27-8A8075" alt="当前版本 0.1.27">
   <img src="https://img.shields.io/badge/data-local--first-6B8E23" alt="本地优先">
 </p>
 
@@ -54,7 +54,7 @@ Guitar Shell 是一个本地优先的吉他练琴工作站。它把乐谱、节�
 
 ## 下载与安装
 
-- **Android 最新版**：前往 [GitHub Releases](https://github.com/moanet/GuitarShell/releases/latest)，在最新 Release 的 Assets 中下载 `GuitarShell-*-release.apk`。
+- **Android 最新版**：前往 [GitHub Releases](https://github.com/moanet/GuitarShell/releases/latest)，在最新 Release 的 Assets 中下载 `GuitarShell-*.apk`。
 - **安装**：支持 Android 5.1（API 22）及以上。点击 APK 安装；如果系统提示“未知来源”，允许浏览器或文件管理器安装即可，不需要登录账号，也不依赖 Google Play。
 - **网页版**：打开 [https://moanet.github.io/GuitarShell/](https://moanet.github.io/GuitarShell/)，可直接使用；桌面浏览器也可以用“安装 / 添加到主屏幕”作为本地应用打开。
 - **版本与校验值**：统一以最新 Release 页面为准。
