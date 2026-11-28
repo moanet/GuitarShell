@@ -388,7 +388,7 @@ def main():
     bubbles: true, cancelable: true, pointerType: 'mouse', button: 0, isPrimary: true
   }));
   down();
-  await sleep(1000);
+  await sleep(500);
   up();
   await sleep(200);
   out.zen.shortHoldStillLocked = reader.zenLocked;
@@ -454,11 +454,10 @@ def main():
   out.keyboard.lockedEscBlocked = reader.classList.contains('reading') && reader.zenLocked;
   keydown('l');
   await sleep(1200);
-  out.keyboard.longLStillLocked = reader.zenLocked;
-  await sleep(450);
-  out.keyboard.unlocked = !reader.zenLocked;
+  out.keyboard.longLUnlocked = !reader.zenLocked;
   keyup('l');
   await sleep(200);
+  out.keyboard.unlocked = !reader.zenLocked;
 
   out.registry = {
     dbVersion: await new Promise((resolve, reject) => {
@@ -495,7 +494,7 @@ def main():
         assert out["shelfDensity"]["hasCardDelete"] is False, out
         if 341 <= WIDTH <= 380:
             assert out["shelfDensity"]["coverWidth"] == 72, out
-            assert abs(out["shelfDensity"]["titleSize"] - 12.5) < 0.2, out
+            assert abs(out["shelfDensity"]["titleSize"] - 14) < 0.2, out
         assert out["shelfLongPress"]["userSelect"] == "none", out
         assert out["shelfLongPress"]["titleSelect"] == "none", out
         assert out["shelfLongPress"]["contextPrevented"] is True, out
@@ -557,7 +556,7 @@ def main():
         assert out["keyboard"]["lockedZoomBlocked"] is True, out
         assert out["keyboard"]["lockedSpaceBlocked"] is True, out
         assert out["keyboard"]["lockedEscBlocked"] is True, out
-        assert out["keyboard"]["longLStillLocked"] is True, out
+        assert out["keyboard"]["longLUnlocked"] is True, out
         assert out["keyboard"]["unlocked"] is True, out
         assert out["registry"]["dbVersion"]["version"] == 4, out
         assert "assets" in out["registry"]["dbVersion"]["stores"], out

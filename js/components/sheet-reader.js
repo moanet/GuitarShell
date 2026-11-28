@@ -44,7 +44,7 @@ const readerCSS = `
   button, label, input, select { outline: none !important; -webkit-tap-highlight-color: transparent !important; }
   :host, * { -webkit-tap-highlight-color: transparent !important; }
   
-  .toolbar { display: none; gap: 6px; padding: 8px 12px; background: var(--bg1); border-bottom: 1px solid var(--line); align-items: center; z-index: 10; flex-wrap: nowrap; min-height: 54px; box-sizing: border-box; }
+  .toolbar { display: none; gap: 6px; padding: 0 12px; background: var(--bg1); border-bottom: 1px solid var(--line); align-items: center; z-index: 10; flex-wrap: nowrap; min-height: 46px; box-sizing: border-box; }
   :host(.reading) .toolbar { display: flex; }
   .tool-btn {
     flex: 1 1 0; min-width: 0; height: 46px; padding: 0 2px; box-sizing: border-box;
@@ -59,11 +59,11 @@ const readerCSS = `
   .tool-btn .ti svg { display: block; width: 18px; height: 18px; }
   .tool-btn .tl { pointer-events: none; }
   .tool-badge {
-    position: absolute; top: -6px; right: -8px; min-width: 13px; height: 13px; padding: 0 3px;
+    position: absolute; top: -6px; right: -8px; min-width: 14px; height: 14px; padding: 0 3px;
     box-sizing: border-box; border-radius: 7px; background: var(--primary); color: var(--on-primary);
-    font-size: 9px; font-weight: 800; line-height: 13px; text-align: center;
+    font-size: 10px; font-weight: 700; line-height: 14px; text-align: center;
   }
-  .tool-btn .tl { font-size: 11px; font-weight: 700; line-height: 1.1; white-space: nowrap; letter-spacing: .2px; }
+  .tool-btn .tl { font-size: 11px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
   .tool-btn.accent { color: var(--accent-text); border-color: var(--line-warm); }
 
   .filter-bar { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--surface-deep); border-bottom: 1px solid var(--line); max-width: 1400px; margin: 0 auto; box-sizing: border-box; width: 100%; }
@@ -302,7 +302,8 @@ const readerCSS = `
   .mini-metronome { position: absolute; bottom: 30px; left: 20px; display: none; flex-direction: column; align-items: center; z-index: 20; }
   .mm-panel { background: rgba(var(--bg1-rgb), 0.95); backdrop-filter: blur(8px); border: 1px solid var(--line-warm); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.3s ease; }
   .mm-main-row { display: flex; align-items: center; gap: 12px; }
-  .mm-btn { background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border: 1px solid rgba(var(--secondary-rgb),.12); width: 36px; height: 36px; border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(var(--primary-rgb),.22); }
+  .mm-btn { position: relative; background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); border: 1px solid rgba(var(--secondary-rgb),.12); width: 36px; height: 36px; border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(var(--primary-rgb),.22); }
+  .mm-btn::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; }
   .mm-btn.playing { background: var(--danger); color: var(--on-danger); box-shadow: 0 4px 12px rgba(var(--danger-rgb),.2); }
   .mm-bpm-display { font-size: 20px; font-weight: bold; color: var(--txt); cursor: pointer; min-width: 50px; text-align: center; }
   .mm-bpm-display::after { content: ' BPM'; font-size: 10px; color: var(--muted); font-weight: normal; }
@@ -311,11 +312,12 @@ const readerCSS = `
   .mm-knob-wrap { width: 120px; height: 120px; position: relative; display: flex; align-items: center; justify-content: center; }
   .mm-knob-wrap canvas { position: absolute; top: 0; left: 0; touch-action: none; cursor: grab; }
   .mm-adv-controls { display: flex; align-items: center; gap: 16px; }
-  .mm-step { background: var(--surface-raised); color: var(--txt); border: 1px solid var(--line-strong); width: 32px; height: 32px; border-radius: 10px; font-size: 20px; cursor: pointer; display: grid; place-items: center; }
+  .mm-step { position: relative; background: var(--surface-raised); color: var(--txt); border: 1px solid var(--line-strong); width: 32px; height: 32px; border-radius: 10px; font-size: 20px; cursor: pointer; display: grid; place-items: center; }
+  .mm-step::after { content: ''; position: absolute; inset: -6px; border-radius: inherit; }
 
   .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(var(--shadow-rgb),0.7); color: var(--primary); font-size: 16px; z-index: 300; display: none; }
   .loading.show { display: flex; }
-  .toast { position: absolute; left: 50%; bottom: 100px; transform: translate(-50%, 10px); background: rgba(var(--accent-rgb), 0.92); color: var(--on-accent); padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 400; opacity: 0; pointer-events: none; transition: 0.3s; }
+  .toast { position: absolute; left: 50%; bottom: 100px; transform: translate(-50%, 10px); width: max-content; max-width: calc(100% - 40px); box-sizing: border-box; text-align: center; background: rgba(var(--accent-rgb), 0.92); color: var(--on-accent); padding: 10px 20px; border-radius: 14px; font-size: 14px; font-weight: 700; z-index: 400; opacity: 0; pointer-events: none; transition: 0.3s; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
   .action-sheet-mask, .modal-mask { position: absolute; inset: 0; background: rgba(var(--shadow-rgb),0.6); display: none; align-items: flex-end; z-index: 200; }
@@ -392,9 +394,11 @@ const readerCSS = `
   #progressBanner.show { display: flex; opacity: 1; transform: translate(-50%, 0); }
   #progressBanner .pb-text { cursor: pointer; }
   #progressBanner .pb-close {
+    position: relative;
     background: rgba(var(--shadow-rgb),0.18); border: none; color: var(--on-accent); width: 22px; height: 22px;
     border-radius: 50%; font-size: 13px; font-weight: bold; cursor: pointer; line-height: 1;
   }
+  #progressBanner .pb-close::after { content: ''; position: absolute; inset: -11px; border-radius: 50%; }
 
   /* 打卡弹窗内的「阅读进度」区 */
   .progress-readout { font-size: 13px; color: var(--accent-text); font-weight: bold; }
