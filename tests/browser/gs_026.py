@@ -208,6 +208,13 @@ def main():
       containerTop: Math.round(container.getBoundingClientRect().top),
       headTop: Math.round($('tuningName').getBoundingClientRect().top),
       headFont: getComputedStyle($('tuningName')).fontSize,
+      stringHeight: Math.round(sr.querySelector('.string-btn:not(.auto)').getBoundingClientRect().height),
+      stringRadius: getComputedStyle(sr.querySelector('.string-btn:not(.auto)')).borderRadius,
+      stringNumFont: getComputedStyle(sr.querySelector('.string-num')).fontSize,
+      centsLabelFont: getComputedStyle(sr.querySelector('.cents-label')).fontSize,
+      settingsFont: getComputedStyle($('openSettings')).fontSize,
+      settingsWeight: getComputedStyle($('openSettings')).fontWeight,
+      a4Font: getComputedStyle($('a4Status')).fontSize,
       settingsRect: (() => { const r = $('openSettings').getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }; })(),
       startRect: (() => { const r = $('btnToggle').getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }; })(),
       displayHeight: Math.round(sr.querySelector('.display-area').getBoundingClientRect().height),
@@ -450,9 +457,11 @@ def main():
         check("主界面无横向溢出", not out["layout"]["containerOverflow"], f"{out['layout']['width']}/{out['layout']['scrollWidth']}")
         check("顶部标题下压贴近大读数", 44 <= out["layout"]["headOffset"] <= 54 and -12 <= out["layout"]["titleToNote"] <= -4, f"offset={out['layout']['headOffset']} titleToNote={out['layout']['titleToNote']}")
         check("调弦名放大到 19px", out["layout"]["headFont"] == "19px", out["layout"]["headFont"])
+        check("调音器主界面字号收口", out["layout"]["settingsFont"] == "14px" and out["layout"]["settingsWeight"] == "700" and out["layout"]["stringNumFont"] == "10px" and out["layout"]["centsLabelFont"] == "10px" and out["layout"]["a4Font"] == "14px", str({k: out["layout"][k] for k in ("settingsFont", "settingsWeight", "stringNumFont", "centsLabelFont", "a4Font")}))
+        check("弦位按钮 44 高 / 14 圆角", out["layout"]["stringHeight"] == 44 and out["layout"]["stringRadius"] == "14px", f"{out['layout']['stringHeight']} / {out['layout']['stringRadius']}")
         check("设置按钮与节拍器同尺寸", out["layout"]["settingsRect"]["width"] == 72 and out["layout"]["settingsRect"]["height"] == 44 and out["layout"]["actions"]["settingsText"] == "设置", f"{out['layout']['settingsRect']} / {out['layout']['actions']['settingsText']}")
         check("设置按钮位于开始调音左侧", out["layout"]["settingsLeftOfStart"] and out["layout"]["actionsSameRow"], f"{out['layout']['settingsRect']} / {out['layout']['startRect']}")
-        check("开始调音缩窄并水平居中", out["layout"]["startRect"]["width"] <= 150 and out["layout"]["actions"]["startCenterOffset"] <= 2, f"{out['layout']['startRect']} / 偏移 {out['layout']['actions']['startCenterOffset']}")
+        check("开始调音缩窄并水平居中", 140 <= out["layout"]["startRect"]["width"] <= 150 and out["layout"]["actions"]["startCenterOffset"] <= 2, f"{out['layout']['startRect']} / 偏移 {out['layout']['actions']['startCenterOffset']}")
         check("读数区固定高度", 150 <= out["layout"]["displayHeight"] <= 222, out["layout"]["displayHeight"])
         check("仪表盘回到视觉中心", out["layout"]["meterCenterOffset"] <= 12, f"仪表中心 {out['layout']['meter']['center']} / 屏幕中心 {out['layout']['screenCenter']}")
         check("按钮组紧跟弦位行", 11 <= out["layout"]["spacing"]["stringsToActions"] <= 13 and out["layout"]["bottomGap"] >= 150, f"间距={out['layout']['spacing']['stringsToActions']} 底距={out['layout']['bottomGap']}")

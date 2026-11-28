@@ -86,9 +86,9 @@ const tunerCSS = `
 
   /* 目标弦选择 */
   .strings-row { display: flex; gap: 10px; width: 100%; justify-content: center; }
-  .string-btn { flex: 1; max-width: 60px; padding: 12px 0; border-radius: 12px; background: var(--surface-raised); border: 1px solid var(--line-strong); color: var(--muted); font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; outline: none; -webkit-tap-highlight-color: transparent; }
+  .string-btn { flex: 1; max-width: 60px; min-height: 44px; box-sizing: border-box; padding: 12px 0; border-radius: 14px; background: var(--surface-raised); border: 1px solid var(--line-strong); color: var(--muted); font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; outline: none; -webkit-tap-highlight-color: transparent; }
   .string-btn:hover { background: var(--surface-hover); color: var(--heading); }
-  .string-btn.active { background: rgba(var(--primary-rgb), 0.18); border-color: var(--accent); color: var(--heading); box-shadow: 0 0 12px rgba(var(--accent-rgb),0.18); }
+  .string-btn.active { background: rgba(var(--primary-rgb), 0.18); border-color: var(--primary); color: var(--heading); box-shadow: 0 0 12px rgba(var(--primary-rgb),0.18); }
   
   .string-btn.auto { max-width: 80px; font-size: 14px; }
 
@@ -100,11 +100,11 @@ const tunerCSS = `
   .cents-line { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
   .cents-dot { fill: var(--accent); }
   .cents-wrap.in-tune .cents-line, .cents-wrap.in-tune .cents-dot { stroke: var(--success); fill: var(--success); }
-  .cents-label { position: absolute; left: 6px; font-size: 9px; color: var(--muted-soft); pointer-events: none; }
+  .cents-label { position: absolute; left: 6px; font-size: 10px; color: var(--muted-soft); pointer-events: none; }
   .cents-label.top { top: 2px; }
   .cents-label.mid { top: 50%; transform: translateY(-50%); color: var(--muted); }
   .cents-label.bot { bottom: 2px; }
-  .cents-title { position: absolute; right: 6px; top: 2px; font-size: 9px; color: var(--muted-soft); pointer-events: none; }
+  .cents-title { position: absolute; right: 6px; top: 2px; font-size: 10px; color: var(--muted-soft); pointer-events: none; }
 
   /* A4 校准 + 标准音 */
   .tools-row { display: flex; gap: 8px; width: 100%; justify-content: center; flex-wrap: wrap; }
@@ -126,9 +126,9 @@ const tunerCSS = `
   /* 控制按钮 */
   .btn-toggle { flex: 0 0 140px; width: 140px; height: 46px; padding: 0 18px; border-radius: 16px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; outline: none; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
   .btn-toggle:focus { outline: none !important; }
-  .btn-toggle:focus-visible { outline: none !important; }
+  .btn-toggle:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
   .btn-toggle:active { outline: none !important; }
-  .btn-toggle.start { background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.3); }
+  .btn-toggle.start { background: linear-gradient(180deg, var(--accent), var(--primary)); color: var(--on-primary); box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.18); }
   .btn-toggle.stop { background: var(--danger); color: var(--on-danger); box-shadow: 0 6px 20px rgba(var(--danger-rgb), 0.28); }
   .btn-toggle:active { transform: scale(0.95); }
 
@@ -138,21 +138,22 @@ const tunerCSS = `
   .head-block { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 0; padding: 0 2px; flex: none; }
   .tuning-head { width: 100%; display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: none; }
   .tuning-head .tuning-name { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; font-weight: 700; color: var(--heading); line-height: 1.25; }
-  .tuning-a4 { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; }
+  .tuning-a4 { flex: none; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; }
   .action-row { position: relative; width: 100%; max-width: 460px; height: 46px; display: flex; align-items: center; justify-content: center; flex: none; }
-  .settings-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 72px; height: 44px; border-radius: 14px; border: 1px solid var(--line-warm); background: var(--surface-raised); color: var(--accent-text); display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0; font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: 0.6px; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
+  .settings-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 72px; height: 44px; border-radius: 14px; border: 1px solid var(--line-warm); background: var(--surface-raised); color: var(--accent-text); display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0; font-family: inherit; font-size: 14px; font-weight: 700; letter-spacing: 0.6px; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
   .settings-btn span { white-space: nowrap; }
   .settings-btn:active { transform: translateY(-50%) scale(0.95); background: rgba(var(--primary-rgb), 0.10); }
-  .string-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 7px 0 6px; line-height: 1.1; min-width: 0; white-space: nowrap; }
+  .settings-btn:focus-visible, .string-btn:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 2px !important; }
+  .string-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 7px 0 6px; line-height: 1.1; min-width: 0; min-height: 44px; white-space: nowrap; }
   .string-note { font-size: 16px; font-weight: 700; line-height: 1.05; }
-  .string-num { font-size: 9px; font-weight: 600; color: var(--muted-soft); line-height: 1.05; }
+  .string-num { font-size: 10px; font-weight: 600; color: var(--muted-soft); line-height: 1.05; }
   .strings-row { gap: 6px; }
-  .string-btn.auto { max-width: 72px; font-size: 13px; }
+  .string-btn.auto { max-width: 72px; font-size: 14px; }
   .string-btn.playing { animation: tuner-pulse 0.95s ease-in-out infinite; }
   @keyframes tuner-pulse { 0%, 100% { box-shadow: 0 0 0 rgba(var(--accent-rgb), 0); } 50% { box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.4); } }
   @media (max-width: 340px) {
     .container { padding-left: 16px; padding-right: 16px; }
-    .btn-toggle { width: 132px; flex-basis: 132px; padding: 0 14px; font-size: 15.5px; gap: 6px; }
+    .btn-toggle { width: 140px; flex-basis: 140px; padding: 0 14px; font-size: 16px; gap: 6px; }
   }
 
   .settings-mask { position: absolute; inset: 0; z-index: 500; display: flex; align-items: flex-end; justify-content: center; background: rgba(var(--shadow-rgb), 0.66); opacity: 0; pointer-events: none; transition: opacity 0.18s; }
