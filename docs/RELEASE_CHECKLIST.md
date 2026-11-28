@@ -160,7 +160,7 @@
 - [ ] 提交并推送 `main`；提交信息按 `feat:` / `fix:` / `docs:` / `chore:` 规范。
 - [ ] 先建 draft Release（`tag_name` 为 `vX.Y.Z`，指向版本提交）；上传签名 APK，用 API 核对 asset 名称、大小、digest，不下载。
 - [ ] asset 成功后再创建 / 推送 tag `vX.Y.Z`，publish draft；Release 标题严格为 `vX.Y.Z`，不加副标题。
-- [ ] Release notes 说明本版内容；被并入的未发布版本单独成段说明。
+- [ ] Release notes 按“新增 / 修复 / 变更”分段；无新增时写“无新增功能”；被并入的未发布版本单独说明。
 - [ ] 上传或下载超时按 `docs/VERSIONING.md` 第 5 节处理：立即报告并停止，不重试、不下载校验；停在 draft，不 publish、不打 tag。
 - [ ] README 下载入口、版本徽标、界面预览按需更新；目录变更同步 `项目目录结构.txt`。
 - [ ] `CHANGELOG.md` 补齐改动、验收、APK 校验与 Release ID / asset ID。

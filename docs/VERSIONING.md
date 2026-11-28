@@ -73,6 +73,7 @@
 
 - 在 `CHANGELOG.md` 顶部维护空的 `## [Unreleased]` 段。
 - 日常改动按 `新增` / `修复` / `变更` 分类写入；同类合并成一条，不逐 commit 罗列。
+- GitHub Release notes 与 `CHANGELOG` 使用同一分类顺序（新增 / 修复 / 变更）；无新增时写“无新增功能”，不按开发批次或页面分节。
 - 发版时：
 
   ```text
