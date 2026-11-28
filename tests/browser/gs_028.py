@@ -188,7 +188,16 @@ TEST = r"""
     check('展开后输入框与按钮可见', [inpName, inpTime, inpBpm, btnSubmit].every((el) => el.getBoundingClientRect().height > 0), '');
     check('展开不自动聚焦输入框', r.activeElement?.tagName !== 'INPUT', r.activeElement?.tagName || 'none');
     const expandedHeight = formBox.getBoundingClientRect().height;
-    check('展开高度与旧版接近', expandedHeight < 222 && expandedHeight > 150, expandedHeight.toFixed(1));
+    check('展开高度符合 44 输入 + 46 主按钮', expandedHeight >= 220 && expandedHeight <= 240, expandedHeight.toFixed(1));
+    const formTitle = r.querySelector('.form-title');
+    const logTitle = r.querySelector('.log-title');
+    const logDetail = r.querySelector('.log-detail');
+    const btnDel = r.querySelector('.btn-del');
+    const shareBtn = r.querySelector('.share-btn');
+    const segBtn = r.querySelector('.seg-btn');
+    check('记录页输入框与主按钮高度', inpName.getBoundingClientRect().height === 44 && inpTime.getBoundingClientRect().height === 44 && btnSubmit.getBoundingClientRect().height === 46, `${inpName.getBoundingClientRect().height}/${btnSubmit.getBoundingClientRect().height}`);
+    check('记录页字号收口', getComputedStyle(formTitle).fontSize === '14px' && getComputedStyle(logTitle).fontSize === '14px' && getComputedStyle(logDetail).fontSize === '11px' && getComputedStyle(r.querySelector('.stats-line')).fontSize === '11px' && getComputedStyle(r.querySelector('.stat-val')).fontSize === '14px', `${getComputedStyle(formTitle).fontSize}/${getComputedStyle(logTitle).fontSize}/${getComputedStyle(logDetail).fontSize}`);
+    check('记录页操作热区 44', btnDel.getBoundingClientRect().height === 44 && shareBtn.getBoundingClientRect().height === 44 && getComputedStyle(segBtn).minHeight === '44px', `${btnDel.getBoundingClientRect().height}/${shareBtn.getBoundingClientRect().height}/${getComputedStyle(segBtn).minHeight}`);
 
     inpName.value = '草稿曲目';
     inpTime.value = '12';
@@ -332,6 +341,11 @@ true
         time.sleep(0.3)
         print(" ", cdp.shot("expanded"))
         cdp.ev("document.querySelector('guitar-practice-log').shadowRoot.getElementById('formToggle').click(); true")
+        time.sleep(0.2)
+        cdp.ev("document.querySelector('guitar-practice-log').shadowRoot.getElementById('trendToggle').click(); true")
+        time.sleep(0.35)
+        print(" ", cdp.shot("trend"))
+        cdp.ev("document.querySelector('guitar-practice-log').shadowRoot.getElementById('trendToggle').click(); true")
         time.sleep(0.2)
 
         print("")
