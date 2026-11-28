@@ -3181,7 +3181,7 @@ class SheetReader extends HTMLElement {
         } else {
           accents[0] = 'accent';
         }
-        return { timbre: s.timbre || 'sine', accents, swing: Number(s.swing) || 0 };
+        return { timbre: s.timbre || 'sine', accents, swing: s.swingEnabled === true ? (Number(s.swing) || 0) : 0 };
       } catch (err) {
         return { timbre: 'sine', accents: ['accent', 'beat', 'beat', 'beat'] };
       }

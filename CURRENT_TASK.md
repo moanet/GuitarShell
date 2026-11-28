@@ -1,6 +1,6 @@
 # CURRENT_TASK — 0.1.27 首批：设置弹层、防误触、9:16 分享卡与阅读全屏
 
-> 状态：已立项，待开发；本轮只更新任务书，未改代码。
+> 状态：批次 A（设置弹层与防误触）已完成 360/320 浏览器回归并提交 `dev`；批次 B/C 待开发。
 > 目标版本：`0.1.27` / `versionCode 137`（仅目标，dev 阶段不 bump、不打 tag、不发 Release）。
 > 开发分支：`dev`；稳定分支：`main`。
 > 设计稿：[docs/0.1.27-dev-first-design.md](docs/0.1.27-dev-first-design.md)。
