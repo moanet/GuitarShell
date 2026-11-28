@@ -1,20 +1,19 @@
-# CURRENT_TASK — 0.1.28 全站回归与测试包
+# CURRENT_TASK — 0.1.28 发布与收口
 
 > 状态：`0.1.28` 已完成 UI 规范 v1.1 全站推广与两轮真机反馈修复，用户确认终稿并已发布。
-> 开发分支：`dev`；稳定分支：`main`；基线：`0.1.27` / `versionCode 137`。
+> 开发分支：`dev`；稳定分支：`main`；起始基线：`0.1.27` / `versionCode 137`；当前正式版：`0.1.28` / `138`。
 > 前序：U5 全局外壳已完成，任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u5-shell.md](docs/archive/CURRENT_TASK-0.1.28-ui-u5-shell.md)。
 > 规范契约：[docs/UI_DESIGN_SPEC.md](docs/UI_DESIGN_SPEC.md) `v1.1`；版本规则：[docs/VERSIONING.md](docs/VERSIONING.md)。
 
 ## 1. 目标
 
-把 U1–U5 的 UI 统一结果收成一个可安装、可回滚的 `0.1.28` 测试包：同步版本号与 CHANGELOG，构建 APK，装入真机并明确交还用户测试。**发布 Release 必须等用户测试通过。**
+已把 U1–U5 的 UI 统一结果收成一个可安装、可回滚的 `0.1.28` 稳定包：同步版本号与 CHANGELOG，完成三轮真机测试与两轮反馈修复；用户确认终稿后，已按 `docs/VERSIONING.md` 发布。
 
 ## 2. 非目标
 
-- 不创建 tag、不创建 GitHub Release、不推 `main`。
-- 不在用户测试通过前把 `0.1.28` 当作稳定快照。
-- 不主动新增 UI 方向；只处理用户真机确认的反馈与回归缺陷。
+- 本轮不新增 UI 方向；只处理用户真机确认的反馈与回归缺陷。
 - 不改 U1–U5 已锁定的交互与验收口径。
+- 不启动下一版本；新改动先在 `dev` 累积，达到节点再规划。
 
 ## 3. 范围与涉及文件
 
@@ -26,7 +25,7 @@
 | `android/app/build.gradle` | `versionName 0.1.28` / `versionCode 138` |
 | `README.md` | 版本徽标同步 |
 | `CHANGELOG.md` | `[Unreleased]` 切到 `## [0.1.28] — 2026-11-28`，顶部新开空段 |
-| `dist/GuitarShell-0.1.28.apk` | 测试包；不入库 |
+| `dist/GuitarShell-0.1.28.apk` | 发布包；不入库 |
 
 ## 4. 验收标准
 
@@ -35,9 +34,9 @@
 - 版本四处核心字段 + `package-lock.json` + README 徽标一致：`0.1.28` / `138`。
 - `npm run apk:release` 从干净提交构建成功，APK 存在且可安装。
 - 真机 `ca14b16` 安装后启动正常，停在书架页；测试前明确告知开始，测试后明确交还设备。
-- 用户测试通过后，才允许创建 `v0.1.28` tag 与 GitHub Release。
+- 已执行：用户实机验收通过后才创建 `v0.1.28` tag 与 GitHub Release。
 
-## 5. 测试包检查清单
+## 5. 发布包检查清单
 
 - 全局：头部两行总高约 91，Tab 16 / 可见 37、四个 Tab 可点且 44 热区；版本胶囊显示 `v0.1.28`；设置按钮可打开右侧抽屉。
 - 设置抽屉：外观、数据与备份、云同步、存储与缓存、关于五张卡顺序正常；关闭 44 热区；深/浅主题切换正常。
@@ -48,8 +47,8 @@
 
 ## 6. 发布闸门
 
-- 用户真机测试通过前：不 tag、不 Release、不合并 `main`。
-- 测试通过后：按 [docs/VERSIONING.md](docs/VERSIONING.md) 从干净提交构建、创建 draft Release、上传 APK、核对后再 publish。
+- 已执行：用户真机测试通过前不 tag、不 Release、不合并 `main`。
+- 用户确认终稿后：按 [docs/VERSIONING.md](docs/VERSIONING.md) 从干净提交构建、创建 draft Release、上传 APK、核对后 publish。
 - Release 标题只用 `v0.1.28`；GitHub Release 使用 API，不占用鼠标键盘。
 - APK 上传或下载超时：立即告知用户，可跳过该步，不重试、不做下载校验。
 

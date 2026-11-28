@@ -1,7 +1,7 @@
 # UI 规范 v1.1 逐页推广计划
 
-> 状态：执行完成。`U1 调音器主体`、`U2 乐谱书架`、`U3 练习记录`、`U4 阅读器`、`U5 全局外壳` 均已完成；后续进入全站回归与 `0.1.28` 测试包。
-> 契约：[docs/UI_DESIGN_SPEC.md](UI_DESIGN_SPEC.md) `v1.1`；基线：`0.1.27` / `versionCode 137`。
+> 状态：执行完成并已随 `0.1.28` 发布。`U1 调音器主体`、`U2 乐谱书架`、`U3 练习记录`、`U4 阅读器`、`U5 全局外壳` 均已完成真机验收。
+> 契约：[docs/UI_DESIGN_SPEC.md](UI_DESIGN_SPEC.md) `v1.1`；起始基线：`0.1.27` / `versionCode 137`。
 > 原则：一次规划、逐页任务书、逐页审计；不一次性全站换皮，不预占版本号。
 
 ## 1. 任务表
@@ -39,4 +39,5 @@ U2–U5 的先后顺序固定为“乐谱 → 记录 → 阅读器 → 全局外
 - `U2 乐谱书架` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u2-shelf.md](archive/CURRENT_TASK-0.1.28-ui-u2-shelf.md)。
 - `U3 练习记录` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u3-practice-log.md](archive/CURRENT_TASK-0.1.28-ui-u3-practice-log.md)。
 - `U4 阅读器` 任务书归档到 [docs/archive/CURRENT_TASK-0.1.28-ui-u4-reader.md](archive/CURRENT_TASK-0.1.28-ui-u4-reader.md)。
-- 下一步：全站回归、`CHANGELOG` 与版本号同步，构建 `0.1.28` 测试包；发布等待用户真机测试通过。
+- 收尾完成：`0.1.28` 已发布（tag `v0.1.28`，Release `461597757`）；全站回归、版本同步、CHANGELOG 与 `TASK.md` 已更新，`main` / `dev` 已同步。
+- 下一轮：新改动先写 `CURRENT_TASK.md`，在 `dev` 累积；不预占下一稳定版本号。
