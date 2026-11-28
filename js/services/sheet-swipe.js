@@ -8,6 +8,7 @@ const MAX_THRESHOLD = 96;
 const VELOCITY = 0.6;
 const VELOCITY_DISTANCE = 24;
 const CLICK_GUARD_MS = 350;
+const INTERACTIVE = 'button, input, textarea, select, label, a[href], [role="button"], [role="switch"], [contenteditable="true"]';
 
 export function bindSheetSwipe({ sheet, scrollEl = null, grabEls = [], isBlocked = null, onClose }) {
   if (!sheet || typeof onClose !== 'function') return () => {};
@@ -21,11 +22,14 @@ export function bindSheetSwipe({ sheet, scrollEl = null, grabEls = [], isBlocked
   let suppressClickUntil = 0;
 
   const isGrab = (target) => grabList.some((el) => el === target || el.contains(target));
+  const isInteractive = (target) => target instanceof Element && !!target.closest(INTERACTIVE);
   const blocked = () => (typeof isBlocked === 'function' ? isBlocked() : false);
   const getScrollTop = () => (scrollTarget ? scrollTarget.scrollTop : 0);
 
   const begin = (y, target) => {
     if (blocked()) return null;
+    // 按钮、输入框等交互元素不参与下滑手势，避免轻微抖动吞掉 click
+    if (isInteractive(target)) return null;
     const grab = isGrab(target);
     // 内容区没在顶部时让原生滚动先走；把手 / 标题栏不受此限制
     if (!grab && getScrollTop() > 0) return null;
@@ -36,7 +40,7 @@ export function bindSheetSwipe({ sheet, scrollEl = null, grabEls = [], isBlocked
       lastDelta: 0,
       dy: 0,
       grab,
-      mode: grab ? 'drag' : 'pending'
+      mode: 'pending'
     };
   };
 
@@ -53,15 +57,15 @@ export function bindSheetSwipe({ sheet, scrollEl = null, grabEls = [], isBlocked
 
     if (state.mode === 'pending') {
       if (Math.abs(state.dy) < MIN_DISTANCE) return false;
-      // 向上拖或内容不在顶部：交还给原生滚动
-      if (state.dy <= 0 || getScrollTop() > 0) {
+      // 向上拖不接管；内容不在顶部时交还给原生滚动。把手 / 标题栏不受滚动位置限制。
+      if (state.dy <= 0 || (!state.grab && getScrollTop() > 0)) {
         state.mode = 'cancel';
         return false;
       }
       activate(state);
     }
     if (state.mode !== 'drag') return false;
-    if (getScrollTop() > 0) {
+    if (!state.grab && getScrollTop() > 0) {
       state.mode = 'cancel';
       return false;
     }

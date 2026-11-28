@@ -103,21 +103,21 @@ const metronomeCSS = `
   .settings-panel {
     background: var(--bg1); border: 1px solid var(--line); border-bottom: none;
     border-radius: 18px 18px 0 0;
-    width: 100%; max-width: 520px; max-height: 90vh; max-height: 90dvh;
+    width: 90%; max-width: 400px; max-height: 80vh; max-height: 80dvh;
     padding: 0 0 env(safe-area-inset-bottom, 0px);
-    display: flex; flex-direction: column; overflow: hidden;
+    display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;
     box-shadow: 0 -10px 30px rgba(var(--shadow-rgb),.5);
     transform: translateY(100%); transition: transform .22s ease; will-change: transform;
   }
   .settings-mask.show .settings-panel { transform: translateY(0); }
   .settings-panel.sheet-dragging { transition: none; user-select: none; -webkit-user-select: none; }
   .settings-grabber { flex: 0 0 auto; width: 44px; height: 4px; margin: 8px auto 0; border-radius: 999px; background: var(--line-strong); opacity: .75; touch-action: none; }
-  .settings-head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px 12px; border-bottom:1px solid var(--line); background:var(--bg1); touch-action: none; }
+  .settings-head { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px 12px; border-bottom:1px solid var(--line); background:var(--bg1); touch-action: none; }
   .settings-title-wrap { min-width:0; }
   .settings-panel h3 { margin: 0; font-size: 16px; color: var(--heading); text-align: left; letter-spacing: .5px; }
   .settings-sub { margin-top:3px; font-size:10px; color:var(--muted); }
-  .settings-close { flex:0 0 auto; padding:8px 16px; border-radius:10px; border:1px solid var(--primary); background:rgba(var(--primary-rgb),.18); color:var(--heading); font-size:13px; font-weight:700; cursor:pointer; }
-  .settings-close:active { transform:scale(.96); }
+  .icon-btn { width:32px; height:32px; flex:none; padding:0; border-radius:50%; border:1px solid var(--line); background:var(--surface-hover); color:var(--muted); display:grid; place-items:center; cursor:pointer; }
+  .icon-btn:active { transform:scale(.96); }
   .settings-content { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
   .settings-card {
     display: flex; flex-direction: column; gap: 12px;
@@ -238,7 +238,9 @@ const metronomeCSS = `
   }
   .timer-chip.on { border-color: var(--primary); color: var(--heading); background: rgba(var(--primary-rgb),.18); }
   .timer-chip.on:not(.armed) { opacity: .55; }
+  .timer-chip:disabled { opacity: .4; cursor: not-allowed; }
   .timer-custom { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+  .timer-custom.is-disabled { opacity: .5; }
   .timer-custom input {
     width: 64px; padding: 6px; border-radius: 8px; border: 1px solid var(--line-strong);
     background: var(--surface-raised); color: var(--heading); font-size: 12px;
@@ -363,7 +365,7 @@ const metronomeHTML = `
         <h3>节拍器设置</h3>
         <div class="settings-sub">修改即时生效</div>
       </div>
-      <button class="settings-close" id="btnCloseSettings">完成</button>
+      <button class="icon-btn" id="btnCloseSettings" type="button" aria-label="关闭节拍器设置">${icon('close', 18)}</button>
     </div>
     <div class="settings-content" id="settingsContent">
     <section class="settings-card">
@@ -574,6 +576,7 @@ class GuitarMetronome extends HTMLElement {
     this.stop();
     if (this._settingsLayerOff) { this._settingsLayerOff(); this._settingsLayerOff = null; }
     if (this._settingsSwipeOff) { this._settingsSwipeOff(); this._settingsSwipeOff = null; }
+    if (this._fitSettingsPanel) { window.removeEventListener('resize', this._fitSettingsPanel); this._fitSettingsPanel = null; }
     // 移除监听
     window.removeEventListener('bpm-changed', this.handleGlobalBpmChange);
     window.removeEventListener('app-tab-changed', this.handleTabChange);
@@ -620,6 +623,7 @@ class GuitarMetronome extends HTMLElement {
     const rampOn = $('rampOn'), rampStart = $('rampStart'), rampTarget = $('rampTarget');
     const rampStep = $('rampStep'), rampEvery = $('rampEvery');
     const timerOn = $('timerOn'), timerMin = $('timerMin'), timerPresets = $('timerPresets');
+    const timerCustom = timerMin.closest('.timer-custom');
     const patternList = $('patternList'), patternName = $('patternName'), patternSave = $('patternSave');
     const followAudioFile = $('followAudioFile');
     const followAudioPick = $('followAudioPick'), followAudioClear = $('followAudioClear');
@@ -1812,8 +1816,13 @@ class GuitarMetronome extends HTMLElement {
     };
 
     const updateTimerPresetUI = () => {
+      const editable = this.timer.enabled;
+      timerPresets.classList.toggle('is-disabled', !editable);
+      timerMin.disabled = !editable;
+      if (timerCustom) timerCustom.classList.toggle('is-disabled', !editable);
       timerPresets.querySelectorAll('.timer-chip').forEach(b => {
         const selected = Number(b.dataset.min) === this.timer.minutes;
+        b.disabled = !editable;
         b.classList.toggle('on', selected);
         b.classList.toggle('armed', selected && this.timer.enabled);
       });
@@ -2036,9 +2045,21 @@ class GuitarMetronome extends HTMLElement {
       if (this._settingsLayerOff) { this._settingsLayerOff(); this._settingsLayerOff = null; }
       settingsMask.classList.remove('show');
     };
+    // 顶部最多到拍点闪动模块上沿，再留 6px；矮屏仍保证面板可用高度
+    const fitSettingsPanel = () => {
+      if (!settingsMask.classList.contains('show') || !dotsWrap) return;
+      const blockTop = dotsWrap.getBoundingClientRect().top;
+      if (!blockTop) return;
+      const topLimit = Math.max(120, blockTop - 6);
+      const height = Math.min(window.innerHeight - 8, Math.max(240, window.innerHeight - topLimit));
+      settingsPanel.style.maxHeight = `${Math.round(height)}px`;
+    };
+    this._fitSettingsPanel = fitSettingsPanel;
+    window.addEventListener('resize', fitSettingsPanel);
     btnSettings.onclick = () => {
       renderSettings();
       settingsMask.classList.add('show');
+      fitSettingsPanel();
       if (settingsContent) settingsContent.scrollTop = 0;
       if (!this._settingsLayerOff) {
         this._settingsLayerOff = registerLayer({
