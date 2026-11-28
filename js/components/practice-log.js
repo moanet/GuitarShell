@@ -52,23 +52,26 @@ const logCSS = `
   .toast { position: absolute; left: 50%; bottom: 30px; transform: translate(-50%, 10px); background: rgba(var(--accent-rgb), 0.92); color: var(--on-accent); padding: 10px 20px; border-radius: 999px; font-size: 14px; font-weight: 700; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 100; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .trend-box { background: var(--bg2); border-bottom: 1px solid var(--line); flex-shrink: 0; }
-  .trend-head { display: flex; align-items: center; gap: 4px; }
-  .trend-toggle-row { flex: 1; min-width: 0; min-height: 44px; border: none; background: transparent; display: flex; align-items: center; gap: 9px; padding: 0 0 0 16px; cursor: pointer; color: var(--txt); font-family: inherit; text-align: left; }
+  .trend-head { display: flex; align-items: center; gap: 4px; min-height: 48px; background: var(--bg2); }
+  .trend-toggle-row { flex: 1; min-width: 0; min-height: 48px; border: none; background: transparent; display: flex; align-items: center; gap: 6px; padding: 0 0 0 16px; cursor: pointer; color: var(--txt); font-family: inherit; text-align: left; }
   .share-btn {
-    flex: 0 0 auto; margin-right: 12px; min-height: 44px; padding: 0 12px; border-radius: 14px;
-    border: 1px solid rgba(var(--primary-rgb), .5); background: transparent;
-    color: var(--accent-text); font-size: 14px; font-weight: 700; font-family: inherit;
-    white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+    position: relative; box-sizing: border-box; flex: 0 0 auto; height: 32px; min-height: 32px; margin: 0 12px 0 4px; padding: 0 9px; border-radius: 10px;
+    border: 1px solid rgba(var(--primary-rgb), .42); background: var(--bg2); box-shadow: none;
+    color: var(--accent-text); font-size: 12px; font-weight: 700; font-family: inherit;
+    white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    -webkit-appearance: none; appearance: none;
   }
-  .share-btn:active { filter: brightness(.95); }
+  .share-btn::after { content: ''; position: absolute; inset: -6px -4px; }
+  .share-btn:active { background: var(--bg2); filter: none; }
+  .share-btn svg { width: 12px; height: 12px; }
   .trend-toggle-row:hover { background: rgba(var(--primary-rgb),.06); }
-  .trend-title { font-size: 14px; font-weight: 700; flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; color: var(--heading); }
+  .trend-title { font-size: 14px; font-weight: 700; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; color: var(--heading); }
   .trend-title svg { display: block; color: currentColor; }
   .trend-peek { flex: 1; min-width: 0; font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .trend-chevron { font-size: 14px; color: var(--muted); flex-shrink: 0; }
   .trend-box:not(.collapsed) .trend-peek { display: none; }
-  .seg { display: flex; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 10px; padding: 2px; }
-  .seg-btn { min-height: 44px; border: none; background: transparent; color: var(--muted); font-size: 14px; padding: 0 12px; border-radius: 8px; cursor: pointer; }
+  .seg { display: flex; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 8px; padding: 2px; box-sizing: border-box; }
+  .seg-btn { box-sizing: border-box; height: 30px; min-height: 30px; border: none; background: transparent; color: var(--muted); font-size: 12px; padding: 0 9px; border-radius: 6px; cursor: pointer; }
   .seg-btn.active { background: var(--primary); color: var(--on-primary); font-weight: 700; }
   .trend-body { max-height: 56vh; overflow-y: auto; padding: 0 12px 12px; }
   .trend-box.collapsed .trend-body { display: none; }
@@ -89,7 +92,7 @@ const logCSS = `
 const logHTML = `
   <div class="form-box collapsed" id="formBox">
     <button class="form-head" id="formToggle" type="button" aria-expanded="false" aria-controls="formBody">
-      <span class="form-title">${icon('pencil', 14)}记录本次练习</span>
+      <span class="form-title">${icon('pencil', 14)}记录练习</span>
       <span class="form-peek" id="formPeek">今天还未打卡</span>
       <span class="form-chevron" aria-hidden="true">${icon('chevronRight', 14)}</span>
     </button>
@@ -106,11 +109,11 @@ const logHTML = `
   <div class="trend-box collapsed" id="trendBox">
     <div class="trend-head">
       <button class="trend-toggle-row" id="trendToggle" type="button" aria-expanded="false">
-        <span class="trend-title">${icon('chart', 15)}练习趋势</span>
+        <span class="trend-title">${icon('chart', 14)}练习趋势</span>
         <span class="trend-peek" id="trendPeek">近 7 天 · 0 分钟</span>
         <span class="trend-chevron" id="trendChevron">▸</span>
       </button>
-      <button class="share-btn" id="btnShare" type="button">${icon('share', 14)} 分享卡片</button>
+      <button class="share-btn" id="btnShare" type="button">${icon('share', 12)} 分享卡片</button>
     </div>
     <div class="trend-body">
       <div class="trend-controls">
@@ -129,7 +132,7 @@ const logHTML = `
       </div>
     </div>
   </div>
-  <div class="list-head"><span class="list-head-label">${icon('list', 14)}练习记录列表</span><span class="list-count" id="listCount">0 条</span></div>
+  <div class="list-head"><span class="list-head-label">${icon('list', 14)}练习列表</span><span class="list-count" id="listCount">0 条</span></div>
   <div class="log-list" id="logList"><div class="empty-tip">还没有打卡记录，开始你的第一次练习吧！</div></div>
   <div class="toast" id="toast"></div>
 `;

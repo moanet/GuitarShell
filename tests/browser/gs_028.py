@@ -210,10 +210,16 @@ TEST = r"""
     const btnDel = r.querySelector('.btn-del');
     const shareBtn = r.querySelector('.share-btn');
     const segBtn = r.querySelector('.seg-btn');
+    const trendHead = r.querySelector('.trend-head');
+    const shareRect = shareBtn.getBoundingClientRect();
+    const trendHeadRect = trendHead.getBoundingClientRect();
+    const labelText = (el) => el.textContent.replace(/\s+/g, '');
     check('记录页输入框与主按钮高度', inpName.getBoundingClientRect().height === 44 && inpTime.getBoundingClientRect().height === 44 && btnSubmit.getBoundingClientRect().height === 46, `${inpName.getBoundingClientRect().height}/${btnSubmit.getBoundingClientRect().height}`);
     check('记录页字号收口', getComputedStyle(formTitle).fontSize === '14px' && getComputedStyle(logTitle).fontSize === '14px' && getComputedStyle(logDetail).fontSize === '11px' && getComputedStyle(r.querySelector('.stats-line')).fontSize === '11px' && getComputedStyle(r.querySelector('.stat-val')).fontSize === '14px', `${getComputedStyle(formTitle).fontSize}/${getComputedStyle(logTitle).fontSize}/${getComputedStyle(logDetail).fontSize}`);
-    check('记录页操作热区 44', btnDel.getBoundingClientRect().height === 44 && shareBtn.getBoundingClientRect().height === 44 && getComputedStyle(segBtn).minHeight === '44px', `${btnDel.getBoundingClientRect().height}/${shareBtn.getBoundingClientRect().height}/${getComputedStyle(segBtn).minHeight}`);
-    check('分享按钮无额外底色', getComputedStyle(shareBtn).backgroundColor === 'rgba(0, 0, 0, 0)', getComputedStyle(shareBtn).backgroundColor);
+    check('记录页操作热区：删除 44，分享 32，范围 30', btnDel.getBoundingClientRect().height === 44 && shareRect.height === 32 && parseFloat(getComputedStyle(segBtn).height) === 30, `${btnDel.getBoundingClientRect().height}/${shareRect.height}/${getComputedStyle(segBtn).height}`);
+    check('分享按钮不顶天顶底', shareRect.top - trendHeadRect.top >= 7 && trendHeadRect.bottom - shareRect.bottom >= 7, `${(shareRect.top - trendHeadRect.top).toFixed(1)}/${(trendHeadRect.bottom - shareRect.bottom).toFixed(1)}`);
+    check('分享按钮底色与趋势行一致', getComputedStyle(shareBtn).backgroundColor === getComputedStyle(trendBox).backgroundColor, `${getComputedStyle(shareBtn).backgroundColor}/${getComputedStyle(trendBox).backgroundColor}`);
+    check('三处标题统一四字', labelText(formTitleSafe) === '记录练习' && labelText(trendTitleSafe) === '练习趋势' && labelText(listLabel) === '练习列表', `${labelText(formTitleSafe)}/${labelText(trendTitleSafe)}/${labelText(listLabel)}`);
 
     inpName.value = '草稿曲目';
     inpTime.value = '12';
