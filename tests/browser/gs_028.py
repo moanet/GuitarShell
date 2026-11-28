@@ -219,6 +219,7 @@ TEST = r"""
     check('记录页操作热区：删除 44，分享 32，范围 30', btnDel.getBoundingClientRect().height === 44 && shareRect.height === 32 && parseFloat(getComputedStyle(segBtn).height) === 30, `${btnDel.getBoundingClientRect().height}/${shareRect.height}/${getComputedStyle(segBtn).height}`);
     check('分享按钮不顶天顶底', shareRect.top - trendHeadRect.top >= 7 && trendHeadRect.bottom - shareRect.bottom >= 7, `${(shareRect.top - trendHeadRect.top).toFixed(1)}/${(trendHeadRect.bottom - shareRect.bottom).toFixed(1)}`);
     check('分享按钮底色与趋势行一致', getComputedStyle(shareBtn).backgroundColor === getComputedStyle(trendBox).backgroundColor, `${getComputedStyle(shareBtn).backgroundColor}/${getComputedStyle(trendBox).backgroundColor}`);
+    check('趋势行无残留悬停底色', !r.querySelector('style').textContent.includes('.trend-toggle-row:hover'), 'hover rule removed');
     check('三处标题统一四字', labelText(formTitleSafe) === '记录练习' && labelText(trendTitleSafe) === '练习趋势' && labelText(listLabel) === '练习列表', `${labelText(formTitleSafe)}/${labelText(trendTitleSafe)}/${labelText(listLabel)}`);
 
     inpName.value = '草稿曲目';

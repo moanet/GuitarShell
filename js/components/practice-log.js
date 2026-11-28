@@ -64,7 +64,6 @@ const logCSS = `
   .share-btn::after { content: ''; position: absolute; inset: -6px -4px; }
   .share-btn:active { background: var(--bg2); filter: none; }
   .share-btn svg { width: 12px; height: 12px; }
-  .trend-toggle-row:hover { background: rgba(var(--primary-rgb),.06); }
   .trend-title { font-size: 14px; font-weight: 700; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; color: var(--heading); }
   .trend-title svg { display: block; color: currentColor; }
   .trend-peek { flex: 1; min-width: 0; font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
