@@ -184,7 +184,7 @@ body { display: flex; flex-direction: column; }
   position: relative; z-index: 20;
 }
 .brand { flex: 1 1 100%; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 9px; color: var(--heading); letter-spacing: .3px; }
-.brand-icon { width: 26px; height: 26px; object-fit: contain; border-radius: 7px; flex-shrink: 0; display: block; box-shadow: 0 3px 10px rgba(var(--shadow-rgb), .24); }
+.brand-icon { width: 26px; height: 26px; object-fit: contain; border-radius: 7px; flex-shrink: 0; display: block; }
 .version-chip {
   font-size: 11px; font-weight: 400; color: var(--muted); letter-spacing: .3px;
   background: rgba(var(--tint-rgb), 0.02); border: 1px solid var(--line); border-radius: 999px;

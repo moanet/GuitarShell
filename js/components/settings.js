@@ -208,7 +208,7 @@ const settingsCSS = `
   /* 云同步：状态与操作 */
 
   .about-brand { display: flex; align-items: center; gap: 8px; }
-  .about-brand img { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; box-shadow: 0 4px 14px rgba(var(--shadow-rgb), .28); }
+  .about-brand img { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; }
   .about-copy { flex: 1; min-width: 0; }
   .about-copy b { display: block; font-size: 14px; color: var(--heading); }
   .ver { padding: 3px 6px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--accent-text); font-size: 10px; font-variant-numeric: tabular-nums; }

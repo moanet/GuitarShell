@@ -256,7 +256,7 @@ const metronomeCSS = `
     display: flex; align-items: center; justify-content: center;
     height: 42px; box-sizing: border-box;
     margin-top: 8px; padding: 4px 8px; border-radius: 9px;
-    background: rgba(var(--primary-rgb),.10); border: 1px solid rgba(var(--accent-rgb),.35);
+    background: transparent; border: 0;
     color: var(--accent-text); font-size: 10px; line-height: 1.35; text-align: center;
     overflow: hidden; opacity: 0; visibility: hidden; pointer-events: none;
     transition: opacity .15s;
