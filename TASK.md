@@ -19,7 +19,7 @@
 | Android 包 | `com.guitarshell`，`minSdk 22` / `targetSdk 34` |
 | 签名证书 SHA-256 | `CA6D27B23E55E5009B6E27C3918ED08C87CE4ED2AEC7FFF65E3C2F461715AC4E` |
 | 验证基线 | Web 360 主基线 + 320 边界回归；真机 `ca14b16`（Android 13+） |
-| 当前阶段 | `0.1.27` 已发布并归档；dev 体验批次 6 项已完成真机验收并归档；UI 规范 `v1.1` 样板与 P9 已提交 `dev`；下一轮按规范逐页推广，先做调音器主体，乐谱/记录/阅读器各自任务书；不预占下一版本号，详见 [CURRENT_TASK.md](CURRENT_TASK.md) |
+| 当前阶段 | `0.1.27` 已发布并归档；dev 体验批次 6 项已完成真机验收并归档；UI 规范 `v1.1` 样板与 P9 已提交 `dev`；下一轮按规范逐页推广，先做调音器主体，乐谱/记录/阅读器/全局外壳各自任务书；不预占下一版本号，详见 [CURRENT_TASK.md](CURRENT_TASK.md) 与 [推广计划](docs/UI_UNIFICATION_PLAN.md) |
 | 历史入口 | `0.1.0` / `0.1.1` 见 [docs/archive](docs/archive)；其余版本见 [CHANGELOG.md](CHANGELOG.md) |
 | 并入关系 | `0.1.12a` → `v0.1.12b`；`0.1.13` → `v0.1.14c`；`0.1.22` / `0.1.23` → `v0.1.24`；`0.1.25` → `v0.1.26`；`0.1.15` / `0.1.16` / `0.1.17` / `0.1.18` / `0.1.19` / `0.1.20` / `0.1.21d` / `0.1.24` / `0.1.26` / `0.1.27` 独立发布 |
 
@@ -105,11 +105,11 @@
 ## 4. 活跃待办
 
 当前进行中：
-- UI 规范 `v1.1` 逐页推广第一块：调音器主体；先做 P1 基线审计，再改视觉层，不改检测与设置外壳。
-- 乐谱、记录、阅读器按规范推广时各自另写任务书，不一次性全站换皮。
+- UI 规范 `v1.1` 逐页推广按 [docs/UI_UNIFICATION_PLAN.md](docs/UI_UNIFICATION_PLAN.md) 固定顺序执行：U1 调音器主体当前，U2 乐谱书架、U3 练习记录、U4 阅读器、U5 全局外壳依次排队。
+- 每页单独任务书、单独审计，不并行改多页；不做一次性全站换皮。
 
-待启动（已确认）：
-- 无。上一轮 UI 规范 `v1.1` 与“设置弹层 + 节拍器”样板 P3–P9 已提交 `dev`，记录归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-spec-v1.1.md](docs/archive/CURRENT_TASK-0.1.27-ui-spec-v1.1.md)。
+已排期（不需要再确认）：
+- U2–U5 的范围、验收与顺序见推广计划；上一轮 UI 规范 `v1.1` 与“设置弹层 + 节拍器”样板 P3–P9 已提交 `dev`，记录归档到 [docs/archive/CURRENT_TASK-0.1.27-ui-spec-v1.1.md](docs/archive/CURRENT_TASK-0.1.27-ui-spec-v1.1.md)。
 
 已确认：
 - `0.1.19` 已发布：状态条 / 弦位行 / 调音设置 / 预设与自定义。
@@ -233,6 +233,7 @@ npm run apk:release
 | [README.md](README.md) | 产品定位、功能、下载安装、WebDAV 使用、目录结构 | 用户可见行为或目录变化 |
 | [CHANGELOG.md](CHANGELOG.md) | 逐版本改动、测试、验收、APK / Release 证据 | 每次版本收尾 |
 | [CURRENT_TASK.md](CURRENT_TASK.md) | 当前迭代目标、边界、代码落点、验收标准 | 每轮开发开始与收尾 |
+| [docs/UI_UNIFICATION_PLAN.md](docs/UI_UNIFICATION_PLAN.md) | UI v1.1 逐页推广顺序、范围与验收入口 | 顺序或页面范围变化 |
 | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | 可复用冒烟、真机约定、测试矩阵、发布门禁 | 发布流程或功能面变化 |
 | [TASK.md](TASK.md) | 长期基线、路线、活跃待办、开放风险、构建与发布速查、避坑、文档索引 | 每次发版只改基线 / 待办 / 风险 |
 | [docs/archive](docs/archive) | 已完成的 `CURRENT_TASK` 与一次性专项记录 | 每次迭代归档 |
