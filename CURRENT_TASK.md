@@ -1,6 +1,6 @@
 # CURRENT_TASK — dev 体验批次：节拍器提示条、禅定 / 全屏与 Logo
 
-> 状态：`dev` 进行中；下一版本范围未定，本批次是其中已确认的一部分；版本号未预占。
+> 状态：6 项已在 `dev` 实现并完成真机验收；等待最终干净构建收尾。下一版本范围未定，本批次是其中已确认的一部分；版本号未预占。
 > 开发分支：`dev`；稳定分支：`main`。
 > 基线：`0.1.27` / `versionCode 137`（已发布并归档）。
 > 本文件先记录本批次；下一版本的总范围确认后，再补版本任务书或把本批次并入。
@@ -33,7 +33,7 @@
 | --- | --- |
 | 节拍器提示条 | 主界面表盘下方的 `Swing 25%` / `变速 60→120` / `倒计时` 提示去掉背景和边框，只留文字；42px 高度保留，开关练习项时表盘不跳动。 |
 | 音频跟练两行 | 先保持无框；真机上若两行难分，只加一条极淡分隔线，不恢复外框和填充。 |
-| BPM 键盘 | 先试 `adjustPan`；目标是键盘弹出时表盘尺寸不变、BPM 输入可见。若整页被顶得过高或顶部被裁，再改用 `visualViewport` 位移并锁定表盘像素尺寸。 |
+| BPM 键盘 | 采用 `adjustPan`：键盘弹出时表盘尺寸不变、BPM 输入可见；开始按钮被键盘覆盖，收起键盘恢复。若后续要求输入时同时看到开始按钮，再改用 `visualViewport` 位移并锁定表盘像素尺寸。 |
 | 禅定解锁 | 连续长按 1 秒解锁；松手、移出、取消都立即复位，不因缩短时间改成轻点解锁。 |
 | 禅定全屏 | 从普通阅读进入禅定自动全屏，解锁后回到普通阅读；进入前本来就在全屏则解锁后保持全屏。 |
 | 全屏图标 | 普通状态用 `maximize` SVG，全屏状态用 `minimize` SVG；按钮内边距和行高归零，图标在 44px 圆形内居中。 |
@@ -45,22 +45,22 @@
 
 | 项 | 主要文件 | 状态 |
 | --- | --- | --- |
-| 禅定 1 秒解锁 | `js/components/sheet-reader.js` | 已完成；浏览器验证 0.75s 未解锁、1.15s 解锁，提前松手保持锁定。 |
-| 禅定自动全屏 | `js/components/sheet-reader.js` | 已完成；普通进入→解锁回普通，原本全屏→解锁仍全屏。 |
-| 全屏图标居中 | `js/components/sheet-reader.js`、`js/services/icons.js` | 已完成；新增 `minimize` SVG，切换不再写 `⤢ / ⤡` 文本。 |
+| 禅定 1 秒解锁 | `js/components/sheet-reader.js` | 已完成；浏览器与真机均通过：0.75s 未解锁、1.15s 解锁，0.5s 提前松手保持锁定。 |
+| 禅定自动全屏 | `js/components/sheet-reader.js` | 已完成；真机通过：普通进入→解锁回普通，原本全屏→解锁仍全屏。 |
+| 全屏图标居中 | `js/components/sheet-reader.js`、`js/services/icons.js` | 已完成；真机 `maximize / minimize` 均居中，图标中心与圆心偏差小于 1px。 |
 
 ### 批次 B：视觉清理（1 / 6）
 
 | 项 | 主要文件 | 状态 |
 | --- | --- | --- |
-| 节拍器提示条去框 | `js/components/metronome.js` | 已完成；`background: transparent`、`border: 0`，高度仍为 42px。 |
-| 全软件 Logo 去外阴影 | `css/layout.css`、`js/components/settings.js` | 已完成；顶部品牌栏与关于页 `box-shadow` 均为 `none`。 |
+| 节拍器提示条去框 | `js/components/metronome.js` | 已完成；浏览器与真机均通过，透明背景、0 边框、42px 高，Swing 开关前后表盘位置不变。 |
+| 全软件 Logo 去外阴影 | `css/layout.css`、`js/components/settings.js` | 已完成；真机暖纸日光与深夜琴房下，顶部品牌栏与关于页均无外阴影。 |
 
 ### 批次 C：BPM 键盘（2）
 
 | 项 | 主要文件 | 状态 |
 | --- | --- | --- |
-| 键盘不压缩表盘 | `android/app/src/main/AndroidManifest.xml`、`js/components/metronome.js` | 待开始；先做 `adjustPan` 真机实验，再决定是否上 `visualViewport`。 |
+| 键盘不压缩表盘 | `android/app/src/main/AndroidManifest.xml` | 已完成；`windowSoftInputMode` 改为 `adjustPan`，真机键盘弹出时表盘保持原尺寸、BPM 输入可见。 |
 
 ## 5. 已完成的验证
 
@@ -69,25 +69,40 @@
 - 全屏按钮：`maximize / minimize` SVG 均渲染，图标中心与按钮中心偏差 `dx=0 / dy=0`。
 - 节拍器提示条：计算样式为透明背景、0 边框、42px 高；`Swing 25%` 文本正常显示。
 - Logo：顶部品牌栏与关于页 `box-shadow` 均为 `none`。
-- dev APK：`dist/dev/GuitarShell-dev-20261128-1605-3eeecfa.apk`，`4,482,073` 字节。
+- 真机第一轮（`ca14b16`，1080×2400 / density 440，dev 标记 `dev 1605`）：
+  - HUD 无背景、无边框，文案 `Swing 25% · 变速 60→120 · 每4小节 · 倒计时 20分`；关闭 Swing 后文案缩短，表盘上下位置不变；已恢复 Swing 开启。
+  - 顶部品牌栏与关于页 Logo 在暖纸日光、深夜琴房两种主题下均无外阴影。
+  - 普通阅读点禅定锁自动全屏；按住 0.75s 仍锁定，0.5s 松手仍锁定，1.15s 解锁并回到普通阅读。
+  - 全屏态点禅定锁保持全屏；1.15s 解锁后仍保持全屏，顶部栏仍隐藏，`minimize` 图标正常。
+  - 全屏按钮圆心约 `(85,106)`，`maximize / minimize` 图标中心均在 `(85,105.5)`，偏差约 `dx=0 / dy=-0.5px`。
+- 真机第二轮（`ca14b16`，`adjustPan` 实验包 `0.1.27-dev.20261128-1633`）：
+  - 点 BPM 数字后键盘弹出，表盘尺寸与正常态一致，BPM 数字和输入框保持在键盘上方可见。
+  - 键盘弹出时开始按钮下半部被键盘覆盖，HUD 与底部设置 / TAP 被遮住；收起键盘后表盘、开始按钮、HUD 与底部操作全部恢复。
+  - 书架搜索框聚焦时搜索栏仍在键盘上方可见，`adjustPan` 未导致顶部栏被裁。
+- dev APK：
+  - 第一轮：`dist/dev/GuitarShell-dev-20261128-1605-3eeecfa.apk`，`4,482,073` 字节。
+  - `adjustPan` 实验：`dist/dev/GuitarShell-dev-20261128-1633-896cabb-dirty.apk`。
 
 ## 6. 待验收
 
-- 真机安装 dev APK，重点看禅定 1 秒长按、自动全屏、解锁恢复，以及全屏图标在手机圆圈中的位置。
-- 真机连接后按流程先明确告知开始，验收结束交还设备。
-- BPM 键盘方案必须在真机验证；浏览器模拟键盘不作为通过依据。
+- 6 项均已在真机通过；最终干净构建后只需确认安装包版本标记与页面一致，不再重复逐项点测。
+- 若后续调整 `adjustPan` 或改用 `visualViewport`，BPM 键盘必须重新真机验证，浏览器模拟键盘不作为通过依据。
 
 ## 7. 风险与待确认
 
-- `adjustPan` 可能把整个 WebView 向上推，导致顶部内容被裁；若不理想，改用 `visualViewport` 方案。
-- `visualViewport` 方案需要处理键盘高度变化、页面滚动位置和表盘像素锁定，代码量更大。
+- `adjustPan` 当前在 1080×2400 上未上推整页；更矮屏幕或更大键盘可能把 WebView 整体上推，导致顶部内容被裁，需在边界尺寸复核。
+- 键盘弹出时开始按钮被覆盖，这是 `adjustPan` 的取舍；收起键盘即恢复。若要求输入时同时看到开始按钮，需要改 `visualViewport` 方案。
+- 节拍器设置内其他输入框、调音器自定义输入等未逐一做键盘回归；搜索框与 BPM 已覆盖。
 - 禅定自动全屏与 `reader-fullscreen` 层级必须保持“先全屏、后禅定”；返回键仍先由禅定层拦截。
 - 原生浏览器全屏与 Electron / WebView 行为不同；真机以 CSS 全屏为主，不依赖原生 Fullscreen API。
-- 本批次尚未真机验收，不能按正式版标准宣称完成。
 
 ## 8. 提交记录
 
 - `5f831aa feat: 禅定 1 秒解锁与自动全屏`
 - `3eeecfa style: 去掉节拍器提示框与 Logo 外阴影`
 - `8e2633b docs: 记录 dev 阅读与视觉改动`
+- `ead1778 docs: 建立 dev 体验批次任务书`
+- `08b7dfd docs: 补 dev 批次任务书硬门禁`
+- `896cabb docs: 校正 dev 批次与下一版本关系`
+- `5c7b64f fix: BPM 输入时保持表盘尺寸`
 - `dev` 已推送到 `origin/dev`；未改 `main`，未发 Release。
