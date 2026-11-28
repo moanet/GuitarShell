@@ -9,6 +9,7 @@
 # 用法（仓库根目录）：
 #   python tests/browser/gs_024.py
 #   GS_WIDTH=320 python tests/browser/gs_024.py
+#   GS_THEME=light python tests/browser/gs_024.py
 # ==========================================
 import base64
 import json
@@ -30,6 +31,10 @@ ROOT = Path(__file__).resolve().parents[2]
 BASE = os.environ.get("GS_BASE_URL", "http://127.0.0.1:8123/").rstrip("/") + "/"
 PORT = int(os.environ.get("GS_CDP_PORT", "9367"))
 WIDTH = int(os.environ.get("GS_WIDTH", "360"))
+THEME = os.environ.get("GS_THEME", "deep").lower()
+if THEME not in ("deep", "light"):
+    THEME = "deep"
+COLOR_SCHEME = "light" if THEME == "light" else "dark"
 TMP = Path(os.environ.get("TEMP", tempfile.gettempdir()))
 
 BROWSERS = [
@@ -97,7 +102,7 @@ class CDP:
         data = self.cmd("Page.captureScreenshot", {"format": "png"}).get("result", {}).get("data")
         if not data:
             return None
-        path = TMP / f"gs_024_{WIDTH}_{name}.png"
+        path = TMP / f"gs_024_{WIDTH}_{THEME}_{name}.png"
         path.write_bytes(base64.b64decode(data))
         return str(path)
 
@@ -148,6 +153,21 @@ def main():
         cdp.cmd("Emulation.setDeviceMetricsOverride", {
             "width": WIDTH, "height": 800, "deviceScaleFactor": 1, "mobile": True,
         })
+        for _ in range(80):
+            if cdp.ev("!!document.querySelector('guitar-sheet-reader')?.shadowRoot?.getElementById('shelfView')"):
+                break
+            time.sleep(0.25)
+
+        cdp.ev(f"""
+(() => {{
+  localStorage.setItem('gs_theme', '{THEME}');
+  document.documentElement.dataset.theme = '{THEME}';
+  document.documentElement.style.colorScheme = '{COLOR_SCHEME}';
+  return document.documentElement.dataset.theme;
+}})()
+""")
+        cdp.cmd("Page.reload")
+        time.sleep(0.4)
         for _ in range(80):
             if cdp.ev("!!document.querySelector('guitar-sheet-reader')?.shadowRoot?.getElementById('shelfView')"):
                 break
@@ -229,7 +249,19 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
     folderSvg: !!folderBtn.querySelector('svg'),
     placeholder: search.placeholder,
     searchWidth: Math.round(search.getBoundingClientRect().width),
+    searchHeight: Math.round(search.getBoundingClientRect().height),
     sortWidth: Math.round(sort.getBoundingClientRect().width),
+    sortHeight: Math.round(sort.getBoundingClientRect().height),
+    filterPadding: getComputedStyle(reader.shadowRoot.querySelector('.filter-bar')).padding,
+    shelfPadding: getComputedStyle(reader.shadowRoot.querySelector('.shelf-view')).padding,
+    shelfGap: getComputedStyle(reader.shadowRoot.querySelector('.shelf-view')).gap,
+    cardRadius: getComputedStyle(reader.shadowRoot.querySelector('.score-card')).borderRadius,
+    cardPadding: getComputedStyle(reader.shadowRoot.querySelector('.score-card')).padding,
+    coverRadius: getComputedStyle(reader.shadowRoot.querySelector('.score-cover')).borderRadius,
+    nameFont: getComputedStyle(reader.shadowRoot.querySelector('.score-name')).fontSize,
+    metaFont: getComputedStyle(reader.shadowRoot.querySelector('.score-meta')).fontSize,
+    tagHeight: Math.round(reader.shadowRoot.querySelector('.tag-chip').getBoundingClientRect().height),
+    manageHeight: Math.round(reader.shadowRoot.querySelector('.manage-btn').getBoundingClientRect().height),
     cardEditSvg: reader.shadowRoot.querySelectorAll('.card-edit-btn svg').length,
     coverSvg: reader.shadowRoot.querySelectorAll('.score-cover-fallback svg').length,
     mmStepSvg: ['mmMinus', 'mmPlus'].filter((id) => reader.shadowRoot.getElementById(id)?.querySelector('svg')).length,
@@ -307,6 +339,9 @@ window.addEventListener('unhandledrejection', e => window.__gsErrs.push(String(e
         check("书架导入成功", r["cardsBefore"] >= 1, str(r["cardsBefore"]))
         check("搜索行无横向溢出", not r["rowOverflow"], f"{r['rowWidth']}/{r['rowScroll']}")
         check("导入按钮 36×36 图标化", r["importWidth"] == 36 and r["importHeight"] == 36 and r["importText"] == "" and r["importSvg"], f"{r['importWidth']}×{r['importHeight']} text={r['importText']!r}")
+        check("书架搜索/筛选高 44", r["searchHeight"] == 44 and r["sortHeight"] == 44 and r["tagHeight"] == 44 and r["manageHeight"] == 44, f"search={r['searchHeight']} sort={r['sortHeight']} tag={r['tagHeight']} manage={r['manageHeight']}")
+        check("书架边距与卡片规格", r["filterPadding"] == "12px" and r["shelfPadding"] == "12px" and r["shelfGap"] == "12px" and r["cardRadius"] == "14px" and r["cardPadding"] == "12px" and r["coverRadius"] == "8px", str({k: r[k] for k in ("filterPadding", "shelfPadding", "shelfGap", "cardRadius", "cardPadding", "coverRadius")}))
+        check("书架标题/辅助字号", r["nameFont"] == "14px" and r["metaFont"] == "11px", f"{r['nameFont']} / {r['metaFont']}")
         check("导入按钮有无障碍名称", r["importAria"] == "导入乐谱", r["importAria"])
         check("文件夹按钮为图标并在 640 下隐藏", r["folderSvg"] and r["folderDisplay"] == "none", f"{r['folderDisplay']}")
         check("搜索占位收口", r["placeholder"] == "搜谱名 / 标签 / 拼音", r["placeholder"])
